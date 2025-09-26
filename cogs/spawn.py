@@ -69,7 +69,7 @@ class Spawn(commands.Cog):
 			moves = select_level_up_moves(data, level)
 			held_item = choose_held_item(data)
 
-		sprite_img = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA").resize((200, 200))
+		sprite_img = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA").resize((200, 200), Image.NEAREST)
 		background = self.preloaded_backgrounds[habitat_name].copy()
 		position = ((background.width - sprite_img.width) // 2, background.height - sprite_img.height - 10)
 		background.paste(sprite_img, position, sprite_img)
@@ -92,4 +92,5 @@ class Spawn(commands.Cog):
 		await ctx.send(embed=embed, file=file, view=BattleView(ctx.author, name))
 
 async def setup(bot: commands.Bot):
+
 	await bot.add_cog(Spawn(bot))
