@@ -1,1 +1,5 @@
 discord.py
+Pillow
+aiopokeapi
+curl_cffi
+python-dotenv
