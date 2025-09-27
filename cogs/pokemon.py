@@ -67,7 +67,7 @@ class Pokemon(commands.Cog):
 		desc_lines = []
 		for p in pokemons:
 			poke_id = p["id"]
-			poke = await pm.services.client.get_pokemon(p["species_id"])
+			poke = await pm.service.client.get_pokemon(p["species_id"])
 			emoji = get_app_emoji(f"p_{p['species_id']}")
 			shiny = "✨ " if p.get("is_shiny", False) else ""
 			nickname = f" ({p['nickname']})" if p.get("nickname") else poke.name.title()
@@ -101,4 +101,5 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
 
