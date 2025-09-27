@@ -1,5 +1,6 @@
 import discord
 import random
+import gc
 from __main__ import toolkit, pm
 from discord.ext import commands
 from pokemon_sdk.constants import NATURES
@@ -92,6 +93,7 @@ class Start(commands.Cog):
 		toolkit.add_user(user_id, user_name, "Male")
 		view = StarterChoice(user_id)
 		await ctx.send(f"{ctx.author.mention}, escolha seu inicial:", view=view)
+		gc.collect()
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
