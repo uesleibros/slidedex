@@ -223,6 +223,7 @@ class Toolkit:
 				"ability": ability,
 				"gender": gender,
 				"is_shiny": bool(shiny),
+				"background": "lab",
 				"held_item": held_item,
 				"is_favorite": False,
 				"caught_at": datetime.utcnow().isoformat(),

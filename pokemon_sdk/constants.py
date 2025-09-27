@@ -24,5 +24,6 @@ NATURES = {
 	"Careful": ("special-defense", "special-attack"),
 	"Quirky": (None, None)
 }
+
 VERSION_GROUPS = ("firered-leafgreen", "emerald", "ruby-sapphire")
 SHINY_ROLL = 8192

@@ -4,38 +4,96 @@ from .repository import PokemonRepository
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
 from .constants import NATURES
-from .models import Pokemon
+from .models import Pokemon, Move
 
 class PokemonManager:
 	def __init__(self, toolkit):
 		self.repo = PokemonRepository(toolkit)
 		self.service = PokeAPIService()
 
-	async def create_pokemon(self, owner_id: str, species_id: int, level: int = 5, forced_gender: Optional[str] = None, on_party: bool = True, ivs: Optional[Dict[str,int]] = None, nature: Optional[str] = None, ability: Optional[str] = None, moves: Optional[List[Dict]] = None, shiny: Optional[bool] = None, held_item: Optional[str] = None, nickname: Optional[str] = None) -> Pokemon:
+	async def _build_pokemon_data(
+		self,
+		species_id: int,
+		level: int = 5,
+		forced_gender: Optional[str] = None,
+		ivs: Optional[Dict[str,int]] = None,
+		nature: Optional[str] = None,
+		ability: Optional[str] = None,
+		moves: Optional[List[Dict]] = None,
+		shiny: Optional[bool] = None,
+		held_item: Optional[str] = None,
+		nickname: Optional[str] = None,
+		owner_id: str = "wild",
+		on_party: bool = False
+	) -> Pokemon:
 		poke = await self.service.get_pokemon(species_id)
 		species = await self.service.get_species(species_id)
 		base_stats = self.service.get_base_stats(poke)
+
 		final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
 		final_nature = nature or random.choice(list(NATURES.keys()))
+
 		gen = generate_pokemon_data(base_stats, level=level, nature=final_nature, ivs=final_ivs)
 		final_ability = ability or self.service.choose_ability(poke)
 		final_moves = moves or self.service.select_level_up_moves(poke, level)
 		final_gender = self.service.roll_gender(species, forced=forced_gender)
 		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
-		created = self.repo.add(
-			owner_id=owner_id,
+
+		return Pokemon(
+			id=0,
 			species_id=species_id,
+			owner_id=owner_id,
+			level=gen["level"],
+			exp=0,
 			ivs=gen["ivs"],
+			evs=gen["evs"],
 			nature=gen["nature"],
 			ability=final_ability,
 			gender=final_gender,
-			shiny=final_shiny,
-			level=gen["level"],
-			moves=final_moves,
-			on_party=on_party,
-			current_hp=gen["current_hp"],
+			is_shiny=final_shiny,
 			held_item=held_item,
+			caught_at="",
+			moves=[Move(**m) for m in final_moves],
+			stats=gen["stats"],
+			current_hp=gen["current_hp"],
+			on_party=on_party,
 			nickname=nickname
+		)
+
+	async def generate_temp_pokemon(self, **kwargs) -> Pokemon:
+		return await self._build_pokemon_data(**kwargs)
+
+	async def create_pokemon(
+		self,
+		owner_id: str,
+		species_id: int,
+		level: int = 5,
+		on_party: bool = True,
+		**kwargs
+	) -> Pokemon:
+		pkmn = await self._build_pokemon_data(
+			species_id=species_id,
+			level=level,
+			owner_id=owner_id,
+			on_party=on_party,
+			**kwargs
+		)
+
+		created = self.repo.add(
+			owner_id=pkmn.owner_id,
+			species_id=pkmn.species_id,
+			ivs=pkmn.ivs,
+			nature=pkmn.nature,
+			ability=pkmn.ability,
+			gender=pkmn.gender,
+			shiny=pkmn.is_shiny,
+			level=pkmn.level,
+			moves=[m.__dict__ for m in pkmn.moves],
+			on_party=pkmn.on_party,
+			current_hp=pkmn.current_hp,
+			held_item=pkmn.held_item,
+			nickname=pkmn.nickname,
+			exp=pkmn.exp
 		)
 		return created
 

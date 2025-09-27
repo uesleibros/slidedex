@@ -2,25 +2,26 @@ import io
 import random
 import discord
 from discord.ext import commands
-from curl_cffi import requests
-from PIL import Image
 from typing import Optional
 
+from __main__ import pm
 from utils.preloaded import preloaded_backgrounds
 from utils.pokemon_emojis import get_app_emoji
 from utils.spawn_text import get_spawn_text
-from utils.calculations import generate_stats
-from utils.generators import choose_ability, roll_gender, get_types, select_level_up_moves, choose_held_item
+from utils.canvas import compose_pokemon
 
 class BattleView(discord.ui.View):
-	def __init__(self, author: discord.Member, target_name: str, timeout: float = 60.0):
+	def __init__(self, author: discord.Member, wild_pokemon_name: str, timeout: float = 60.0):
 		super().__init__(timeout=timeout)
 		self.author = author
-		self.target_name = target_name
+		self.target_name = wild_pokemon_name
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⚔️")
 	async def battle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-		await interaction.response.send_message(f"{interaction.user.mention} iniciou uma batalha contra **{self.target_name}**!", ephemeral=False)
+		await interaction.response.send_message(
+			f"{interaction.user.mention} iniciou uma batalha contra **{self.target_name}**!", 
+			ephemeral=False
+		)
 		for item in self.children:
 			item.disabled = True
 		await interaction.message.edit(view=self)
@@ -40,47 +41,37 @@ class Spawn(commands.Cog):
 			is_shiny = True
 			pokemon_query = pokemon_query.replace("=shiny", "").strip()
 
-		async with requests.AsyncSession() as session:
-			resp = await session.get(f"https://pokeapi.co/api/v2/pokemon/{pokemon_query.lower()}")
-			data = resp.json()
-			name = data["name"].capitalize()
-			if not is_shiny:
-				is_shiny = random.randint(1, 8192) == 1
-			sprite_url = data["sprites"]["front_shiny"] if is_shiny else data["sprites"]["front_default"]
-			if not sprite_url:
-				sprite_url = data["sprites"]["front_default"]
+		poke = await pm.service.get_pokemon(pokemon_query.lower())
+		species = await pm.service.get_species(poke.id)
 
-			species_resp = await session.get(f"https://pokeapi.co/api/v2/pokemon-species/{pokemon_query.lower()}")
-			species_data = species_resp.json()
-			is_legendary = species_data.get("is_legendary", False)
-			is_mythical = species_data.get("is_mythical", False)
-			pokemon_emoji = get_app_emoji(f"p_{data['id']}")
-			habitat_name = species_data["habitat"]["name"] if species_data["habitat"] else ("rare" if (is_legendary or is_mythical) else "grassland")
-			
-			sprite_resp = await session.get(sprite_url)
-			sprite_bytes = sprite_resp.content
+		name = poke.name.capitalize()
+		emoji = get_app_emoji(f"p_{poke.id}")
 
-			base_stats = {s["stat"]["name"]: s["base_stat"] for s in data["stats"]}
-			level = random.randint(5, 45)
-			info = generate_stats(base_stats, level)
-			ability = choose_ability(data)
-			gender = roll_gender(species_data)
-			types = get_types(data)
-			moves = select_level_up_moves(data, level)
-			held_item = choose_held_item(data)
+		is_legendary = bool(getattr(species, "is_legendary", False))
+		is_mythical = bool(getattr(species, "is_mythical", False))
+		habitat_name = (
+			species.habitat.name if species.habitat 
+			else ("rare" if (is_legendary or is_mythical) else "grassland")
+		)
 
-		sprite_img = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA").resize((200, 200), Image.NEAREST)
-		background = self.preloaded_backgrounds[habitat_name].copy()
-		position = ((background.width - sprite_img.width) // 2, background.height - sprite_img.height - 10)
-		background.paste(sprite_img, position, sprite_img)
+		sprite = poke.sprites.front_shiny if is_shiny and poke.sprites.front_shiny else poke.sprites.front_default
+		sprite_bytes = await sprite.read() if sprite else None
 
-		with io.BytesIO() as image_binary:
-			background.save(image_binary, "PNG")
-			image_binary.seek(0)
-			file = discord.File(fp=image_binary, filename="spawn.png")
+		level = random.randint(5, 45)
+
+		wild = await pm.generate_temp_pokemon(
+			owner_id="wild",
+			species_id=poke.id,
+			level=level,
+			on_party=False,
+			shiny=is_shiny
+		)
+
+		buffer = compose_pokemon(sprite_bytes, self.preloaded_backgrounds[habitat_name])
+		file = discord.File(fp=buffer, filename="spawn.png")
 
 		title = "✨ Um Pokémon Shiny Selvagem Apareceu! ✨" if is_shiny else "Um Pokémon Selvagem Apareceu!"
-		desc = get_spawn_text(habitat_name, f"{pokemon_emoji} **{name}**{' SHINY' if is_shiny else ''}!")
+		desc = get_spawn_text(habitat_name, f"{emoji} **{name}**{' SHINY' if is_shiny else ''}!")
 
 		embed = discord.Embed(
 			title=title,
@@ -92,5 +83,4 @@ class Spawn(commands.Cog):
 		await ctx.send(embed=embed, file=file, view=BattleView(ctx.author, name))
 
 async def setup(bot: commands.Bot):
-
 	await bot.add_cog(Spawn(bot))

@@ -13,8 +13,18 @@ BACKGROUNDS: Dict[str, str] = {
 	"waters-edge": "resources/backgrounds/beach.png"
 }
 
+INFO_BACKGROUNDS: Dict[str, str] = {
+	"lab": "resources/backgrounds/info/lab.png",
+	"gen2": "resources/backgrounds/info/gen2.jpg",
+}
+
 preloaded_backgrounds: Dict[str, Image] = {}
+preloaded_info_backgrounds: Dict[str, Image] = {}
 
 def preload_backgrounds() -> None:
 	for key, path in BACKGROUNDS.items():
 		preloaded_backgrounds[key] = Image.open(path).convert("RGBA").resize((400, 225), Image.Resampling.NEAREST)
+
+def preload_info_backgrounds() -> None:
+	for key, path in INFO_BACKGROUNDS.items():
+		preloaded_info_backgrounds[key] = Image.open(path).convert("RGBA").resize((400, 225), Image.Resampling.NEAREST)

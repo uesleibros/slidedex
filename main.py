@@ -3,7 +3,7 @@ import os
 from discord.ext import commands
 from dotenv import load_dotenv
 from utils.pokemon_emojis import load_application_emojis
-from utils.preloaded import preload_backgrounds
+from utils.preloaded import preload_backgrounds, preload_info_backgrounds
 from utils.toolkit import Toolkit
 from pokemon_sdk import PokemonManager
 
@@ -23,12 +23,17 @@ async def on_ready() -> None:
 	pm = PokemonManager(toolkit)
 	await load_application_emojis(bot)
 
-	for filename in os.listdir("./cogs"):
-		if filename.endswith(".py") and filename != "__init__.py":
-			await bot.load_extension(f"cogs.{filename[:-3]}")
-			print(f"📂 Cog carregada: {filename}")
+	for root, _, files in os.walk("./cogs"):
+		for filename in files:
+			if filename.endswith(".py") and filename != "__init__.py":
+				rel_path = os.path.relpath(os.path.join(root, filename), "./cogs")
+				module = "cogs." + rel_path.replace(os.sep, ".")[:-3]
+
+				await bot.load_extension(module)
+				print(f"📂 Cog carregada: {module}")
 
 	preload_backgrounds()
+	preload_info_backgrounds()
 	print(f"{bot.user} está online!")
 
 print("oi")

@@ -1,0 +1,85 @@
+import io
+import time
+import textwrap
+import traceback
+from contextlib import redirect_stdout
+
+import discord
+from discord.ext import commands
+from __main__ import toolkit, pm
+
+class Dev(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self._last_result = None
+
+    def cleanup_code(self, content: str) -> str:
+        if content.startswith("```") and content.endswith("```"):
+            return "\n".join(content.split("\n")[1:-1])
+        return content.strip()
+
+    def to_file(self, name: str, text: str) -> discord.File:
+        fp = io.BytesIO(text.encode("utf-8"))
+        return discord.File(fp, filename=name)
+
+    @commands.is_owner()
+    @commands.command(name="eval", aliases=["ev"])
+    async def eval_command(self, ctx: commands.Context, *, body: str):
+        env = {
+            "bot": self.bot,
+            "ctx": ctx,
+            "channel": ctx.channel,
+            "author": ctx.author,
+            "guild": ctx.guild,
+            "message": ctx.message,
+            "discord": discord,
+            "commands": commands,
+            "toolkit": toolkit,
+            "pm": pm,
+            "_": self._last_result,
+        }
+        env.update(globals())
+        code_input = self.cleanup_code(body)
+        stdout = io.StringIO()
+        is_expr = False
+        try:
+            code_obj = compile(code_input, "<eval>", "eval")
+            is_expr = True
+        except SyntaxError:
+            code_obj = None
+        start = time.perf_counter()
+        try:
+            with redirect_stdout(stdout):
+                if is_expr:
+                    try:
+                        result = eval(code_obj, env)
+                    except NameError:
+                        result = code_input
+                else:
+                    exec(f"async def __eval_fn__():\n{textwrap.indent(code_input, '    ')}", env)
+                    result = await env["__eval_fn__"]()
+        except Exception:
+            out = stdout.getvalue()
+            text = f"{out}{traceback.format_exc()}"
+            if len(text) > 1900:
+                await ctx.send(file=self.to_file("eval_error.txt", text), allowed_mentions=discord.AllowedMentions.none())
+            else:
+                await ctx.send(f"```py\n{text}\n```", allowed_mentions=discord.AllowedMentions.none())
+            return
+        elapsed = (time.perf_counter() - start) * 1000
+        out = stdout.getvalue()
+        if result is None:
+            output = out if out else "None"
+        else:
+            try:
+                output = f"{out}{result}" if out else f"{result}"
+            finally:
+                self._last_result = result
+        text = f"{output}\n# {elapsed:.2f} ms"
+        if len(text) > 1900:
+            await ctx.send(file=self.to_file("eval_output.txt", text), allowed_mentions=discord.AllowedMentions.none())
+        else:
+            await ctx.send(f"```py\n{text}\n```", allowed_mentions=discord.AllowedMentions.none())
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Dev(bot))

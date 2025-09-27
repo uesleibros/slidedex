@@ -1,5 +1,6 @@
 from discord.ext import commands
 from utils.pokemon_emojis import get_app_emoji
+from pokemon_sdk.calculations import iv_percent
 from __main__ import toolkit
 from aiopoke import AiopokeClient
 from utils.formatting import format_poke_id
@@ -31,10 +32,9 @@ class Pokemon(commands.Cog):
 			gender = ":male_sign:" if p["gender"] == "Male" else ":female_sign:"
 			level = p["level"]
 			ivs = p["ivs"]
-			iv_total = sum(ivs.values())
-			iv_percent = round((iv_total / 186) * 100, 2)
+			iv_percent_ = iv_percent(ivs)
 			desc_lines.append(
-				f"`{format_poke_id(poke_id)}`　{emoji}{shiny} **{nickname}** {gender} {status}　•　Lv. {level}　•　{iv_percent}%"
+				f"`{format_poke_id(poke_id)}`　{emoji}{shiny} **{nickname}** {gender} {status}　•　Lv. {level}　•　{iv_percent_}%"
 			)
 
 		embed = discord.Embed(
