@@ -8,7 +8,6 @@ import discord
 
 aio_client = AiopokeClient()
 
-
 class Paginator(discord.ui.View):
 	def __init__(self, embeds, user_id: int):
 		super().__init__(timeout=120)
@@ -25,7 +24,6 @@ class Paginator(discord.ui.View):
 		self.prev_page.disabled = self.current_page == 0
 		self.next_page.disabled = self.current_page == len(self.embeds) - 1
 		self.last_page.disabled = self.current_page == len(self.embeds) - 1
-		self.delete_button.disabled = False
 
 	@discord.ui.button(label="⏮️", style=discord.ButtonStyle.secondary)
 	async def first_page(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -52,11 +50,6 @@ class Paginator(discord.ui.View):
 		self.current_page = len(self.embeds) - 1
 		self.update_buttons()
 		await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
-
-	@discord.ui.button(label="🗑️", style=discord.ButtonStyle.danger)
-	async def delete_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-		await interaction.message.delete()
-
 
 class Pokemon(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
