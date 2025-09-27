@@ -6,37 +6,33 @@ from .calculations import generate_pokemon_data, calculate_stats, iv_percent
 from .constants import NATURES
 from .models import Pokemon, Move
 
-
 class PokemonManager:
     def __init__(self, toolkit):
         self.repo = PokemonRepository(toolkit)
         self.service = PokeAPIService()
-        self._cache_pokemon = {}
-        self._cache_species = {}
-        self._cache_names = {}
+        self._base_stats_cache: Dict[int, Dict[str, int]] = {}
+        self._name_cache: Dict[int, str] = {}
+        self._species_cache: Dict[int, object] = {}
 
-    async def get_pokemon_cached(self, species_id: int):
-        if species_id not in self._cache_pokemon:
-            self._cache_pokemon[species_id] = await self.service.get_pokemon(species_id)
-        return self._cache_pokemon[species_id]
-
-    async def get_species_cached(self, species_id: int):
-        if species_id not in self._cache_species:
-            self._cache_species[species_id] = await self.service.get_species(species_id)
-            self._cache_names[species_id] = self._cache_species[species_id].name.title()
-        return self._cache_species[species_id]
-
-    async def get_species_name(self, species_id: int) -> str:
-        if species_id not in self._cache_names:
-            await self.get_species_cached(species_id)
-        return self._cache_names[species_id]
+    async def _prepare_species_info(self, species_id: int):
+        if species_id not in self._base_stats_cache:
+            poke = await self.service.get_pokemon(species_id)
+            self._base_stats_cache[species_id] = self.service.get_base_stats(poke)
+            species = await self.service.get_species(species_id)
+            self._name_cache[species_id] = species.name.title()
+            self._species_cache[species_id] = species
+        return (
+            self._base_stats_cache[species_id],
+            self._name_cache[species_id],
+            self._species_cache[species_id]
+        )
 
     async def _build_pokemon_data(
         self,
         species_id: int,
         level: int = 5,
         forced_gender: Optional[str] = None,
-        ivs: Optional[Dict[str, int]] = None,
+        ivs: Optional[Dict[str,int]] = None,
         nature: Optional[str] = None,
         ability: Optional[str] = None,
         moves: Optional[List[Dict]] = None,
@@ -46,19 +42,15 @@ class PokemonManager:
         owner_id: str = "wild",
         on_party: bool = False
     ) -> Pokemon:
-        poke = await self.get_pokemon_cached(species_id)
-        species = await self.get_species_cached(species_id)
-        base_stats = self.service.get_base_stats(poke)
-
+        base_stats, _, species = await self._prepare_species_info(species_id)
         final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
         final_nature = nature or random.choice(list(NATURES.keys()))
-
         gen = generate_pokemon_data(base_stats, level=level, nature=final_nature, ivs=final_ivs)
+        poke = await self.service.get_pokemon(species_id)
         final_ability = ability or self.service.choose_ability(poke)
         final_moves = moves or self.service.select_level_up_moves(poke, level)
         final_gender = self.service.roll_gender(species, forced=forced_gender)
         final_shiny = shiny if shiny is not None else self.service.roll_shiny()
-
         return Pokemon(
             id=0,
             species_id=species_id,
@@ -126,8 +118,7 @@ class PokemonManager:
 
     async def heal(self, owner_id: str, pokemon_id: int) -> Pokemon:
         p = self.repo.get(owner_id, pokemon_id)
-        poke = await self.get_pokemon_cached(p.species_id)
-        base_stats = self.service.get_base_stats(poke)
+        base_stats, _, _ = await self._prepare_species_info(p.species_id)
         stats = calculate_stats(base_stats, p.ivs, p.evs, p.level, p.nature)
         return self.repo.set_current_hp(owner_id, pokemon_id, stats["hp"])
 
@@ -145,6 +136,6 @@ class PokemonManager:
 
     async def close(self):
         await self.service.close()
-        self._cache_pokemon.clear()
-        self._cache_species.clear()
-        self._cache_names.clear()
+        self._base_stats_cache.clear()
+        self._name_cache.clear()
+        self._species_cache.clear()
