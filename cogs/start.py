@@ -37,7 +37,7 @@ class StarterButton(discord.ui.Button):
 		await interaction.response.defer()
 
 		user = toolkit.get_user(self.user_id)
-		if user and pm.service.get_user_pokemon(self.user_id):
+		if user:
 			await interaction.followup.send("Você já escolheu seu inicial! Não dá para escolher outro.", ephemeral=True)
 			return
 
@@ -94,4 +94,5 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
 
