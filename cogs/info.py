@@ -9,6 +9,7 @@ from utils.preloaded import preloaded_info_backgrounds
 from curl_cffi import requests
 import io
 import discord
+import gc
 
 STAT_ORDER = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 STAT_LABELS = {
@@ -116,6 +117,8 @@ class Info(commands.Cog):
 			await ctx.send(embed=embed, files=[img_file, cry_file])
 		else:
 			await ctx.send(embed=embed, file=img_file)
+		gc.collect()
 
 async def setup(bot: commands.Bot) -> None:
+
 	await bot.add_cog(Info(bot))
