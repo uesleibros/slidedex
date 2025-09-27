@@ -1,12 +1,9 @@
 from discord.ext import commands
 from utils.pokemon_emojis import get_app_emoji
 from pokemon_sdk.calculations import iv_percent
-from __main__ import toolkit
-from aiopoke import AiopokeClient
+from __main__ import toolkit, pm
 from utils.formatting import format_poke_id
 import discord
-
-aio_client = AiopokeClient()
 
 class Paginator(discord.ui.View):
 	def __init__(self, embeds, user_id: int):
@@ -70,7 +67,7 @@ class Pokemon(commands.Cog):
 		desc_lines = []
 		for p in pokemons:
 			poke_id = p["id"]
-			poke = await aio_client.get_pokemon(p["species_id"])
+			poke = await pm.services.client.get_pokemon(p["species_id"])
 			emoji = get_app_emoji(f"p_{p['species_id']}")
 			shiny = "✨ " if p.get("is_shiny", False) else ""
 			nickname = f" ({p['nickname']})" if p.get("nickname") else poke.name.title()
@@ -104,3 +101,4 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
