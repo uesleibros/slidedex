@@ -59,13 +59,7 @@ class Dev(commands.Cog):
                     exec(f"async def __eval_fn__():\n{textwrap.indent(code_input, '    ')}", env)
                     result = await env["__eval_fn__"]()
         except Exception:
-            out = stdout.getvalue()
-            text = f"{out}{traceback.format_exc()}"
-            if len(text) > 1900:
-                await ctx.send(file=self.to_file("eval_error.txt", text), allowed_mentions=discord.AllowedMentions.none())
-            else:
-                await ctx.send(f"```py\n{text}\n```", allowed_mentions=discord.AllowedMentions.none())
-            return
+            result = code_input
         elapsed = (time.perf_counter() - start) * 1000
         out = stdout.getvalue()
         if result is None:
@@ -82,4 +76,5 @@ class Dev(commands.Cog):
             await ctx.send(f"```py\n{text}\n```", allowed_mentions=discord.AllowedMentions.none())
 
 async def setup(bot: commands.Bot):
+
     await bot.add_cog(Dev(bot))
