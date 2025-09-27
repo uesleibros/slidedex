@@ -37,9 +37,11 @@ class StarterButton(discord.ui.Button):
 		await interaction.response.defer()
 
 		user = toolkit.get_user(self.user_id)
-		if not user:
-			toolkit.add_user(self.user_id, interaction.user.name, "Male")
+		if user and pm.service.get_user_pokemon(self.user_id):
+			await interaction.followup.send("Você já escolheu seu inicial! Não dá para escolher outro.", ephemeral=True)
+			return
 
+		toolkit.add_user(self.user_id, interaction.user.name, "Male")
 		trainer_gender = norm_trainer_gender(user.get("gender"))
 		poke = await pm.service.get_pokemon(self.species_id)
 		base_stats = pm.service.get_base_stats(poke)
@@ -92,3 +94,4 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
