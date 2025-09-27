@@ -1,6 +1,7 @@
 import io
 import random
 import discord
+import gc
 from discord.ext import commands
 from typing import Optional
 
@@ -81,6 +82,7 @@ class Spawn(commands.Cog):
 		embed.set_image(url="attachment://spawn.png")
 
 		await ctx.send(embed=embed, file=file, view=BattleView(ctx.author, name))
+		gc.collect()
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
