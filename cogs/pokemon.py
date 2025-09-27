@@ -5,7 +5,6 @@ from __main__ import toolkit
 from aiopoke import AiopokeClient
 from utils.formatting import format_poke_id
 import discord
-import gc
 
 aio_client = AiopokeClient()
 
@@ -44,7 +43,7 @@ class Pokemon(commands.Cog):
 			color=discord.Color.pink()
 		)
 		await ctx.send(embed=embed)
-		gc.collect()
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
