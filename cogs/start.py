@@ -42,6 +42,7 @@ class StarterButton(discord.ui.Button):
 			return
 
 		toolkit.add_user(self.user_id, interaction.user.name, "Male")
+		user = toolkit.get_user(self.user_id)
 		trainer_gender = norm_trainer_gender(user.get("gender"))
 		poke = await pm.service.get_pokemon(self.species_id)
 		base_stats = pm.service.get_base_stats(poke)
@@ -94,5 +95,6 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
 
 
