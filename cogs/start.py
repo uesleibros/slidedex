@@ -36,8 +36,8 @@ class StarterButton(discord.ui.Button):
 
 		await interaction.response.defer()
 
-		toolkit.add_user(user_id, user_name, "Male")
-		user = toolkit.get_user(self.user_id)
+		toolkit.add_user(self.user_id, user_name, "Male")
+		user = toolkit.get_user(self.user_id, interaction.user.name)
 		if not user:
 			await interaction.followup.send("Conta não encontrada.", ephemeral=True)
 			return
@@ -83,7 +83,6 @@ class Start(commands.Cog):
 	@commands.command(name="start")
 	async def start_command(self, ctx: commands.Context):
 		user_id = str(ctx.author.id)
-		user_name = ctx.author.name
 
 		existing = toolkit.get_user(user_id)
 		if existing:
@@ -95,4 +94,5 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
 
