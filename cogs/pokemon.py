@@ -8,6 +8,56 @@ import discord
 
 aio_client = AiopokeClient()
 
+
+class Paginator(discord.ui.View):
+	def __init__(self, embeds, user_id: int):
+		super().__init__(timeout=120)
+		self.embeds = embeds
+		self.current_page = 0
+		self.user_id = user_id
+		self.update_buttons()
+
+	async def interaction_check(self, interaction: discord.Interaction) -> bool:
+		return interaction.user.id == self.user_id
+
+	def update_buttons(self):
+		self.first_page.disabled = self.current_page == 0
+		self.prev_page.disabled = self.current_page == 0
+		self.next_page.disabled = self.current_page == len(self.embeds) - 1
+		self.last_page.disabled = self.current_page == len(self.embeds) - 1
+		self.delete_button.disabled = False
+
+	@discord.ui.button(label="⏮️", style=discord.ButtonStyle.secondary)
+	async def first_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+		self.current_page = 0
+		self.update_buttons()
+		await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
+
+	@discord.ui.button(label="◀️", style=discord.ButtonStyle.secondary)
+	async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+		if self.current_page > 0:
+			self.current_page -= 1
+		self.update_buttons()
+		await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
+
+	@discord.ui.button(label="▶️", style=discord.ButtonStyle.secondary)
+	async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+		if self.current_page < len(self.embeds) - 1:
+			self.current_page += 1
+		self.update_buttons()
+		await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
+
+	@discord.ui.button(label="⏭️", style=discord.ButtonStyle.secondary)
+	async def last_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+		self.current_page = len(self.embeds) - 1
+		self.update_buttons()
+		await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
+
+	@discord.ui.button(label="🗑️", style=discord.ButtonStyle.danger)
+	async def delete_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+		await interaction.message.delete()
+
+
 class Pokemon(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
@@ -20,8 +70,11 @@ class Pokemon(commands.Cog):
 			return
 
 		pokemons = toolkit.get_user_pokemon(user_id)
-		desc_lines = []
+		if not pokemons:
+			await ctx.send("Você não possui nenhum Pokémon ainda!")
+			return
 
+		desc_lines = []
 		for p in pokemons:
 			poke_id = p["id"]
 			poke = await aio_client.get_pokemon(p["species_id"])
@@ -37,13 +90,24 @@ class Pokemon(commands.Cog):
 				f"`{format_poke_id(poke_id)}`　{emoji}{shiny} **{nickname}** {gender} {status}　•　Lv. {level}　•　{iv_percent_}%"
 			)
 
-		embed = discord.Embed(
-			title=f"Pokémon de {ctx.author.display_name}",
-			description="\n".join(desc_lines),
-			color=discord.Color.pink()
-		)
-		await ctx.send(embed=embed)
+		chunk_size = 20
+		total = len(desc_lines)
+		embeds = []
+		for i in range(0, total, chunk_size):
+			page_lines = desc_lines[i:i+chunk_size]
+			embed = discord.Embed(
+				title="Seus Pokémon",
+				description="\n".join(page_lines),
+				color=discord.Color.pink()
+			)
+			start = i + 1
+			end = i + len(page_lines)
+			embed.set_footer(text=f"Mostrando resultados {start}–{end} de {total}")
+			embeds.append(embed)
+
+		view = Paginator(embeds, user_id=ctx.author.id)
+		await ctx.send(embed=embeds[0], view=view)
+
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
-
