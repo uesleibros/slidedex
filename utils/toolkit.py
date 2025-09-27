@@ -3,6 +3,7 @@ import os
 import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+from pokemon_sdk.constants import NATURES
 import copy
 
 STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
@@ -17,32 +18,7 @@ class Toolkit:
 		self._lock = threading.RLock()
 		self.db: Dict = {}
 		self._pk_index: Dict[Tuple[str, int], int] = {}
-		self.NATURES = {
-			"Hardy": (None, None),
-			"Lonely": ("attack", "defense"),
-			"Brave": ("attack", "speed"),
-			"Adamant": ("attack", "special-attack"),
-			"Naughty": ("attack", "special-defense"),
-			"Bold": ("defense", "attack"),
-			"Docile": (None, None),
-			"Relaxed": ("defense", "speed"),
-			"Impish": ("defense", "special-attack"),
-			"Lax": ("defense", "special-defense"),
-			"Timid": ("speed", "attack"),
-			"Hasty": ("speed", "defense"),
-			"Serious": (None, None),
-			"Jolly": ("speed", "special-attack"),
-			"Naive": ("speed", "special-defense"),
-			"Modest": ("special-attack", "attack"),
-			"Mild": ("special-attack", "defense"),
-			"Quiet": ("special-attack", "speed"),
-			"Bashful": (None, None),
-			"Calm": ("special-defense", "attack"),
-			"Gentle": ("special-defense", "defense"),
-			"Sassy": ("special-defense", "speed"),
-			"Careful": ("special-defense", "special-attack"),
-			"Quirky": (None, None),
-		}
+		self.NATURES = NATURES
 		self._load()
 
 	def _load(self):
@@ -57,6 +33,10 @@ class Toolkit:
 					self.db = {"users": {}, "pokemon": []}
 					self._save()
 			self._reindex()
+
+	def clear(self):
+		self.db = {"users": {}, "pokemon": []}
+		self._save()
 
 	def _reindex(self):
 		self._pk_index = {}
