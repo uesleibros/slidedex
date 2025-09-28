@@ -15,7 +15,7 @@ async def _fmt_party(party):
 		stats = calculate_stats(base_stats, p["ivs"], p["evs"], p["level"], p["nature"])
 		cur_hp = p.get("current_hp", stats["hp"])
 		results.append(
-			f"{i}. {emoji} {shiny}{name.title()} \n"
+			f"{i}. {emoji} {shiny}{name.title()}\n"
 			f"-# (id={p['id']}, Lv{p['level']}, HP {cur_hp}/{stats['hp']})"
 		)
 	return "\n".join(results) if results else "Seu time está vazio."
@@ -60,6 +60,24 @@ class Party(commands.Cog):
 			return await ctx.send(f"Erro: {e}")
 		text = await _fmt_party(swapped)
 		await ctx.send("✅ Nova ordem definida:\n" + text)
+
+	@party_root.command(name="add")
+	async def party_add(self, ctx: commands.Context, pokemon_id: int):
+		uid = str(ctx.author.id)
+		try:
+			p = pm.repo.tk.move_to_party(uid, pokemon_id)
+		except Exception as e:
+			return await ctx.send(f"Erro ao adicionar: {e}")
+		await ctx.send(f"✅ {p.get('nickname') or p.get('name', f'#{p['species_id']}').title()} foi adicionado à sua party.")
+
+	@party_root.command(name="remove")
+	async def party_remove(self, ctx: commands.Context, pokemon_id: int):
+		uid = str(ctx.author.id)
+		try:
+			p = pm.repo.tk.move_to_box(uid, pokemon_id)
+		except Exception as e:
+			return await ctx.send(f"Erro ao remover: {e}")
+		await ctx.send(f"✅ {p.get('nickname') or p.get('name', f'#{p['species_id']}').title()} foi removido da party e movido para a box.")
 
 
 async def setup(bot: commands.Bot):
