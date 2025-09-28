@@ -70,7 +70,7 @@ class WildBattle:
 			description=(f"Lv{self.player_active.level} {emoji_cache.get(self.player_active.species_id)} {self.player_active.name.title()} "
 						 f"(HP {self.player_active.current_hp}/{self.player_active.stats['hp']})\n"
 						 f"VS\n"
-						 f"Lv{self.wild.level} {emoji_cache.get(self.wild.species_id)} {self.wild.name or self.wild.species_id} "
+						 f"Lv{self.wild.level} {emoji_cache.get(self.wild.species_id)} {self.wild.name.title()} "
 						 f"(HP {self.wild.current_hp}/{self.wild.stats['hp']}) *Wild*"),
 			color=discord.Color.red()
 		)
