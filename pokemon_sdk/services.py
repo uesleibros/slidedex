@@ -1,11 +1,12 @@
 import random
-from typing import Dict, List
+from typing import Dict, List, Any
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
 
 class NoCache:
-    async def get(self, *_, **__): return None
-    async def set(self, *_, **__): return None
+    def get(self, *_, **__): return None
+    def set(self, *_, **__): return None
+	def has(self, obj: Any): return False
 
 class PokeAPIService:
 	def __init__(self):
@@ -60,3 +61,4 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
