@@ -4,29 +4,37 @@ from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
 from curl_cffi import AsyncSession, Response
 
-class AiohttpLikeResponse(Response):
-    def __init__(self, coro_or_resp):
-        self._coro = coro_or_resp
-        self._resp: Optional[Response] = None
-
-    def __await__(self):
-        async def _():
-            if isinstance(self._coro, Response):
-                return self._coro
-            self._resp = await self._coro
-            return self._resp
-        return _().__await__()
-
-    async def __aenter__(self):
-        self._resp = await self
-        return self._resp
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
+class AiohttpLikeResponse:
+    def __init__(self, response: Response):
+        self._resp = response
 
     async def read(self) -> bytes:
-        resp = await self
-        return resp.content
+        return self._resp.content
+
+    def json(self, **kwargs) -> Any:
+        return self._resp.json(**kwargs)
+
+    @property
+    def content(self) -> bytes:
+        return self._resp.content
+
+    @property
+    def text(self) -> str:
+        return self._resp.text
+
+    @property
+    def status_code(self) -> int:
+        return self._resp.status_code
+
+    @property
+    def headers(self) -> dict:
+        return self._resp.headers
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        pass
 
 class AiohttpLikeSession(AsyncSession):
     def get(self, *args, **kwargs) -> AiohttpLikeResponse:
@@ -128,6 +136,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
