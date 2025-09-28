@@ -8,12 +8,12 @@ from utils.formatting import format_poke_id
 from __main__ import toolkit
 
 class PokemonFlags(commands.FlagConverter, delimiter=" ", prefix="--"):
-	party: None = commands.flag(default=False, max_args=0)
-	box: None = commands.flag(default=False, max_args=0)
-	shiny: None = commands.flag(default=False, max_args=0)
-	favorite: None = commands.flag(default=False, max_args=0)
-	reverse: None = commands.flag(default=False, max_args=0)
-	random: None = commands.flag(default=False, max_args=0)
+	party: Optional[bool] = commands.flag(default=False, max_args=0)
+	box: Optional[bool] = commands.flag(default=False, max_args=0)
+	shiny: Optional[bool] = commands.flag(default=False, max_args=0)
+	favorite: Optional[bool] = commands.flag(default=False, max_args=0)
+	reverse: Optional[bool] = commands.flag(default=False, max_args=0)
+	random: Optional[bool] = commands.flag(default=False, max_args=0)
 
 	gender: Optional[Literal["male", "female", "genderless"]] = None
 	min_iv: Optional[float] = None
