@@ -39,6 +39,10 @@ class PokemonManager:
 		final_gender = self.service.roll_gender(species, forced=forced_gender)
 		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
 
+		del poke
+		del species
+		del base_stats
+		
 		return Pokemon(
 			id=0,
 			species_id=species_id,
@@ -111,6 +115,11 @@ class PokemonManager:
 		poke = await self.service.get_pokemon(p.species_id)
 		base_stats = self.service.get_base_stats(poke)
 		stats = calculate_stats(base_stats, p.ivs, p.evs, p.level, p.nature)
+
+		del poke
+		del base_stats
+		del p
+		
 		return self.repo.set_current_hp(owner_id, pokemon_id, stats["hp"])
 
 	def move_to_party(self, owner_id: str, pokemon_id: int) -> Pokemon:
@@ -127,3 +136,4 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
