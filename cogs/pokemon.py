@@ -108,67 +108,67 @@ class Pokemon(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
 
-@commands.cooldown(3, 5, commands.BucketType.user)
-@commands.command(name="pokemon", aliases=["p", "pk", "pkm", "pkmn"])
-async def pokemon_command(self, ctx: commands.Context, *, flags: PokemonFlags):
-	user_id = str(ctx.author.id)
-	user = toolkit.get_user(user_id)
-	if not user:
-		return
+	@commands.cooldown(3, 5, commands.BucketType.user)
+	@commands.command(name="pokemon", aliases=["p", "pk", "pkm", "pkmn"])
+	async def pokemon_command(self, ctx: commands.Context, *, flags: PokemonFlags):
+		user_id = str(ctx.author.id)
+		user = toolkit.get_user(user_id)
+		if not user:
+			return
 
-	pokemons = toolkit.get_user_pokemon(user_id)
+		pokemons = toolkit.get_user_pokemon(user_id)
 
-	if flags.box:
-		pokemons = [p for p in pokemons if not p.get("on_party", False)]
-	if flags.party:
-		pokemons = [p for p in pokemons if p.get("on_party", False)]
-	if flags.shiny:
-		pokemons = [p for p in pokemons if p.get("is_shiny", False)]
-	if flags.gender:
-		pokemons = [p for p in pokemons if p["gender"].lower() == flags.gender]
-	if flags.min_iv:
-		pokemons = [p for p in pokemons if iv_percent(p["ivs"]) >= flags.min_iv]
-	if flags.max_iv:
-		pokemons = [p for p in pokemons if iv_percent(p["ivs"]) <= flags.max_iv]
-	if flags.min_level:
-		pokemons = [p for p in pokemons if p["level"] >= flags.min_level]
-	if flags.max_level:
-		pokemons = [p for p in pokemons if p["level"] <= flags.max_level]
-	if flags.species:
-		pokemons = [p for p in pokemons if p["species_id"] == flags.species]
-	if flags.name:
-		pokemons = [p for p in pokemons if flags.name.lower() in (p.get("nickname") or p.get("name", "")).lower()]
-	if flags.nature:
-		pokemons = [p for p in pokemons if p["nature"].lower() == flags.nature.lower()]
-	if flags.ability:
-		pokemons = [p for p in pokemons if p["ability"].lower() == flags.ability.lower()]
-	if flags.held_item:
-		pokemons = [p for p in pokemons if p.get("held_item") and p["held_item"].lower() == flags.held_item.lower()]
-	if flags.favorite:
-		pokemons = [p for p in pokemons if p.get("is_favorite")]
+		if flags.box:
+			pokemons = [p for p in pokemons if not p.get("on_party", False)]
+		if flags.party:
+			pokemons = [p for p in pokemons if p.get("on_party", False)]
+		if flags.shiny:
+			pokemons = [p for p in pokemons if p.get("is_shiny", False)]
+		if flags.gender:
+			pokemons = [p for p in pokemons if p["gender"].lower() == flags.gender]
+		if flags.min_iv:
+			pokemons = [p for p in pokemons if iv_percent(p["ivs"]) >= flags.min_iv]
+		if flags.max_iv:
+			pokemons = [p for p in pokemons if iv_percent(p["ivs"]) <= flags.max_iv]
+		if flags.min_level:
+			pokemons = [p for p in pokemons if p["level"] >= flags.min_level]
+		if flags.max_level:
+			pokemons = [p for p in pokemons if p["level"] <= flags.max_level]
+		if flags.species:
+			pokemons = [p for p in pokemons if p["species_id"] == flags.species]
+		if flags.name:
+			pokemons = [p for p in pokemons if flags.name.lower() in (p.get("nickname") or p.get("name", "")).lower()]
+		if flags.nature:
+			pokemons = [p for p in pokemons if p["nature"].lower() == flags.nature.lower()]
+		if flags.ability:
+			pokemons = [p for p in pokemons if p["ability"].lower() == flags.ability.lower()]
+		if flags.held_item:
+			pokemons = [p for p in pokemons if p.get("held_item") and p["held_item"].lower() == flags.held_item.lower()]
+		if flags.favorite:
+			pokemons = [p for p in pokemons if p.get("is_favorite")]
 
-	if flags.sort:
-		keymap = {
-			"iv": lambda p: iv_percent(p["ivs"]),
-			"level": lambda p: p["level"],
-			"id": lambda p: p["id"],
-			"name": lambda p: (p.get("nickname") or p.get("name", "")).lower(),
-			"species": lambda p: p["species_id"]
-		}
-		pokemons.sort(key=keymap[flags.sort], reverse=flags.reverse)
+		if flags.sort:
+			keymap = {
+				"iv": lambda p: iv_percent(p["ivs"]),
+				"level": lambda p: p["level"],
+				"id": lambda p: p["id"],
+				"name": lambda p: (p.get("nickname") or p.get("name", "")).lower(),
+				"species": lambda p: p["species_id"]
+			}
+			pokemons.sort(key=keymap[flags.sort], reverse=flags.reverse)
 
-	if flags.random:
-		random.shuffle(pokemons)
+		if flags.random:
+			random.shuffle(pokemons)
 
-	if flags.limit:
-		pokemons = pokemons[:flags.limit]
+		if flags.limit:
+			pokemons = pokemons[:flags.limit]
 
-	if not pokemons:
-		return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
+		if not pokemons:
+			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
 
-	view = Paginator(pokemons, user_id=ctx.author.id)
-	embed = await view.get_embed()
-	await ctx.send(embed=embed, view=view)
+		view = Paginator(pokemons, user_id=ctx.author.id)
+		embed = await view.get_embed()
+		await ctx.send(embed=embed, view=view)
 
 
 async def setup(bot: commands.Bot):
