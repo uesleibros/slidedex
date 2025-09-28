@@ -87,6 +87,7 @@ class Pokemon(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
+    @commands.cooldown(3, 5, commands.BucketType.user)
     @commands.command(name="pokemon", aliases=["p", "pk", "pkm", "pkmn"])
     async def pokemon_command(self, ctx: commands.Context) -> None:
         user_id = str(ctx.author.id)
@@ -106,3 +107,4 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Pokemon(bot))
+
