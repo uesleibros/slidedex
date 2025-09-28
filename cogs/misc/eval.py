@@ -11,7 +11,6 @@ from __main__ import toolkit, pm
 class Dev(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_result = None
 
     def cleanup_code(self, content: str) -> str:
         if content.startswith("```") and content.endswith("```"):
@@ -36,7 +35,6 @@ class Dev(commands.Cog):
             "commands": commands,
             "toolkit": toolkit,
             "pm": pm,
-            "_": self._last_result,
         }
         env.update(globals())
         code_input = self.cleanup_code(body)
@@ -65,16 +63,41 @@ class Dev(commands.Cog):
         if result is None:
             output = out if out else "None"
         else:
-            try:
-                output = f"{out}{result}" if out else f"{result}"
-            finally:
-                self._last_result = result
+            output = f"{out}{result}" if out else f"{result}"
         text = f"{output}\n# {elapsed:.2f} ms"
         if len(text) > 1900:
             await ctx.send(file=self.to_file("eval_output.txt", text), allowed_mentions=discord.AllowedMentions.none())
         else:
             await ctx.send(f"```py\n{text}\n```", allowed_mentions=discord.AllowedMentions.none())
+        try:
+            del result
+        except Exception:
+            pass
+        try:
+            del out
+        except Exception:
+            pass
+        try:
+            del output
+        except Exception:
+            pass
+        try:
+            del text
+        except Exception:
+            pass
+        try:
+            del code_obj
+        except Exception:
+            pass
+        try:
+            del env
+        except Exception:
+            pass
+        try:
+            stdout.close()
+            del stdout
+        except Exception:
+            pass
 
 async def setup(bot: commands.Bot):
-
     await bot.add_cog(Dev(bot))
