@@ -2,15 +2,15 @@ import random
 from typing import Dict, List, Any, Optional
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
-from curl_cffi import requests
+from curl_cffi import AsyncSession
 
 class HttpClient:
-    _session: requests.AsyncClient
+    _session: AsyncSession
     inexistent_endpoints: List[str]
     base_url: str
 
-    def __init__(self, *, session: Optional[requests.AsyncClient] = None, base_url: str) -> None:
-        self._session = session or requests.AsyncClient()
+    def __init__(self, *, session: Optional[AsyncSession] = None, base_url: str) -> None:
+        self._session = session or AsyncSession()
         self.inexistent_endpoints = []
         self.base_url = base_url.rstrip("/")
 
@@ -89,6 +89,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
