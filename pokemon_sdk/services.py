@@ -23,12 +23,13 @@ class HttpClient:
             raise ValueError(f"The id or name for {endpoint} was not found.")
 
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        async with self._session.get(url) as response:
-            if response.status_code == 404:
-                self.inexistent_endpoints.append(endpoint)
-                raise ValueError(f"The id or name for {endpoint} was not found.")
+		
+        response = await self._session.get(url)
+        if response.status_code == 404:
+            self.inexistent_endpoints.append(endpoint)
+            raise ValueError(f"The id or name for {endpoint} was not found.")
 
-            return response.json()
+        return response.json()
 
 class NoCache:
     def get(self, *_, **__): return None
@@ -89,6 +90,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
