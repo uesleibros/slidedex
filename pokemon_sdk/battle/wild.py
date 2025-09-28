@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from utils.canvas import compose_battle_async
 from pokemon_sdk.calculations import calculate_stats
 from utils.preloaded import preloaded_textures
-from utils.pokemon_emojis import emoji_cache
+from utils.pokemon_emojis import get_app_emoji
 
 class BattlePokemon:
 	def __init__(self, raw: Dict[str, Any], pokeapi_data: aiopoke.Pokemon):
@@ -65,12 +65,15 @@ class WildBattle:
 		buf = await compose_battle_async(player_sprite, enemy_sprite, background)
 
 		file = discord.File(buf, filename="battle.png")
+		player_emoji = get_app_emoji(f"p_{self.player_active.species_id}")
+		enemy_emoji = get_app_emoji(f"p_{self.wild.species_id}")
+		
 		embed = discord.Embed(
 			title=f"Luta",
-			description=(f"Lv{self.player_active.level} {emoji_cache.get(self.player_active.species_id)} {self.player_active.name.title()} "
+			description=(f"Lv{self.player_active.level} {player_emoji} {self.player_active.name.title()} "
 						 f"(HP {self.player_active.current_hp}/{self.player_active.stats['hp']})\n"
 						 f"VS\n"
-						 f"Lv{self.wild.level} {emoji_cache.get(self.wild.species_id)} {self.wild.name.title()} "
+						 f"Lv{self.wild.level} {enemy_emoji} {self.wild.name.title()} "
 						 f"(HP {self.wild.current_hp}/{self.wild.stats['hp']}) *Wild*"),
 			color=discord.Color.red()
 		)
