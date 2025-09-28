@@ -16,7 +16,7 @@ async def _fmt_party(party):
 		cur_hp = p.get("current_hp", stats["hp"])
 		results.append(
 			f"{i}. {emoji} {shiny}{name.title()}\n"
-			f" > `id: {p['id']}` `Lv: {p['level']}` `HP: {cur_hp}/{stats['hp']}`"
+			f"-# `id: {p['id']}` `Lv: {p['level']}` `HP: {cur_hp}/{stats['hp']}`"
 		)
 	return "\n\n".join(results) if results else "Seu time está vazio."
 
