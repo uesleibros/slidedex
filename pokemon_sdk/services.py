@@ -1,7 +1,34 @@
 import random
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
+from curl_cffi.requests import AsyncClient
+
+class HttpClient:
+    _session: AsyncClient
+    inexistent_endpoints: List[str]
+    base_url: str
+
+    def __init__(self, *, session: Optional[AsyncClient] = None, base_url: str) -> None:
+        self._session = session or AsyncClient()
+        self.inexistent_endpoints = []
+        self.base_url = base_url.rstrip("/")
+
+    async def close(self) -> None:
+        if self._session is not None:
+            await self._session.aclose()
+
+    async def get(self, endpoint: str) -> Dict[str, Any]:
+        if endpoint in self.inexistent_endpoints:
+            raise ValueError(f"The id or name for {endpoint} was not found.")
+
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        async with self._session.get(url) as response:
+            if response.status_code == 404:
+                self.inexistent_endpoints.append(endpoint)
+                raise ValueError(f"The id or name for {endpoint} was not found.")
+
+            return response.json()
 
 class NoCache:
     def get(self, *_, **__): return None
@@ -12,6 +39,7 @@ class PokeAPIService:
 	def __init__(self):
 		self.client = AiopokeClient()
 		self.client._cache = NoCache()
+		self.client.http = HttpClient(base_url="https://pokeapi.co/api/v2")
 
 	async def get_pokemon(self, species_id: int):
 		return await self.client.get_pokemon(species_id)
@@ -61,6 +89,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
