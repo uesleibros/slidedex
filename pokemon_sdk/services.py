@@ -5,7 +5,7 @@ from .constants import VERSION_GROUPS, SHINY_ROLL
 
 class NoCache:
     def get(self, *_, **__): return None
-    def set(self, *_, **__): return None
+    def put(self, *_, **__): return None
     def has(self, obj: Any): return False
 
 class PokeAPIService:
@@ -61,5 +61,6 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
