@@ -81,7 +81,7 @@ class Paginator(discord.ui.View):
 		embed = await self.get_embed()
 		await interaction.response.edit_message(embed=embed, view=self)
 
-	@discord.ui.button(label="◀️", style=discord.ButtonStyle.secondary)
+	@discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
 	async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
 		if self.current_page > 0:
 			self.current_page -= 1
@@ -89,7 +89,7 @@ class Paginator(discord.ui.View):
 		embed = await self.get_embed()
 		await interaction.response.edit_message(embed=embed, view=self)
 
-	@discord.ui.button(label="▶️", style=discord.ButtonStyle.secondary)
+	@discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
 	async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
 		max_page = (self.total - 1) // self.page_size
 		if self.current_page < max_page:
@@ -98,7 +98,7 @@ class Paginator(discord.ui.View):
 		embed = await self.get_embed()
 		await interaction.response.edit_message(embed=embed, view=self)
 
-	@discord.ui.button(label="⏭️", style=discord.ButtonStyle.secondary)
+	@discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary)
 	async def last_page(self, interaction: discord.Interaction, button: discord.ui.Button):
 		self.current_page = (self.total - 1) // self.page_size
 		self.update_buttons()
