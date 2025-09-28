@@ -5,11 +5,11 @@ from .constants import VERSION_GROUPS, SHINY_ROLL
 from curl_cffi import reuqests
 
 class HttpClient:
-    _session: AsyncClient
+    _session: requests.AsyncClient
     inexistent_endpoints: List[str]
     base_url: str
 
-    def __init__(self, *, session: Optional[AsyncClient] = None, base_url: str) -> None:
+    def __init__(self, *, session: Optional[requests.AsyncClient] = None, base_url: str) -> None:
         self._session = session or requests.AsyncClient()
         self.inexistent_endpoints = []
         self.base_url = base_url.rstrip("/")
@@ -89,6 +89,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
