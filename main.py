@@ -36,5 +36,4 @@ async def on_ready() -> None:
 	preload_info_backgrounds()
 	print(f"{bot.user} está online!")
 
-print("oi")
 bot.run(token=TOKEN)
