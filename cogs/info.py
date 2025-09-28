@@ -24,6 +24,7 @@ class Info(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
 
+	@commands.cooldown(3, 5, commands.BucketType.user)
 	@commands.command(name="info", aliases=["i", "inf"])
 	async def info_command(self, ctx: commands.Context, pokemon_id: int) -> None:
 		user_id = str(ctx.author.id)
@@ -122,5 +123,6 @@ class Info(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Info(bot))
+
 
 
