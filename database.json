@@ -1,4 +1,61 @@
 {
-  "users": {},
-  "pokemon": []
+  "users": {
+    "764259870563631114": {
+      "id": "764259870563631114",
+      "gender": "Male",
+      "money": 0,
+      "last_pokemon_id": 1,
+      "badges": [],
+      "created_at": "2025-09-28T19:48:58.682908"
+    }
+  },
+  "pokemon": [
+    {
+      "id": 1,
+      "species_id": 4,
+      "nickname": null,
+      "name": "charmander",
+      "owner_id": "764259870563631114",
+      "level": 5,
+      "exp": 0,
+      "ivs": {
+        "hp": 10,
+        "attack": 7,
+        "defense": 17,
+        "special-attack": 5,
+        "special-defense": 15,
+        "speed": 2
+      },
+      "evs": {
+        "hp": 0,
+        "attack": 0,
+        "defense": 0,
+        "special-attack": 0,
+        "special-defense": 0,
+        "speed": 0
+      },
+      "nature": "Timid",
+      "ability": "blaze",
+      "gender": "Male",
+      "is_shiny": false,
+      "background": "lab",
+      "held_item": null,
+      "is_favorite": false,
+      "caught_at": "2025-09-28T19:48:59.091816",
+      "moves": [
+        {
+          "id": "growl",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "scratch",
+          "pp": 35,
+          "pp_max": 35
+        }
+      ],
+      "current_hp": 19,
+      "on_party": true
+    }
+  ]
 }
