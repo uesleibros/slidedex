@@ -79,6 +79,7 @@ class Pokemon(commands.Cog):
 			desc_lines.append(
 				f"`{format_poke_id(poke_id)}`　{emoji}{shiny} **{nickname}** {gender} {status}　•　Lv. {level}　•　{iv_percent_}%"
 			)
+			await pm.service.close()
 			del poke
 
 		chunk_size = 20
@@ -102,6 +103,7 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
 
 
 
