@@ -4,19 +4,9 @@ from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
 from curl_cffi import AsyncSession, Response
 
-
-class AiohttpLikeResponse:
-    def __init__(self, coro):
-        self._coro = coro
-        self._resp: Optional[Response] = None
-
-    async def __aenter__(self) -> Response:
-        self._resp = await self._coro
-        return self._resp
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
-
+class AiohttpLikeResponse(Response):
+    async def read(self) -> bytes:
+        return self.content
 
 class AiohttpLikeSession(AsyncSession):
     def get(self, *args, **kwargs) -> AiohttpLikeResponse:
@@ -33,7 +23,6 @@ class AiohttpLikeSession(AsyncSession):
 
     def patch(self, *args, **kwargs) -> AiohttpLikeResponse:
         return AiohttpLikeResponse(super().patch(*args, **kwargs))
-
 
 class HttpClient:
     _session: AiohttpLikeSession
@@ -58,7 +47,6 @@ class HttpClient:
             if response.status_code == 404:
                 self.inexistent_endpoints.append(endpoint)
                 raise ValueError(f"The id or name for {endpoint} was not found.")
-
             return response.json()
 
 class NoCache:
@@ -120,6 +108,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
