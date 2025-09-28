@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
-import psutil, time
+import psutil
+import time
 import platform
 from datetime import datetime, timedelta
 
@@ -9,40 +10,87 @@ class BotStats(commands.Cog):
         self.bot = bot
         self.start_time = time.time()
     
-    def get_uptime(self) -> str:
+    def format_uptime(self) -> str:
         delta = timedelta(seconds=int(time.time() - self.start_time))
-        days, remainder = divmod(delta.total_seconds(), 86400)
+        days, remainder = divmod(int(delta.total_seconds()), 86400)
         hours, remainder = divmod(remainder, 3600)
         minutes, seconds = divmod(remainder, 60)
-        parts = []
-        if days: parts.append(f"{int(days)}d")
-        if hours: parts.append(f"{int(hours)}h")
-        if minutes: parts.append(f"{int(minutes)}m")
-        if seconds: parts.append(f"{int(seconds)}s")
-        return " ".join(parts)
+        return f"{days}d {hours}h {minutes}m {seconds}s"
 
-    @commands.command(name="botstats", aliases=["bs"])
+    @commands.command(name="botstats", aliases=["bs", "stats"])
     async def botstats_command(self, ctx: commands.Context):
         proc = psutil.Process()
-        mem = proc.memory_full_info().rss / 1024**2
-        cpu = psutil.cpu_percent()
-        uptime = self.get_uptime()
-        
+        with proc.oneshot():
+            mem_info = proc.memory_full_info()
+            cpu_percent = proc.cpu_percent(interval=0.1)
+            threads = proc.num_threads()
+            handles = proc.num_handles() if hasattr(proc, "num_handles") else "N/A"
+            create_time = datetime.utcfromtimestamp(proc.create_time())
+
+        mem_usage = mem_info.rss / 1024**2
+        mem_vms = mem_info.vms / 1024**2
+        uptime = self.format_uptime()
+
+        total_users = len(self.bot.users)
+        latency_ms = round(self.bot.latency  * 1000)
         embed = discord.Embed(
             title="Minhas Estatísticas",
             color=discord.Color.blurple(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
-        embed.add_field(name="🖥️ Sistema", value=platform.system(), inline=True)
-        embed.add_field(name="💽 Memória", value=f"{mem:.2f} MB", inline=True)
-        embed.add_field(name="⚙️ CPU", value=f"{cpu:.1f}%", inline=True)
-        embed.add_field(name="⏰ Uptime", value=uptime, inline=True)
-        embed.add_field(name="👥 Usuários", value=f"{len(self.bot.users)}", inline=True)
-        embed.add_field(name="📡 Latência", value=f"{self.bot.latency*1000:.0f} ms", inline=True)
-        embed.set_footer(text=f"Feito por {ctx.bot.user} usando a uEngine.")
-        
-        await ctx.send(embed=embed)
 
+        embed.add_field(
+            name="⏰ Uptime",
+            value=uptime,
+            inline=True
+        )
+        embed.add_field(
+            name="🖥️ Plataforma",
+            value=f"{platform.system()} {platform.release()} ({platform.machine()})",
+            inline=True
+        )
+        embed.add_field(
+            name="⚙️ Python / Discord.py",
+            value=f"{platform.python_version()} / {discord.__version__}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="💽 Memória (RSS)",
+            value=f"{mem_usage:.2f} MB",
+            inline=True
+        )
+        embed.add_field(
+            name="💾 Memória Virtual",
+            value=f"{mem_vms:.2f} MB",
+            inline=True
+        )
+        embed.add_field(
+            name="🔢 Threads / Handles",
+            value=f"{threads} / {handles}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="👥 Usuários únicos",
+            value=str(total_users),
+            inline=True
+        )
+        embed.add_field(
+            name="📡 Latência",
+            value=f"{latency_ms} ms",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🧮 CPU",
+            value=f"{cpu_percent:.1f}%",
+            inline=True
+        )
+
+        embed.set_footer(text=f"uEngine • PID {proc.pid}")
+
+        await ctx.send(embed=embed)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(BotStats(bot))
