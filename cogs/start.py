@@ -2,10 +2,9 @@ import discord
 import random
 from __main__ import toolkit, pm
 from discord.ext import commands
-from pokemon_sdk.constants import NATURES
+from pokemon_sdk.constants import NATURES, STAT_KEYS
 from pokemon_sdk.calculations import generate_pokemon_data
 
-STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 STARTERS = {"bulbasaur": 1, "charmander": 4, "squirtle": 7, "pikachu": 25}
 
 def norm_trainer_gender(g: str) -> str:
@@ -41,7 +40,7 @@ class StarterButton(discord.ui.Button):
 			await interaction.followup.send("Você já escolheu seu inicial! Não dá para escolher outro.", ephemeral=True)
 			return
 
-		toolkit.add_user(self.user_id, interaction.user.name, "Male")
+		toolkit.add_user(self.user_id, "Male")
 		user = toolkit.get_user(self.user_id)
 		trainer_gender = norm_trainer_gender(user.get("gender"))
 		poke = await pm.service.get_pokemon(self.species_id)
@@ -53,7 +52,7 @@ class StarterButton(discord.ui.Button):
 		ability = pm.service.choose_ability(poke)
 		moves = pm.service.select_level_up_moves(poke, 5)
 
-		created = await pm.create_pokemon(
+		await pm.create_pokemon(
 			owner_id=self.user_id,
 			species_id=self.species_id,
 			level=5,

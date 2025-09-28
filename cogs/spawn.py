@@ -1,29 +1,35 @@
-import io
 import random
 import discord
 from discord.ext import commands
 from typing import Optional
-
 from __main__ import pm
 from utils.preloaded import preloaded_backgrounds
 from utils.pokemon_emojis import get_app_emoji
 from utils.spawn_text import get_spawn_text
-from utils.canvas import compose_pokemon
+from utils.canvas import compose_pokemon_async
+from pokemon_sdk.battle.wild import WildBattle
 
 class BattleView(discord.ui.View):
-	def __init__(self, author: discord.Member, wild_pokemon_name: str, timeout: float = 60.0):
+	def __init__(self, author: discord.Member, wild_data: dict, timeout: float = 60.0):
 		super().__init__(timeout=timeout)
 		self.author = author
-		self.target_name = wild_pokemon_name
+		self.wild_data = wild_data
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⚔️")
 	async def battle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 		await interaction.response.send_message(
-			f"{interaction.user.mention} iniciou uma batalha contra **{self.target_name}**!", 
+			f"{interaction.user.mention} iniciou uma batalha contra **{self.wild_data['name'].capitalize()}**!", 
 			ephemeral=False
 		)
 		for item in self.children:
 			item.disabled = True
+
+		player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
+		battle = WildBattle(player_party, self.wild_data)
+		await battle.setup()
+		embed, file = await battle.render_embed()
+
+		await interaction.channel.send(embed=embed, file=file)
 		await interaction.message.edit(view=self)
 		self.stop()
 
@@ -44,7 +50,7 @@ class Spawn(commands.Cog):
 		poke = await pm.service.get_pokemon(pokemon_query.lower())
 		species = await pm.service.get_species(poke.id)
 
-		name = poke.name.capitalize()
+		name = poke.name
 		emoji = get_app_emoji(f"p_{poke.id}")
 
 		is_legendary = bool(getattr(species, "is_legendary", False))
@@ -67,11 +73,11 @@ class Spawn(commands.Cog):
 			shiny=is_shiny
 		)
 
-		buffer = compose_pokemon(sprite_bytes, self.preloaded_backgrounds[habitat_name])
+		buffer = await compose_pokemon_async(sprite_bytes, self.preloaded_backgrounds[habitat_name])
 		file = discord.File(fp=buffer, filename="spawn.png")
 
 		title = "✨ Um Pokémon Shiny Selvagem Apareceu! ✨" if is_shiny else "Um Pokémon Selvagem Apareceu!"
-		desc = get_spawn_text(habitat_name, f"{emoji} **{name}**{' SHINY' if is_shiny else ''}!")
+		desc = get_spawn_text(habitat_name, f"{emoji} **{name.capitalize()}**{' SHINY' if is_shiny else ''}!")
 
 		embed = discord.Embed(
 			title=title,
@@ -82,7 +88,7 @@ class Spawn(commands.Cog):
 
 		del poke
 		del species
-		await ctx.send(embed=embed, file=file, view=BattleView(ctx.author, name))
+		await ctx.send(embed=embed, file=file, view=BattleView(ctx.author, wild))
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))

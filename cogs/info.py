@@ -2,15 +2,14 @@ import aiopoke
 from discord.ext import commands
 from __main__ import toolkit, pm
 from pokemon_sdk.calculations import calculate_stats
-from PIL import Image
+from pokemon_sdk.constants import STAT_KEYS
 from datetime import datetime
-from utils.canvas import compose_pokemon
+from utils.canvas import compose_pokemon_async
 from utils.preloaded import preloaded_info_backgrounds
 from curl_cffi import requests
 import io
 import discord
 
-STAT_ORDER = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 STAT_LABELS = {
 	"hp": "HP",
 	"attack": "Ataque",
@@ -47,7 +46,7 @@ class Info(commands.Cog):
 		iv_total = sum(ivs.values())
 		iv_percent = round((iv_total / 186) * 100, 2)
 
-		name_display = user_pokemon["nickname"] if user_pokemon.get("nickname") else pokemon.name.title()
+		name_display = user_pokemon["nickname"] if user_pokemon.get("nickname") else user_pokemon.get("name").title()
 		title = f"Level {level} {name_display} {'✨' if user_pokemon['is_shiny'] else ''}"
 
 		types = " / ".join(t.type.name.title() for t in sorted(pokemon.types, key=lambda x: x.slot))
@@ -56,7 +55,7 @@ class Info(commands.Cog):
 		else:
 			sprite_bytes = await pokemon.sprites.front_default.read()
 
-		buffer = compose_pokemon(sprite_bytes, preloaded_info_backgrounds[user_pokemon['background']])
+		buffer = await compose_pokemon_async(sprite_bytes, preloaded_info_backgrounds[user_pokemon['background']])
 		img_file = discord.File(buffer, filename="pokemon.png")
 
 		cry_url = pokemon.cries.latest
@@ -70,7 +69,7 @@ class Info(commands.Cog):
 					cry_file = discord.File(cry_bytes, filename=f"cry.{cry_ext}")
 
 		stats_lines = []
-		for key in STAT_ORDER:
+		for key in STAT_KEYS:
 			label = STAT_LABELS[key]
 			val = stats[key]
 			ivv = ivs.get(key, 0)

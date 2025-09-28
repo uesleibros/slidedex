@@ -33,15 +33,16 @@ class Paginator(discord.ui.View):
         desc_lines = []
         for p in self.pokemons[start:end]:
             poke_id = p["id"]
-            poke = await pm.service.client.get_pokemon(p["species_id"])
             emoji = get_app_emoji(f"p_{p['species_id']}")
             shiny = "✨ " if p.get("is_shiny", False) else ""
-            nickname = f" ({p['nickname']})" if p.get("nickname") else poke.name.title()
-            status = ":dagger:" if p.get("on_party", False) else ""
-            gender = ":male_sign:" if p["gender"] == "Male" else ":female_sign:"
+            nickname = f" ({p['nickname']})" if p.get("nickname") else ''
+            if p["gender"] != "Genderless":
+                gender = ":male_sign:" if p["gender"] == "Male" else ":female_sign:"
+            else:
+                gender = ":grey_question:"
             iv_percent_ = iv_percent(p["ivs"])
             desc_lines.append(
-                f"`{format_poke_id(poke_id)}`　{emoji}{shiny} **{nickname}** {gender} {status}　•　Lv. {p['level']}　•　{iv_percent_}%"
+                f"`{format_poke_id(poke_id)}`　{emoji}{shiny} {p['name'].title()} {nickname} {gender}　•　Lv. {p['level']}　•　{iv_percent_}%"
             )
         embed = discord.Embed(
             title="Seus Pokémon",

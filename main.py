@@ -1,24 +1,25 @@
-import discord
 import os
+import discord
+from typing import Optional
 from discord.ext import commands
 from dotenv import load_dotenv
 from utils.pokemon_emojis import load_application_emojis
-from utils.preloaded import preload_backgrounds, preload_info_backgrounds
+from utils.preloaded import preload_backgrounds, preload_info_backgrounds, preload_textures
 from utils.toolkit import Toolkit
 from pokemon_sdk import PokemonManager
 
 load_dotenv()
-TOKEN: str = os.getenv("DISCORD_TOKEN")
+TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
-toolkit: Toolkit = Toolkit()
-pm: PokemonManager
+toolkit = Toolkit()
+pm: PokemonManager | None = None
 
 @bot.event
-async def on_ready() -> None:
+async def on_ready():
 	global pm
 	pm = PokemonManager(toolkit)
 	await load_application_emojis(bot)
@@ -34,6 +35,7 @@ async def on_ready() -> None:
 
 	preload_backgrounds()
 	preload_info_backgrounds()
-	print(f"{bot.user} está online!")
+	preload_textures()
+	print(f"{bot.user} online")
 
-bot.run(token=TOKEN)
+bot.run(str(TOKEN))

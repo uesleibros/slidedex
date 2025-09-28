@@ -3,10 +3,9 @@ import os
 import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
-from pokemon_sdk.constants import NATURES
+from pokemon_sdk.constants import NATURES, STAT_KEYS
 import copy
 
-STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 PARTY_LIMIT = 6
 MOVES_LIMIT = 4
 EV_PER_STAT_MAX = 255
@@ -81,12 +80,11 @@ class Toolkit:
 		if total > EV_TOTAL_MAX:
 			raise ValueError("EV total exceeds limit")
 
-	def add_user(self, user_id: str, name: str, gender: str) -> Dict:
+	def add_user(self, user_id: str, gender: str) -> Dict:
 		with self._lock:
 			if user_id not in self.db["users"]:
 				self.db["users"][user_id] = {
 					"id": user_id,
-					"name": name,
 					"gender": gender,
 					"money": 0,
 					"last_pokemon_id": 0,
@@ -99,13 +97,6 @@ class Toolkit:
 	def get_user(self, user_id: str) -> Optional[Dict]:
 		with self._lock:
 			return self._deepcopy(self.db["users"].get(user_id))
-
-	def rename_user(self, user_id: str, new_name: str) -> Dict:
-		with self._lock:
-			self._ensure_user(user_id)
-			self.db["users"][user_id]["name"] = new_name
-			self._save()
-			return self._deepcopy(self.db["users"][user_id])
 
 	def set_money(self, user_id: str, amount: int) -> int:
 		with self._lock:
@@ -151,7 +142,48 @@ class Toolkit:
 			return result
 
 	def get_user_party(self, user_id: str) -> List[Dict]:
-		return self.get_user_pokemon(user_id, on_party=True)
+		with self._lock:
+			self._ensure_user(user_id)
+			party = [self._deepcopy(p) for p in self.db["pokemon"] if p["owner_id"] == user_id and p.get("on_party", False)]
+			if not party:
+				return []
+			if any("party_pos" not in p for p in party):
+				party.sort(key=lambda p: p.get("caught_at", ""))
+				for pos, p in enumerate(party, start=1):
+					idx = self._get_pokemon_index(user_id, p["id"])
+					self.db["pokemon"][idx]["party_pos"] = pos
+				self._save()
+				party = [self._deepcopy(p) for p in self.db["pokemon"] if p["owner_id"] == user_id and p.get("on_party", False)]
+			party.sort(key=lambda p: p.get("party_pos", 999))
+			return party
+
+	def reorder_party(self, owner_id: str, order: List[int]) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(owner_id)
+			party = [p for p in self.db["pokemon"] if p["owner_id"] == owner_id and p.get("on_party", False)]
+			if not party:
+				return []
+			current_ids = [int(p["id"]) for p in party]
+			if len(order) != len(current_ids):
+				raise ValueError("Número de IDs não coincide com a quantidade de Pokémon na party")
+			if set(order) != set(current_ids):
+				raise ValueError("IDs informados não correspondem ao time atual")
+			for pos, pid in enumerate(order, start=1):
+				idx = self._get_pokemon_index(owner_id, pid)
+				self.db["pokemon"][idx]["party_pos"] = pos
+			self._save()
+			return [self._deepcopy(self.db["pokemon"][self._get_pokemon_index(owner_id, pid)]) for pid in order]
+
+	def swap_party(self, owner_id: str, a: int, b: int) -> List[Dict]:
+		with self._lock:
+			party = self.get_user_party(owner_id)
+			if not party:
+				return []
+			if not (1 <= a <= len(party) and 1 <= b <= len(party)):
+				raise ValueError("Posições inválidas")
+			ids = [int(p["id"]) for p in party]
+			ids[a-1], ids[b-1] = ids[b-1], ids[a-1]
+			return self.reorder_party(owner_id, ids)
 
 	def get_user_box(self, user_id: str) -> List[Dict]:
 		return self.get_user_pokemon(user_id, on_party=False)
@@ -180,7 +212,7 @@ class Toolkit:
 			self._save()
 			return self._deepcopy(self.db["pokemon"][idx])
 
-	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
+	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
 		with self._lock:
 			self._ensure_user(owner_id)
 			self._validate_ivs(ivs)
@@ -194,6 +226,7 @@ class Toolkit:
 				"id": int(new_id),
 				"species_id": int(species_id),
 				"nickname": nickname,
+				"name": name,
 				"owner_id": owner_id,
 				"level": int(level),
 				"exp": int(exp),
