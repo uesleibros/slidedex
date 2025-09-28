@@ -74,7 +74,7 @@ class Paginator(discord.ui.View):
 		embed.set_footer(text=f"Mostrando {start+1}–{end} de {self.total}")
 		return embed
 
-	@discord.ui.button(label="⏮️", style=discord.ButtonStyle.secondary)
+	@discord.ui.button(emoji="⏮️", style=discord.ButtonStyle.secondary)
 	async def first_page(self, interaction: discord.Interaction, button: discord.ui.Button):
 		self.current_page = 0
 		self.update_buttons()
