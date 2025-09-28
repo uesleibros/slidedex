@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 from utils.canvas import compose_battle_async
 from pokemon_sdk.calculations import calculate_stats
 from utils.preloaded import preloaded_textures
+from utils.pokemon_emojis import emoji_cache
 
 class BattlePokemon:
 	def __init__(self, raw: Dict[str, Any], pokeapi_data: aiopoke.Pokemon):
@@ -65,12 +66,12 @@ class WildBattle:
 
 		file = discord.File(buf, filename="battle.png")
 		embed = discord.Embed(
-			title="Luta",
-			description=(f"{self.player_active.name or self.player_active.species_id} "
-						 f"(Lv{self.player_active.level}, HP {self.player_active.current_hp}/{self.player_active.stats['hp']})\n"
+			title=f"Luta",
+			description=(f"Lv{self.player_active.level} {emoji_cache.get(self.player_active.species_id)} {self.player_active.name.title()} "
+						 f"(HP {self.player_active.current_hp}/{self.player_active.stats['hp']})\n"
 						 f"VS\n"
-						 f"Wild {self.wild.name or self.wild.species_id} "
-						 f"(Lv{self.wild.level}, HP {self.wild.current_hp}/{self.wild.stats['hp']})"),
+						 f"Lv{self.wild.level} {emoji_cache.get(self.wild.species_id)} {self.wild.name or self.wild.species_id} "
+						 f"(HP {self.wild.current_hp}/{self.wild.stats['hp']}) *Wild*"),
 			color=discord.Color.red()
 		)
 		embed.set_image(url="attachment://battle.png")
