@@ -2,7 +2,7 @@ import random
 from typing import Dict, List, Any, Optional
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
-from curl_cffi import reuqests
+from curl_cffi import requests
 
 class HttpClient:
     _session: requests.AsyncClient
@@ -89,6 +89,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
