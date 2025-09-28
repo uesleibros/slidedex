@@ -19,17 +19,22 @@ class BotStats(commands.Cog):
 
     def classify_status(self, value: float, warn: float, crit: float, unit: str = "") -> str:
         if value >= crit:
-            return f"{value:.2f}{unit} [CRITICAL]"
+            return f"{value:.2f}{unit} [CRÍTICO]"
         elif value >= warn:
-            return f"{value:.2f}{unit} [WARN]"
+            return f"{value:.2f}{unit} [ALERTA]"
         return f"{value:.2f}{unit} [OK]"
 
-    def overall_health(self, statuses: list[str]) -> str:
-        if any("[CRITICAL]" in s for s in statuses):
-            return "CRITICAL"
-        elif any("[WARN]" in s for s in statuses):
-            return "DEGRADED"
-        return "OPERATIONAL"
+    def overall_health(self, statuses):
+        if any("[CRÍTICO]" in s for s in statuses):
+            return "CRÍTICO"
+        elif any("[ALERTA]" in s for s in statuses):
+            return "DEGRADADO"
+        return "OPERACIONAL"
+
+    def usage_bar(self, value: float, maximum: float, length: int = 12) -> str:
+        ratio = max(0.0, min(1.0, (value / maximum) if maximum else 0.0))
+        filled = int(round(ratio * length))
+        return f"[{'█' * filled}{'░' * (length - filled)}]"
 
     @commands.command(name="botstats", aliases=["status", "stats", "bs"])
     async def botstats_command(self, ctx: commands.Context):
@@ -53,12 +58,12 @@ class BotStats(commands.Cog):
 
         embed = discord.Embed(
             title="Minhas Estatísticas",
-            color=discord.Color.dark_blue(),
+            color=discord.Color.dark_blue()
         )
 
         embed.add_field(name="Saúde Geral", value=overall, inline=False)
 
-        embed.add_field(name="Uptime", value=uptime, inline=True)
+        embed.add_field(name="Tempo em Execução", value=uptime, inline=True)
         embed.add_field(
             name="Plataforma",
             value=f"{platform.system()} {platform.release()} ({platform.machine()})",
@@ -70,11 +75,27 @@ class BotStats(commands.Cog):
             inline=True
         )
 
-        embed.add_field(name="Memória (RSS)", value=mem_status, inline=True)
-        embed.add_field(name="Memória (VMS)", value=f"{mem_vms:.2f} MB", inline=True)
-        embed.add_field(name="Uso da CPU", value=cpu_status, inline=True)
+        embed.add_field(
+            name="Memória (RSS)",
+            value=f"{mem_status}\n{self.usage_bar(mem_usage, 600)}",
+            inline=True
+        )
+        embed.add_field(
+            name="Memória (VMS)",
+            value=f"{mem_vms:.2f} MB",
+            inline=True
+        )
+        embed.add_field(
+            name="Uso de CPU",
+            value=f"{cpu_status}\n{self.usage_bar(cpu_percent, 100)}",
+            inline=True
+        )
 
-        embed.add_field(name="Latência", value=latency_status, inline=True)
+        embed.add_field(
+            name="Latência",
+            value=f"{latency_status}\n{self.usage_bar(latency_ms, 300)}",
+            inline=True
+        )
         embed.add_field(name="Threads / Handles", value=f"{threads} / {handles}", inline=True)
         embed.add_field(
             name="Processo Iniciado",
