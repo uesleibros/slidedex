@@ -5,8 +5,28 @@ from .constants import VERSION_GROUPS, SHINY_ROLL
 from curl_cffi import AsyncSession, Response
 
 class AiohttpLikeResponse(Response):
+    def __init__(self, coro_or_resp):
+        self._coro = coro_or_resp
+        self._resp: Optional[Response] = None
+
+    def __await__(self):
+        async def _():
+            if isinstance(self._coro, Response):
+                return self._coro
+            self._resp = await self._coro
+            return self._resp
+        return _().__await__()
+
+    async def __aenter__(self):
+        self._resp = await self
+        return self._resp
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
     async def read(self) -> bytes:
-        return self.content
+        resp = await self
+        return resp.content
 
 class AiohttpLikeSession(AsyncSession):
     def get(self, *args, **kwargs) -> AiohttpLikeResponse:
@@ -108,6 +128,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
