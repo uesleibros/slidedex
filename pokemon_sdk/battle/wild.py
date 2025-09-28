@@ -67,7 +67,7 @@ class WildBattle:
 		file = discord.File(buf, filename="battle.png")
 		player_emoji = get_app_emoji(f"p_{self.player_active.species_id}")
 		enemy_emoji = get_app_emoji(f"p_{self.wild.species_id}")
-		
+
 		embed = discord.Embed(
 			title=f"Luta",
 			description=(f"Lv{self.player_active.level} {player_emoji} {self.player_active.name.title()} "
@@ -75,7 +75,7 @@ class WildBattle:
 						 f"VS\n"
 						 f"Lv{self.wild.level} {enemy_emoji} {self.wild.name.title()} "
 						 f"(HP {self.wild.current_hp}/{self.wild.stats['hp']}) *Wild*"),
-			color=discord.Color.red()
+			color=discord.Color.green()
 		)
 		embed.set_image(url="attachment://battle.png")
 		return embed, file
