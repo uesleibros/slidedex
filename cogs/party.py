@@ -42,7 +42,7 @@ class Party(commands.Cog):
 		except Exception as e:
 			return await ctx.send(f"Erro: {e}")
 		text = await _fmt_party(reordered)
-		await ctx.send("✅ Nova ordem definida:\n" + text)
+		await ctx.send("Nova ordem definida:\n" + text)
 
 	@party_root.command(name="swap")
 	async def party_swap(self, ctx: commands.Context, a: int, b: int):
@@ -52,14 +52,24 @@ class Party(commands.Cog):
 			return await ctx.send("Seu time está vazio.")
 		if not (1 <= a <= len(party) and 1 <= b <= len(party)):
 			return await ctx.send(f"Posições válidas: 1 a {len(party)}.")
+		if a == b:
+			return await ctx.send("Você não pode trocar um Pokémon com ele mesmo.")
+
+		poke_a = party[a - 1]
+		poke_b = party[b - 1]
+		name_a = poke_a.get("nickname") or poke_a.get("name", f"#{poke_a['species_id']}").title()
+		name_b = poke_b.get("nickname") or poke_b.get("name", f"#{poke_b['species_id']}").title()
+		emoji_a = get_app_emoji(f"p_{poke_a['species_id']}")
+		emoji_b = get_app_emoji(f"p_{poke_b['species_id']}")
+
 		ids = [int(p["id"]) for p in party]
 		ids[a-1], ids[b-1] = ids[b-1], ids[a-1]
 		try:
-			swapped = pm.repo.tk.reorder_party(uid, ids)
+			pm.repo.tk.reorder_party(uid, ids)
 		except Exception as e:
 			return await ctx.send(f"Erro: {e}")
-		text = await _fmt_party(swapped)
-		await ctx.send("✅ Nova ordem definida:\n" + text)
+		
+		await ctx.send(f"{emoji_a} **{name_a}** e {emoji_b} **{name_b}** trocaram de lugar.")
 
 	@party_root.command(name="add")
 	async def party_add(self, ctx: commands.Context, pokemon_id: int):
@@ -68,7 +78,7 @@ class Party(commands.Cog):
 			p = pm.repo.tk.move_to_party(uid, pokemon_id)
 		except Exception as e:
 			return await ctx.send(f"Erro ao adicionar: {e}")
-		await ctx.send(f"✅ {p.get('nickname') or p.get('name', f'#{p['species_id']}').title()} foi adicionado à sua party.")
+		await ctx.send(f"{p.get('nickname') or p.get('name', f'#{p['species_id']}').title()} foi adicionado à sua party.")
 
 	@party_root.command(name="remove")
 	async def party_remove(self, ctx: commands.Context, position: int):
@@ -86,7 +96,7 @@ class Party(commands.Cog):
 			p = pm.repo.tk.move_to_box(uid, pokemon_id)
 		except Exception as e:
 			return await ctx.send(f"Erro ao remover: {e}")
-		await ctx.send(f"✅ {p.get('nickname') or p.get('name', f'#{p['species_id']}').title()} foi removido da party e movido para a box.")
+		await ctx.send(f"{p.get('nickname') or p.get('name', f'#{p['species_id']}').title()} foi removido da party e movido para a box.")
 
 
 async def setup(bot: commands.Bot):
