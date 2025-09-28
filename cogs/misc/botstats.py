@@ -9,7 +9,7 @@ class BotStats(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.start_time = time.time()
-    
+
     def format_uptime(self) -> str:
         delta = timedelta(seconds=int(time.time() - self.start_time))
         days, remainder = divmod(int(delta.total_seconds()), 86400)
@@ -17,12 +17,26 @@ class BotStats(commands.Cog):
         minutes, seconds = divmod(remainder, 60)
         return f"{days}d {hours}h {minutes}m {seconds}s"
 
-    @commands.command(name="botstats", aliases=["bs", "stats"])
+    def classify_status(self, value: float, warn: float, crit: float, unit: str = "") -> str:
+        if value >= crit:
+            return f"{value:.2f}{unit} [CRITICAL]"
+        elif value >= warn:
+            return f"{value:.2f}{unit} [WARN]"
+        return f"{value:.2f}{unit} [OK]"
+
+    def overall_health(self, statuses: list[str]) -> str:
+        if any("[CRITICAL]" in s for s in statuses):
+            return "CRITICAL"
+        elif any("[WARN]" in s for s in statuses):
+            return "DEGRADED"
+        return "OPERATIONAL"
+
+    @commands.command(name="botstats", aliases=["status", "stats", "bs"])
     async def botstats_command(self, ctx: commands.Context):
         proc = psutil.Process()
         with proc.oneshot():
             mem_info = proc.memory_full_info()
-            cpu_percent = proc.cpu_percent(interval=0.1)
+            cpu_percent = proc.cpu_percent(interval=0.2)
             threads = proc.num_threads()
             handles = proc.num_handles() if hasattr(proc, "num_handles") else "N/A"
             create_time = datetime.utcfromtimestamp(proc.create_time())
@@ -30,67 +44,48 @@ class BotStats(commands.Cog):
         mem_usage = mem_info.rss / 1024**2
         mem_vms = mem_info.vms / 1024**2
         uptime = self.format_uptime()
+        latency_ms = round(self.bot.latency * 1000)
 
-        total_users = len(self.bot.users)
-        latency_ms = round(self.bot.latency  * 1000)
+        mem_status = self.classify_status(mem_usage, warn=300, crit=600, unit="MB")
+        cpu_status = self.classify_status(cpu_percent, warn=70, crit=90, unit="%")
+        latency_status = self.classify_status(latency_ms, warn=150, crit=300, unit="ms")
+        overall = self.overall_health([mem_status, cpu_status, latency_status])
+
         embed = discord.Embed(
             title="Minhas Estatísticas",
-            color=discord.Color.blurple(),
-            timestamp=datetime.utcnow(),
+            color=discord.Color.dark_blue(),
         )
 
+        embed.add_field(name="Saúde Geral", value=overall, inline=False)
+
+        embed.add_field(name="Uptime", value=uptime, inline=True)
         embed.add_field(
-            name="⏰ Uptime",
-            value=uptime,
-            inline=True
-        )
-        embed.add_field(
-            name="🖥️ Plataforma",
+            name="Plataforma",
             value=f"{platform.system()} {platform.release()} ({platform.machine()})",
             inline=True
         )
         embed.add_field(
-            name="⚙️ Python / Discord.py",
+            name="Python / discord.py",
             value=f"{platform.python_version()} / {discord.__version__}",
             inline=True
         )
 
+        embed.add_field(name="Memória (RSS)", value=mem_status, inline=True)
+        embed.add_field(name="Memória (VMS)", value=f"{mem_vms:.2f} MB", inline=True)
+        embed.add_field(name="Uso da CPU", value=cpu_status, inline=True)
+
+        embed.add_field(name="Latência", value=latency_status, inline=True)
+        embed.add_field(name="Threads / Handles", value=f"{threads} / {handles}", inline=True)
         embed.add_field(
-            name="💽 Memória (RSS)",
-            value=f"{mem_usage:.2f} MB",
-            inline=True
-        )
-        embed.add_field(
-            name="💾 Memória Virtual",
-            value=f"{mem_vms:.2f} MB",
-            inline=True
-        )
-        embed.add_field(
-            name="🔢 Threads / Handles",
-            value=f"{threads} / {handles}",
+            name="Processo Iniciado",
+            value=create_time.strftime("%Y-%m-%d %H:%M:%S UTC"),
             inline=True
         )
 
-        embed.add_field(
-            name="👥 Usuários únicos",
-            value=str(total_users),
-            inline=True
-        )
-        embed.add_field(
-            name="📡 Latência",
-            value=f"{latency_ms} ms",
-            inline=True
-        )
-
-        embed.add_field(
-            name="🧮 CPU",
-            value=f"{cpu_percent:.1f}%",
-            inline=True
-        )
-
-        embed.set_footer(text=f"uEngine • PID {proc.pid}")
+        embed.set_footer(text="Feito com ❤️ usando a uEngine")
 
         await ctx.send(embed=embed)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(BotStats(bot))
