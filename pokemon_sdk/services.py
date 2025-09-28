@@ -2,15 +2,46 @@ import random
 from typing import Dict, List, Any, Optional
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
-from curl_cffi import AsyncSession
+from curl_cffi import AsyncSession, Response
+
+
+class AiohttpLikeResponse:
+    def __init__(self, coro):
+        self._coro = coro
+        self._resp: Optional[Response] = None
+
+    async def __aenter__(self) -> Response:
+        self._resp = await self._coro
+        return self._resp
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class AiohttpLikeSession(AsyncSession):
+    def get(self, *args, **kwargs) -> AiohttpLikeResponse:
+        return AiohttpLikeResponse(super().get(*args, **kwargs))
+
+    def post(self, *args, **kwargs) -> AiohttpLikeResponse:
+        return AiohttpLikeResponse(super().post(*args, **kwargs))
+
+    def put(self, *args, **kwargs) -> AiohttpLikeResponse:
+        return AiohttpLikeResponse(super().put(*args, **kwargs))
+
+    def delete(self, *args, **kwargs) -> AiohttpLikeResponse:
+        return AiohttpLikeResponse(super().delete(*args, **kwargs))
+
+    def patch(self, *args, **kwargs) -> AiohttpLikeResponse:
+        return AiohttpLikeResponse(super().patch(*args, **kwargs))
+
 
 class HttpClient:
-    _session: AsyncSession
+    _session: AiohttpLikeSession
     inexistent_endpoints: List[str]
     base_url: str
 
-    def __init__(self, *, session: Optional[AsyncSession] = None, base_url: str) -> None:
-        self._session = session or AsyncSession()
+    def __init__(self, *, session: Optional[AiohttpLikeSession] = None, base_url: str = "") -> None:
+        self._session = session or AiohttpLikeSession()
         self.inexistent_endpoints = []
         self.base_url = base_url.rstrip("/")
 
@@ -23,13 +54,12 @@ class HttpClient:
             raise ValueError(f"The id or name for {endpoint} was not found.")
 
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-		
-        response = await self._session.get(url)
-        if response.status_code == 404:
-            self.inexistent_endpoints.append(endpoint)
-            raise ValueError(f"The id or name for {endpoint} was not found.")
+        async with self._session.get(url) as response:
+            if response.status_code == 404:
+                self.inexistent_endpoints.append(endpoint)
+                raise ValueError(f"The id or name for {endpoint} was not found.")
 
-        return response.json()
+            return response.json()
 
 class NoCache:
     def get(self, *_, **__): return None
@@ -90,6 +120,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
