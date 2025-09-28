@@ -16,9 +16,9 @@ async def _fmt_party(party):
 		cur_hp = p.get("current_hp", stats["hp"])
 		results.append(
 			f"{i}. {emoji} {shiny}{name.title()}\n"
-			f"-# (id={p['id']}, Lv{p['level']}, HP {cur_hp}/{stats['hp']})"
+			f" > `id: {p['id']}` `Lv: {p['level']}` `HP: {cur_hp}/{stats['hp']}`"
 		)
-	return "\n".join(results) if results else "Seu time está vazio."
+	return "\n\n".join(results) if results else "Seu time está vazio."
 
 
 class Party(commands.Cog):
@@ -71,8 +71,17 @@ class Party(commands.Cog):
 		await ctx.send(f"✅ {p.get('nickname') or p.get('name', f'#{p['species_id']}').title()} foi adicionado à sua party.")
 
 	@party_root.command(name="remove")
-	async def party_remove(self, ctx: commands.Context, pokemon_id: int):
+	async def party_remove(self, ctx: commands.Context, position: int):
 		uid = str(ctx.author.id)
+		party = pm.repo.tk.get_user_party(uid)
+		if not party:
+			return await ctx.send("Seu time está vazio.")
+		if not (1 <= position <= len(party)):
+			return await ctx.send(f"Posição inválida. Escolha um número de 1 a {len(party)}.")
+		
+		pokemon_to_remove = party[position - 1]
+		pokemon_id = pokemon_to_remove['id']
+
 		try:
 			p = pm.repo.tk.move_to_box(uid, pokemon_id)
 		except Exception as e:
