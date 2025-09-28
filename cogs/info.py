@@ -112,6 +112,8 @@ class Info(commands.Cog):
 		if img_file:
 			embed.set_image(url="attachment://pokemon.png")
 
+		del pokemon
+		
 		if cry_file:
 			await ctx.send(embed=embed, files=[img_file, cry_file])
 		else:
@@ -120,4 +122,5 @@ class Info(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Info(bot))
+
 
