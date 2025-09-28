@@ -86,7 +86,7 @@ class PokeAPIService:
 	def __init__(self):
 		self.client = AiopokeClient()
 		self.client._cache = NoCache()
-		self.client.http = HttpClient(base_url="https://pokeapi.co/api/v2")
+		#self.client.http = HttpClient(base_url="https://pokeapi.co/api/v2")
 
 	async def get_pokemon(self, species_id: int):
 		return await self.client.get_pokemon(species_id)
@@ -136,6 +136,7 @@ class PokeAPIService:
 	async def close(self):
 
 		await self.client.close()
+
 
 
 
