@@ -190,10 +190,10 @@ class Pokemon(commands.Cog):
 			"  --limit N     Limita resultados\n"
 			"  --page_size N Quantidade por página na paginação\n\n"
 			"Exemplos:\n"
-			"  .pokemon --party\n"
-			"  .pokemon --box --shiny\n"
-			"  .pokemon --min_iv 85 --sort level --reverse\n"
-			"  .pokemon --random --limit 5"
+			"  .pokemon --party true\n"
+			"  .pokemon --box true --shiny true\n"
+			"  .pokemon --min_iv 85 --sort level --reverse true\n"
+			"  .pokemon --random true --limit 5"
 		)
 	)
 	async def pokemon_command(self, ctx: commands.Context, *, flags: PokemonFlags):

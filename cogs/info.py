@@ -1,3 +1,5 @@
+import io
+import discord
 import aiopoke
 from discord.ext import commands
 from __main__ import toolkit, pm
@@ -7,121 +9,146 @@ from datetime import datetime
 from utils.canvas import compose_pokemon_async
 from utils.preloaded import preloaded_info_backgrounds
 from curl_cffi import requests
-import io
-import discord
+from typing import Optional
 
 STAT_LABELS = {
-	"hp": "HP",
-	"attack": "Ataque",
-	"defense": "Defesa",
-	"special-attack": "Sp. Atk",
-	"special-defense": "Sp. Def",
-	"speed": "Velocidade",
+	"hp": "HP", "attack": "Ataque", "defense": "Defesa",
+	"special-attack": "Sp. Atk", "special-defense": "Sp. Def", "speed": "Velocidade",
 }
 
+class InfoView(discord.ui.View):
+    def __init__(self, cog, user_id: int, all_pokemon_ids: list[int], current_index: int):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.user_id = user_id
+        self.all_pokemon_ids = all_pokemon_ids
+        self.current_index = current_index
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_pokemon.disabled = self.current_index == 0
+        self.next_pokemon.disabled = self.current_index == len(self.all_pokemon_ids) - 1
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id
+
+    async def _update_info(self, interaction: discord.Interaction):
+        pokemon_id = self.all_pokemon_ids[self.current_index]
+        self.update_buttons()
+        
+        result = await self.cog._generate_info_embed(str(self.user_id), pokemon_id)
+        if result:
+            embed, files = result
+            await interaction.response.edit_message(embed=embed, attachments=files, view=self)
+        else:
+            await interaction.response.edit_message(content="Erro ao carregar este Pokémon.", embed=None, attachments=[], view=self)
+    
+    @discord.ui.button(label="◀️ Anterior", style=discord.ButtonStyle.secondary)
+    async def prev_pokemon(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_index > 0:
+            self.current_index -= 1
+            await self._update_info(interaction)
+
+    @discord.ui.button(label="Próximo ▶️", style=discord.ButtonStyle.secondary)
+    async def next_pokemon(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_index < len(self.all_pokemon_ids) - 1:
+            self.current_index += 1
+            await self._update_info(interaction)
+
 class Info(commands.Cog):
-	def __init__(self, bot: commands.Bot) -> None:
-		self.bot = bot
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot = bot
 
-	@commands.cooldown(3, 5, commands.BucketType.user)
-	@commands.command(name="info", aliases=["i", "inf"])
-	async def info_command(self, ctx: commands.Context, pokemon_id: int) -> None:
-		user_id = str(ctx.author.id)
-		try:
-			user_pokemon = toolkit.get_pokemon(user_id, pokemon_id)
-		except ValueError:
-			await ctx.send(content="Não pude encontrar esse pokémon!")
-			return
+    async def _generate_info_embed(self, user_id: str, pokemon_id: int):
+        try:
+            user_pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+        except ValueError:
+            return None
 
-		pokemon: aiopoke.Pokemon = await pm.service.get_pokemon(user_pokemon["species_id"])
-		
-		base_stats = {s.stat.name: s.base_stat for s in pokemon.stats}
-		ivs = user_pokemon["ivs"]
-		evs = user_pokemon.get("evs", {k: 0 for k in base_stats})
-		level = user_pokemon["level"]
-		nature = user_pokemon["nature"]
-		stats = calculate_stats(base_stats, ivs, evs, level, nature)
-		current_hp = user_pokemon["current_hp"] if user_pokemon.get("current_hp") is not None else stats["hp"]
+        pokemon: aiopoke.Pokemon = await pm.service.get_pokemon(user_pokemon["species_id"])
+        
+        base_stats = {s.stat.name: s.base_stat for s in pokemon.stats}
+        stats = calculate_stats(base_stats, user_pokemon["ivs"], user_pokemon.get("evs", {}), user_pokemon["level"], user_pokemon["nature"])
+        current_hp = user_pokemon.get("current_hp") if user_pokemon.get("current_hp") is not None else stats["hp"]
 
-		iv_total = sum(ivs.values())
-		iv_percent = round((iv_total / 186) * 100, 2)
+        iv_total = sum(user_pokemon["ivs"].values())
+        iv_percent = round((iv_total / 186) * 100, 2)
 
-		name_display = user_pokemon["nickname"] if user_pokemon.get("nickname") else user_pokemon.get("name").title()
-		title = f"Level {level} {name_display} {'✨' if user_pokemon['is_shiny'] else ''}"
+        name_display = user_pokemon.get("nickname") or user_pokemon.get("name").title()
+        title = f"Level {user_pokemon['level']} {name_display} {'✨' if user_pokemon['is_shiny'] else ''}"
+        
+        sprite_to_use = pokemon.sprites.front_shiny if user_pokemon['is_shiny'] else pokemon.sprites.front_default
+        sprite_bytes = await sprite_to_use.read() if sprite_to_use else None
+        
+        files = []
+        if sprite_bytes:
+            buffer = await compose_pokemon_async(sprite_bytes, preloaded_info_backgrounds[user_pokemon['background']])
+            img_file = discord.File(buffer, filename="pokemon.png")
+            files.append(img_file)
 
-		types = " / ".join(t.type.name.title() for t in sorted(pokemon.types, key=lambda x: x.slot))
-		if user_pokemon['is_shiny']:
-			sprite_bytes = await pokemon.sprites.front_shiny.read()
-		else:
-			sprite_bytes = await pokemon.sprites.front_default.read()
+        cry_url = pokemon.cries.latest
+        if cry_url:
+            async with requests.AsyncSession() as session:
+                resp = await session.get(cry_url)
+                if resp.status_code == 200:
+                    cry_ext = "ogg" if cry_url.endswith(".ogg") else "wav"
+                    cry_file = discord.File(io.BytesIO(resp.content), filename=f"cry.{cry_ext}")
+                    files.append(cry_file)
 
-		buffer = await compose_pokemon_async(sprite_bytes, preloaded_info_backgrounds[user_pokemon['background']])
-		img_file = discord.File(buffer, filename="pokemon.png")
+        stats_lines = [f"**{STAT_LABELS[key]}:** {stats[key]} (IV {user_pokemon['ivs'].get(key, 0)})" for key in STAT_KEYS]
+        stats_lines[0] = f"**HP:** {current_hp}/{stats['hp']} (IV {user_pokemon['ivs'].get('hp', 0)})"
 
-		cry_url = pokemon.cries.latest
-		cry_file = None
-		if cry_url:
-			async with requests.AsyncSession() as session:
-				resp = await session.get(cry_url)
-				if resp.status_code == 200:
-					cry_bytes = io.BytesIO(resp.content)
-					cry_ext = "ogg" if cry_url.endswith(".ogg") else "wav"
-					cry_file = discord.File(cry_bytes, filename=f"cry.{cry_ext}")
+        embed = discord.Embed(title=title, color=discord.Color.blurple())
+        embed.add_field(
+            name="Detalhes",
+            value=(
+                f"**XP:** {user_pokemon['exp']}\n**Natureza:** {user_pokemon['nature']}\n"
+                f"**Gênero:** {user_pokemon.get('gender','N/A')}\n**Habilidade:** {str(user_pokemon.get('ability') or '-').title()}\n"
+                f"**Tipos:** {' / '.join(t.type.name.title() for t in sorted(pokemon.types, key=lambda x: x.slot))}\n"
+                f"**Item:** {str(user_pokemon.get('held_item') or '-').title()}"
+            ),
+            inline=False
+        )
+        embed.add_field(name="IV Geral", value=f"**{iv_total}/186 ({iv_percent}%)**", inline=False)
+        embed.add_field(name="Estatísticas", value="\n".join(stats_lines), inline=False)
+        embed.set_footer(text=f"ID: {pokemon_id} • Capturado em {datetime.fromisoformat(user_pokemon['caught_at']).strftime('%d/%m/%Y às %H:%M')}")
+        
+        if files and any(f.filename == "pokemon.png" for f in files):
+            embed.set_image(url="attachment://pokemon.png")
 
-		stats_lines = []
-		for key in STAT_KEYS:
-			label = STAT_LABELS[key]
-			val = stats[key]
-			ivv = ivs.get(key, 0)
-			if key == "hp":
-				stats_lines.append(f"**{label}:** {current_hp}/{val} (IV {ivv})")
-			else:
-				stats_lines.append(f"**{label}:** {val} (IV {ivv})")
+        return embed, files
 
-		embed = discord.Embed(title=title, color=discord.Color.blurple())
-		embed.add_field(
-			name="Detalhes",
-			value=(
-				f"**XP:** {user_pokemon['exp']}\n"
-				f"**Natureza:** {nature}\n"
-				f"**Gênero:** {user_pokemon.get('gender','Genderless')}\n"
-				f"**Habilidade:** {str(user_pokemon.get('ability') or '-').title()}\n"
-				f"**Tipos:** {types}\n"
-				f"**Item:** {str(user_pokemon.get('held_item') or '-').title()}"
-			),
-			inline=False
-		)
-		embed.add_field(
-			name="IV Geral",
-			value=f"**{iv_total}/186 ({iv_percent}%)**",
-			inline=False
-		)
-		embed.add_field(
-			name="Estatísticas",
-			value="\n".join(stats_lines),
-			inline=False
-		)
+    @commands.cooldown(3, 5, commands.BucketType.user)
+    @commands.command(name="info", aliases=["i", "inf"])
+    async def info_command(self, ctx: commands.Context, pokemon_id: Optional[int] = None) -> None:
+        user_id = str(ctx.author.id)
+        all_pokemons = toolkit.get_user_pokemon(user_id)
+        
+        if not all_pokemons:
+            await ctx.send("Você não possui nenhum Pokémon!")
+            return
+            
+        all_pokemon_ids = [p['id'] for p in all_pokemons]
+        
+        current_pokemon_id = pokemon_id
+        if current_pokemon_id is None:
+            party = toolkit.get_user_party(user_id)
+            current_pokemon_id = party[0]['id'] if party else all_pokemon_ids[0]
+        
+        if current_pokemon_id not in all_pokemon_ids:
+            await ctx.send("Você não possui um Pokémon com este ID.")
+            return
 
-		embed.set_footer(text=(
-			f"Exibindo pokémon {pokemon_id}.\n"
-			f"Capturado em {datetime.fromisoformat(user_pokemon['caught_at']).strftime('%d/%m/%Y às %H:%M:%S')}"
-		))
+        current_index = all_pokemon_ids.index(current_pokemon_id)
+        
+        result = await self._generate_info_embed(user_id, current_pokemon_id)
+        if result:
+            embed, files = result
+            view = InfoView(self, ctx.author.id, all_pokemon_ids, current_index)
+            await ctx.send(embed=embed, files=files, view=view)
+        else:
+            await ctx.send("Não pude encontrar esse Pokémon!")
 
-		if ctx.author.avatar:
-			embed.set_thumbnail(url=ctx.author.avatar.url)
-		if img_file:
-			embed.set_image(url="attachment://pokemon.png")
-
-		del pokemon
-		
-		if cry_file:
-			await ctx.send(embed=embed, files=[img_file, cry_file])
-		else:
-			await ctx.send(embed=embed, file=img_file)
 
 async def setup(bot: commands.Bot) -> None:
-
 	await bot.add_cog(Info(bot))
-
-
-
