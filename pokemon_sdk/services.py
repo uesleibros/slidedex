@@ -3,9 +3,14 @@ from typing import Dict, List
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
 
+class NoCache:
+    async def get(self, *_, **__): return None
+    async def set(self, *_, **__): return None
+
 class PokeAPIService:
 	def __init__(self):
 		self.client = AiopokeClient()
+		self.client._cache = NoCache()
 
 	async def get_pokemon(self, species_id: int):
 		return await self.client.get_pokemon(species_id)
@@ -53,4 +58,5 @@ class PokeAPIService:
 		return random.randint(1, SHINY_ROLL) == 1
 
 	async def close(self):
+
 		await self.client.close()
