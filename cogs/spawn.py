@@ -17,6 +17,10 @@ class BattleView(discord.ui.View):
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⚔️")
 	async def battle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+		player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
+		if not player_party:
+			return await interaction.response.send_message("Você não tem nenhum Pokémon na sua party!", ephemeral=True)
+			
 		await interaction.response.send_message(
 			f"{interaction.user.mention} iniciou uma batalha contra **{self.wild_data['name'].capitalize()}**!", 
 			ephemeral=False
@@ -24,7 +28,6 @@ class BattleView(discord.ui.View):
 		for item in self.children:
 			item.disabled = True
 
-		player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
 		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
 		await battle.setup()
 		await battle.render_embed()
@@ -38,14 +41,15 @@ class Spawn(commands.Cog):
 		self.preloaded_backgrounds = preloaded_backgrounds
 
 	@commands.command(name="spawn", aliases=["sp"])
-	async def spawn_command(self, ctx: commands.Context, pokemon_query: Optional[str] = None) -> None:
+	async def spawn_command(self, ctx: commands.Context) -> None:
 		is_shiny = False
-		if not pokemon_query:
-			pokemon_query = str(random.randint(1, 386))
-		if "=shiny" in pokemon_query.lower():
+		shiny_rate = 8192
+		
+		if random.randint(1, shiny_rate) == 1:
 			is_shiny = True
-			pokemon_query = pokemon_query.replace("=shiny", "").strip()
-
+			
+		pokemon_query = str(random.randint(1, 386))
+		
 		poke = await pm.service.get_pokemon(pokemon_query.lower())
 		species = await pm.service.get_species(poke.id)
 
@@ -62,7 +66,14 @@ class Spawn(commands.Cog):
 		sprite = poke.sprites.front_shiny if is_shiny and poke.sprites.front_shiny else poke.sprites.front_default
 		sprite_bytes = await sprite.read() if sprite else None
 
-		level = random.randint(5, 45)
+		player_party = pm.repo.tk.get_user_party(str(ctx.author.id))
+		if player_party:
+			active_level = player_party[0]["level"]
+			min_level = max(2, active_level - 5)
+			max_level = min(100, active_level + 5)
+			level = random.randint(min_level, max_level)
+		else:
+			level = random.randint(5, 15)
 
 		wild = await pm.generate_temp_pokemon(
 			owner_id="wild",
@@ -91,6 +102,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
