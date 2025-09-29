@@ -289,6 +289,12 @@ class Toolkit:
 			self._save()
 			return self._deepcopy(p)
 
+	def calc_battle_exp(self, poke_level: int, enemy_level: int) -> int:
+		base = enemy_level * 10
+		bonus = max(0, (enemy_level - poke_level) * 5)
+		xp = base + bonus
+		return max(1, xp)
+	
 	def set_ivs(self, owner_id: str, pokemon_id: int, ivs: Dict[str, int]) -> Dict:
 		with self._lock:
 			self._validate_ivs(ivs)
@@ -444,4 +450,5 @@ class Toolkit:
 
 	def iv_percent(self, owner_id: str, pokemon_id: int, decimals: int = 2) -> float:
 		total = self.iv_total(owner_id, pokemon_id)
+
 		return round((total / 186) * 100.0, decimals)
