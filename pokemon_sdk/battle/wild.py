@@ -82,28 +82,40 @@ def _types_of(poke: "BattlePokemon") -> List[str]:
 	except Exception:
 		return []
 
+class _Meta:
+    def __init__(self):
+        self.ailment = type("Ail", (), {})()
+        self.ailment.name = "none"
+        self.ailment_chance = 0
+        self.flinch_chance = 0
+        self.drain = 0
+        self.recoil = 0
+        self.min_hits = 1
+        self.max_hits = 1
+        self.healing = 0
+
 class _Struggle:
-	power = 50
-	accuracy = None
-	priority = 0
-	damage_class = type("dc", (), {"name": "physical"})
-	type = type("tp", (), {"name": "normal"})
-	name = "Struggle"
-	stat_changes = []
-	effect_chance = None
-	meta = type("meta", (), {"ailment": type("al", (), {"name": "none"}), "ailment_chance": 0, "flinch_chance": 0, "drain": 0, "recoil": 0, "min_hits": 1, "max_hits": 1, "healing": 0})
+    power = 50
+    accuracy = None
+    priority = 0
+    damage_class = type("dc", (), {"name": "physical"})
+    type = type("tp", (), {"name": "normal"})
+    name = "Struggle"
+    stat_changes = []
+    effect_chance = None
+    meta = _Meta()
 
 class _FakeMove:
-	def __init__(self, name="Tackle", power=40, accuracy=100, priority=0, dmg="physical", type_name="normal"):
-		self.name = name
-		self.power = power
-		self.accuracy = accuracy
-		self.priority = priority
-		self.damage_class = type("dc", (), {"name": dmg})
-		self.type = type("tp", (), {"name": type_name})
-		self.stat_changes = []
-		self.effect_chance = None
-		self.meta = type("meta", (), {"ailment": type("al", (), {"name": "none"}), "ailment_chance": 0, "flinch_chance": 0, "drain": 0, "recoil": 0, "min_hits": 1, "max_hits": 1, "healing": 0})
+    def __init__(self, name="Tackle", power=40, accuracy=100, priority=0, dmg="physical", type_name="normal"):
+        self.name = name
+        self.power = power
+        self.accuracy = accuracy
+        self.priority = priority
+        self.damage_class = type("dc", (), {"name": dmg})
+        self.type = type("tp", (), {"name": type_name})
+        self.stat_changes = []
+        self.effect_chance = None
+        self.meta = _Meta()
 
 class BattlePokemon:
 	def __init__(self, raw: Dict[str, Any], pokeapi_data: aiopoke.Pokemon):
@@ -721,3 +733,4 @@ class WildBattleView(discord.ui.View):
 				item.disabled = True
 		if success:
 			await self.battle.interaction.channel.send("🎉 Captura realizada!")
+
