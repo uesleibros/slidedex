@@ -25,7 +25,7 @@ class BattlePokemon:
 		self.current_hp = raw.get("current_hp") or self.stats["hp"]
 		self.moves = raw.get("moves", [])
 		self.pokeapi_data = pokeapi_data
-		self.is_shiny = raw.get("shiny", False)
+		self.is_shiny = raw.get("is_shiny", False)
 
 		if self.is_shiny:
 			self.sprites = {
@@ -88,3 +88,4 @@ class WildBattle:
 		embed.set_image(url="attachment://battle.png")
 
 		return embed, file
+
