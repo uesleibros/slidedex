@@ -136,7 +136,17 @@ class WildBattle:
 			elif ail_name=="paralysis" and "ground" not in tt: applied=target.set_status("paralysis")
 			elif ail_name=="sleep": applied=target.set_status("sleep")
 			elif ail_name=="confusion": target.volatile["confuse"]=max(target.volatile["confuse"], random.randint(2,4)); applied=True
-			if applied: out.append(f"O alvo {{'burn':'foi queimado','poison':'envenenado','paralysis':'paralisado','sleep':'adormeceu','freeze':'congelado','confusion':'ficou confuso'}[ail_name]}!")
+			if applied:
+				status_texts = {
+					'burn': 'foi queimado',
+					'poison': 'foi envenenado',
+					'paralysis': 'ficou paralisado',
+					'sleep': 'adormeceu',
+					'freeze': 'foi congelado',
+					'confusion': 'ficou confuso'
+				}
+				text = status_texts.get(ail_name, "sofreu um efeito desconhecido")
+				out.append(f"O alvo {text}!")
 		return out
 	async def _calc_damage(self, attacker: BattlePokemon, defender: BattlePokemon, move):
 		power = int(getattr(move, "power", 0) or 0)
@@ -317,3 +327,4 @@ class WildBattleView(discord.ui.View):
 		if str(i.user.id)!=self.user_id or self.battle.ended: return
 		if self.force_switch_mode or self.player_active.fainted: return await i.response.send_message("Troque de Pokémon!",ephemeral=True)
 		await i.response.defer(); await self.battle.attempt_capture()
+
