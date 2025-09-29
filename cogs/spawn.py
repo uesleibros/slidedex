@@ -35,7 +35,8 @@ class BattleView(discord.ui.View):
 
 		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
 		await battle.setup()
-		await battle.render_embed()
+		#await battle.render_embed()
+		await battle.start()
 
 		await interaction.message.edit(view=self)
 		self.stop()
@@ -110,6 +111,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
