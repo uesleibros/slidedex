@@ -8,6 +8,7 @@ from utils.pokemon_emojis import get_app_emoji
 from utils.spawn_text import get_spawn_text
 from utils.canvas import compose_pokemon_async
 from pokemon_sdk.battle.wild import WildBattle
+from pokemon_sdk.constants import SHINY_ROLL
 
 class BattleView(discord.ui.View):
 	def __init__(self, author: discord.Member, wild_data: dict, timeout: float = 60.0):
@@ -47,9 +48,8 @@ class Spawn(commands.Cog):
 	@commands.command(name="spawn", aliases=["sp"])
 	async def spawn_command(self, ctx: commands.Context) -> None:
 		is_shiny = False
-		shiny_rate = 8192
 		
-		if random.randint(1, shiny_rate) == 1:
+		if random.randint(1, SHINY_ROLL) == 1:
 			is_shiny = True
 			
 		pokemon_query = str(random.randint(1, 386))
@@ -110,6 +110,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
