@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
 
@@ -15,7 +15,10 @@ class PokeAPIService:
 
 	async def get_pokemon(self, species_id: int):
 		return await self.client.get_pokemon(species_id)
-
+	
+	async def get_move(self, move_id: Union[str, int]):
+		return await self.client.get_move(move_id)
+	
 	async def get_species(self, species_id: int):
 		return await self.client.get_pokemon_species(species_id)
 
@@ -60,3 +63,4 @@ class PokeAPIService:
 
 	async def close(self):
 		await self.client.close()
+
