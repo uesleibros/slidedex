@@ -120,7 +120,4 @@ class WildBattle:
 		)
 		embed.set_image(url="attachment://battle.png")
 
-		await interaction.response.send(embed=embed, file=file, view=WildBattleView(self.user_id, self.wild_raw))
-
-
-
+		await self.interaction.response.send(embed=embed, file=file, view=WildBattleView(self.user_id, self.wild_raw))
