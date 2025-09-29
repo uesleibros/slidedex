@@ -39,7 +39,9 @@ class BattlePokemon:
 			}
 
 class WildBattle:
-	def __init__(self, player_party: List[Dict[str, Any]], wild: Dict[str, Any]) -> None:
+	def __init__(self, player_party: List[Dict[str, Any]], wild: Dict[str, Any], user_id: str, interaction: discord.Interaction) -> None:
+		self.user_id = user_id
+		self.interaction = interaction
 		self.player_party = player_party
 		self.active_player_idx = 0
 		self.wild_raw = wild
@@ -88,4 +90,5 @@ class WildBattle:
 		embed.set_image(url="attachment://battle.png")
 
 		return embed, file
+
 
