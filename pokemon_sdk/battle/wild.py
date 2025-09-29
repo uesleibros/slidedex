@@ -475,7 +475,7 @@ class WildBattleView(discord.ui.View):
 	def __init__(self, battle: WildBattle, timeout=60.0) -> None:
 		super().__init__(timeout=timeout)
 		self.battle = battle
-	 self.user_id = battle.user_id
+		self.user_id = battle.user_id
 		self.force_switch_mode = False
 
 	@discord.ui.button(style=discord.ButtonStyle.primary, emoji="⚔️", label="Lutar")
@@ -510,3 +510,4 @@ class WildBattleView(discord.ui.View):
 		await self.battle.refresh()
 		if success:
 			await self.battle.interaction.channel.send("🎉 Captura realizada!")
+
