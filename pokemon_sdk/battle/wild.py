@@ -30,7 +30,7 @@ class WildBattleView(discord.ui.View):
 		
 		if roll <= base_chance:
 			xp_gain = pm.repo.tk.calc_battle_exp(self.active_poke["level"], self.wild_data["level"])
-			pm.repo.tk.add_exp(user_id, self.active_poke["id"], xp_gain)
+			pm.repo.tk.add_exp(self.user_id, self.active_poke["id"], xp_gain)
 			pm.repo.tk.add_pokemon(
 				owner_id=self.user_id,
 				species_id=self.wild_data["species_id"],
@@ -140,4 +140,5 @@ class WildBattle:
 		embed.set_image(url="attachment://battle.png")
 
 		await self.interaction.channel.send(embed=embed, file=file, view=WildBattleView(self.user_id, self.wild_raw, self.player_party[self.active_player_idx]))
+
 
