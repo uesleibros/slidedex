@@ -27,9 +27,8 @@ class BattleView(discord.ui.View):
 		player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
 		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
 		await battle.setup()
-		embed, file = await battle.render_embed()
+		await battle.render_embed()
 
-		await interaction.channel.send(embed=embed, file=file)
 		await interaction.message.edit(view=self)
 		self.stop()
 
@@ -92,6 +91,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
