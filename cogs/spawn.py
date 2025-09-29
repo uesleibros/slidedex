@@ -25,7 +25,7 @@ class BattleView(discord.ui.View):
 			item.disabled = True
 
 		player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
-		battle = WildBattle(player_party, self.wild_data)
+		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
 		await battle.setup()
 		embed, file = await battle.render_embed()
 
@@ -92,6 +92,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
