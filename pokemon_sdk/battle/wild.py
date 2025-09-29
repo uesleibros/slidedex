@@ -9,11 +9,11 @@ from utils.preloaded import preloaded_textures
 from utils.pokemon_emojis import get_app_emoji
 
 class WildBattleView(discord.ui.View):
-	def __init__(self, user_id: str, wild_data: dict, timeout=60.0) -> None:
+	def __init__(self, user_id: str, wild_data: dict, active_poke: dict, timeout=60.0) -> None:
 		super().__init__(timeout=timeout)
 		self.user_id = user_id
+		self.active_poke = active_poke
 		self.wild_data = wild_data
-	
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:PokeBall:1345558169090265151>")
 	async def capture_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != str(self.user_id):
@@ -28,7 +28,8 @@ class WildBattleView(discord.ui.View):
 		poke_emoji = get_app_emoji(f"p_{self.wild_data['species_id']}")
 		
 		if roll <= base_chance:
-			await interaction.response.send_message(f"{interaction.user.mention} capturou {poke_emoji} **{self.wild_data['name'].capitalize()}** (Lv {level}) com sucesso!")
+			xp_gain = pm.repo.tk.calc_battle_exp(self.active_poke["level"], self.wild_data["level"])
+			await interaction.response.send_message(f"{interaction.user.mention} capturou {poke_emoji} **{self.wild_data['name'].capitalize()}** (Lv {level}) com sucesso!\nAproveitando seu Pokémon recebeu **{xp_gain}** de XP.")
 		else:
 			await interaction.response.send_message(f"💨 O {poke_emoji} **{self.wild_data['name'].capitalize()}** escapou!")
 		
@@ -120,4 +121,4 @@ class WildBattle:
 		)
 		embed.set_image(url="attachment://battle.png")
 
-		await self.interaction.response.send(embed=embed, file=file, view=WildBattleView(self.user_id, self.wild_raw))
+		await self.interaction.channel.send(embed=embed, file=file, view=WildBattleView(self.user_id, self.wild_raw, self.player_party[self.active_player_idx]))
