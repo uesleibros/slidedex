@@ -25,10 +25,18 @@ class BattlePokemon:
 		self.current_hp = raw.get("current_hp") or self.stats["hp"]
 		self.moves = raw.get("moves", [])
 		self.pokeapi_data = pokeapi_data
-		self.sprites = {
-			"front": pokeapi_data.sprites.front_default,
-			"back": pokeapi_data.sprites.back_default
-		}
+		self.is_shiny = raw.get("shiny", False)
+
+		if self.is_shiny:
+			self.sprites = {
+				"front": pokeapi_data.sprites.front_shiny,
+				"back": pokeapi_data.sprites.back_shiny
+			}
+		else:
+			self.sprites = {
+				"front": pokeapi_data.sprites.front_default,
+				"back": pokeapi_data.sprites.back_default
+			}
 
 class WildBattle:
 	def __init__(self, player_party: List[Dict[str, Any]], wild: Dict[str, Any]) -> None:
@@ -78,4 +86,5 @@ class WildBattle:
 			color=discord.Color.green()
 		)
 		embed.set_image(url="attachment://battle.png")
+
 		return embed, file
