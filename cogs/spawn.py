@@ -19,7 +19,7 @@ class BattleView(discord.ui.View):
 	async def battle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 		try:
 			player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
-		else:
+		except ValueError:
 			player_party = None
 			
 		if not player_party:
@@ -72,7 +72,7 @@ class Spawn(commands.Cog):
 
 		try:
 			player_party = pm.repo.tk.get_user_party(str(ctx.author.id))
-		except:
+		except ValueError:
 			player_party = None
 			
 		if player_party:
@@ -110,6 +110,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
