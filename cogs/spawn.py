@@ -17,7 +17,11 @@ class BattleView(discord.ui.View):
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⚔️")
 	async def battle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-		player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
+		try:
+			player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
+		else:
+			player_party = None
+			
 		if not player_party:
 			return await interaction.response.send_message("Você não tem nenhum Pokémon na sua party!", ephemeral=True)
 			
@@ -66,7 +70,11 @@ class Spawn(commands.Cog):
 		sprite = poke.sprites.front_shiny if is_shiny and poke.sprites.front_shiny else poke.sprites.front_default
 		sprite_bytes = await sprite.read() if sprite else None
 
-		player_party = pm.repo.tk.get_user_party(str(ctx.author.id))
+		try:
+			player_party = pm.repo.tk.get_user_party(str(ctx.author.id))
+		except:
+			player_party = None
+			
 		if player_party:
 			active_level = player_party[0]["level"]
 			min_level = max(2, active_level - 5)
@@ -102,6 +110,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
