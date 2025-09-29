@@ -3,4 +3,5 @@ Pillow
 aiopokeapi
 curl_cffi
 psutil
+git+https://github.com/oliver-ni/Flag-Parsing.git
 python-dotenv

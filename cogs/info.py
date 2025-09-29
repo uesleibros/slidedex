@@ -74,8 +74,8 @@ class Info(commands.Cog):
 		iv_total = sum(user_pokemon["ivs"].values())
 		iv_percent = round((iv_total / 186) * 100, 2)
 
-		name_display = user_pokemon.get("nickname") or user_pokemon.get("name").title()
-		title = f"Level {user_pokemon['level']} {name_display} {'✨' if user_pokemon['is_shiny'] else ''}"
+		name_display =  user_pokemon.get("name").title()
+		title = f"Level {user_pokemon['level']} {name_display}#{user_pokemon.get("species_id")} {'✨' if user_pokemon['is_shiny'] else ''}"
 		
 		sprite_to_use = pokemon.sprites.front_shiny if user_pokemon['is_shiny'] else pokemon.sprites.front_default
 		sprite_bytes = await sprite_to_use.read() if sprite_to_use else None
