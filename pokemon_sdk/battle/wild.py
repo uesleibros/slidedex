@@ -193,7 +193,7 @@ class WildBattle:
 		]
 		
 		if self.lines:
-			desc_parts.append("```")
+			desc_parts.append("```ansi")
 			desc_parts.extend(self.lines)
 			desc_parts.append("```")
 		
@@ -262,7 +262,7 @@ class WildBattle:
 		if status == "sleep":
 			if counter > 1:
 				user.status["counter"] -= 1
-				return True, [f"💤 {user.display_name} está dormindo profundamente... (resta {user.status['counter']} turno(s))"]
+				return True, [f"💤 {user.display_name} está dormindo... (resta {user.status['counter']} turno(s))"]
 			user.status = {"name": None, "counter": 0}
 			return False, [f"👁️ {user.display_name} acordou!"]
 		
@@ -270,7 +270,7 @@ class WildBattle:
 			if random.random() < 0.2:
 				user.status = {"name": None, "counter": 0}
 				return False, [f"🔥 {user.display_name} descongelou!"]
-			return True, [f"❄️ {user.display_name} está congelado sólido e não pode se mover!"]
+			return True, [f"❄️ {user.display_name} está congelado e não pode se mover!"]
 		
 		if status == "paralysis" and random.random() < 0.25:
 			return True, [f"⚡ {user.display_name} está paralisado e não consegue se mover!"]
@@ -292,11 +292,33 @@ class WildBattle:
 			base = (((2 * user.level / 5) + 2) * 40 * (atk / max(1, df))) / 50 + 2
 			dmg = max(1, int(base * random.uniform(0.85, 1.0)))
 			user.take_damage(dmg)
-			return True, [f"😵 {user.display_name} está confuso e se atingiu, causando {dmg} de dano a si mesmo!"]
+			return True, [f"😵 {user.display_name} está confuso e se atingiu causando {dmg} de dano!"]
 		
 		return False, [f"😵 {user.display_name} está confuso... (resta {user.volatile['confuse']} turno(s))"]
 
-	def _apply_stat_change(self, target: BattlePokemon, stat: str, stages: int) -> Optional[str]:
+	def _describe_stat_change(self, target: BattlePokemon, stat: str, stages: int, is_opponent: bool) -> str:
+		stat_desc = {
+			"atk": ("Ataque", "atacar mais forte", "atacar mais fraco"),
+			"def": ("Defesa", "resistir mais", "resistir menos"),
+			"sp_atk": ("Ataque Especial", "usar golpes especiais mais fortes", "usar golpes especiais mais fracos"),
+			"sp_def": ("Defesa Especial", "resistir a golpes especiais", "ser mais vulnerável a golpes especiais"),
+			"speed": ("Velocidade", "agir mais rápido", "agir mais devagar"),
+			"accuracy": ("Precisão", "acertar mais golpes", "errar mais golpes"),
+			"evasion": ("Evasão", "desviar mais facilmente", "desviar com mais dificuldade")
+		}
+		
+		name, up_desc, down_desc = stat_desc.get(stat, ("Status", "melhorar", "piorar"))
+		
+		if stages > 0:
+			magnitude = "muito" if abs(stages) >= 2 else "um pouco"
+			pronoun = "do oponente" if is_opponent else "de si mesmo"
+			return f"🔵 Reduziu o {name} {pronoun}! Agora vai {down_desc if is_opponent else up_desc} {magnitude}."
+		else:
+			magnitude = "muito" if abs(stages) >= 2 else "um pouco"
+			pronoun = "do oponente" if is_opponent else "de si mesmo"
+			return f"🔴 Aumentou o {name} {pronoun}! Agora vai {up_desc if is_opponent else down_desc} {magnitude}."
+
+	def _apply_stat_change(self, target: BattlePokemon, stat: str, stages: int, is_user: bool) -> Optional[str]:
 		stat_map = {
 			"attack": "atk",
 			"defense": "def",
@@ -318,33 +340,106 @@ class WildBattle:
 		
 		if target.stages[mapped_stat] == old:
 			if old == 6 and stages > 0:
-				return f"📊 {target.display_name}: {STAT_NAMES[mapped_stat]} não pode aumentar mais!"
+				return f"💢 O {STAT_NAMES[mapped_stat]} de {target.display_name} já está no máximo!"
 			elif old == -6 and stages < 0:
-				return f"📊 {target.display_name}: {STAT_NAMES[mapped_stat]} não pode diminuir mais!"
+				return f"💢 O {STAT_NAMES[mapped_stat]} de {target.display_name} já está no mínimo!"
 			return None
 		
 		change = target.stages[mapped_stat] - old
 		arrow = "↑" * abs(change) if change > 0 else "↓" * abs(change)
-		verb = "aumentou" if change > 0 else "diminuiu"
 		
-		return f"📊 {target.display_name}: {STAT_NAMES[mapped_stat]} {verb} {arrow} (estágio: {target.stages[mapped_stat]:+d})"
+		if change > 0:
+			level = "drasticamente" if abs(change) >= 2 else "levemente"
+			return f"📈 {STAT_NAMES[mapped_stat]} de {target.display_name} aumentou {level} {arrow}"
+		else:
+			level = "drasticamente" if abs(change) >= 2 else "levemente"
+			return f"📉 {STAT_NAMES[mapped_stat]} de {target.display_name} diminuiu {level} {arrow}"
 
 	def _apply_status_effect(self, target: BattlePokemon, effect_type: str) -> Optional[str]:
 		tt = _types_of(target)
-		can_apply = True
 		
-		if effect_type == "burn" and "fire" in tt:
-			return f"🔥 {target.display_name} é do tipo Fogo e não pode ser queimado!"
-		elif effect_type == "poison" and ("steel" in tt or "poison" in tt):
-			return f"☠️ {target.display_name} é imune a veneno!"
-		elif effect_type == "freeze" and "ice" in tt:
-			return f"❄️ {target.display_name} é do tipo Gelo e não pode ser congelado!"
+		immunity_checks = {
+			"burn": ("fire", f"💢 {target.display_name} é do tipo Fogo e não pode ser queimado!"),
+			"poison": (["steel", "poison"], f"💢 {target.display_name} é imune a veneno!"),
+			"freeze": ("ice", f"💢 {target.display_name} é do tipo Gelo e não pode ser congelado!")
+		}
+		
+		if effect_type in immunity_checks:
+			immune_types, message = immunity_checks[effect_type]
+			immune_types = [immune_types] if isinstance(immune_types, str) else immune_types
+			if any(t in tt for t in immune_types):
+				return message
 		
 		if target.set_status(effect_type):
-			icon = {"burn": "🔥", "poison": "☠️", "paralysis": "⚡", "sleep": "💤", "freeze": "❄️", "toxic": "☠️☠️"}
-			return f"{icon.get(effect_type, '💫')} {target.display_name} {STATUS_MESSAGES[effect_type]}!"
+			descriptions = {
+				"burn": (f"🔥 {target.display_name} foi queimado!", "Vai sofrer dano a cada turno e ter seu Ataque reduzido!"),
+				"poison": (f"☠️ {target.display_name} foi envenenado!", "Vai sofrer dano a cada turno!"),
+				"toxic": (f"☠️☠️ {target.display_name} foi gravemente envenenado!", "Vai sofrer dano crescente a cada turno!"),
+				"paralysis": (f"⚡ {target.display_name} foi paralisado!", "Sua Velocidade foi reduzida e pode não conseguir agir!"),
+				"sleep": (f"💤 {target.display_name} adormeceu!", "Não poderá agir por alguns turnos!"),
+				"freeze": (f"❄️ {target.display_name} foi congelado!", "Não poderá agir até descongelar!")
+			}
+			
+			main, desc = descriptions.get(effect_type, (f"💫 {target.display_name} foi afetado!", ""))
+			return f"{main}\n   └─ {desc}" if desc else main
 		
 		return f"💢 {target.display_name} já está afetado por outro status!"
+
+	def _describe_move_effect(self, move_name: str, effect_data: Dict[str, Any]) -> Optional[str]:
+		effects = effect_data.get("effects", [])
+		if not effects:
+			return None
+		
+		descriptions = []
+		
+		for effect in effects:
+			eff_type = effect.get("type")
+			target = effect.get("target", "opponent")
+			chance = effect.get("chance", 100)
+			
+			target_text = "si mesmo" if target == "self" else "o oponente"
+			chance_text = f" ({chance}% de chance)" if chance < 100 else ""
+			
+			if eff_type == "stat_change":
+				stat = effect.get("stat")
+				stages = effect.get("stages", 0)
+				stat_name = STAT_NAMES.get(stat, stat).lower()
+				
+				if stages > 0:
+					descriptions.append(f"📈 Aumenta {stat_name} de {target_text}{chance_text}")
+				else:
+					descriptions.append(f"📉 Diminui {stat_name} de {target_text}{chance_text}")
+			
+			elif eff_type in ["burn", "poison", "paralysis", "sleep", "freeze", "toxic"]:
+				status_names = {
+					"burn": "queima",
+					"poison": "envenena",
+					"toxic": "envenena gravemente",
+					"paralysis": "paralisa",
+					"sleep": "faz dormir",
+					"freeze": "congela"
+				}
+				descriptions.append(f"💫 Pode {status_names.get(eff_type, 'afetar')} {target_text}{chance_text}")
+			
+			elif eff_type == "confusion":
+				descriptions.append(f"😵 Pode confundir {target_text}{chance_text}")
+			
+			elif eff_type == "flinch":
+				descriptions.append(f"💨 Pode fazer {target_text} recuar{chance_text}")
+			
+			elif eff_type == "heal":
+				amount = int(effect.get("amount", 0.5) * 100)
+				descriptions.append(f"💚 Recupera {amount}% do HP")
+		
+		if effect_data.get("recoil"):
+			recoil = int(effect_data["recoil"] * 100)
+			descriptions.append(f"💥 Usuário sofre {recoil}% do dano como recuo")
+		
+		if effect_data.get("drain"):
+			drain = int(effect_data["drain"] * 100)
+			descriptions.append(f"💉 Drena {drain}% do dano causado")
+		
+		return "\n   └─ " + "\n   └─ ".join(descriptions) if descriptions else None
 
 	def _apply_effect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage_dealt: int) -> List[str]:
 		lines = []
@@ -360,7 +455,7 @@ class WildBattle:
 		if eff_type == "stat_change":
 			stat = effect.get("stat")
 			stages = effect.get("stages", 0)
-			result = self._apply_stat_change(actual_target, stat, stages)
+			result = self._apply_stat_change(actual_target, stat, stages, tgt_type == "self")
 			if result:
 				lines.append(result)
 
@@ -371,7 +466,7 @@ class WildBattle:
 
 		elif eff_type == "confusion":
 			actual_target.volatile["confuse"] = max(actual_target.volatile["confuse"], random.randint(2, 4))
-			lines.append(f"😵 {actual_target.display_name} ficou confuso!")
+			lines.append(f"😵 {actual_target.display_name} ficou confuso!\n   └─ Pode atacar a si mesmo nos próximos turnos!")
 
 		elif eff_type == "flinch":
 			actual_target.volatile["flinch"] = True
@@ -470,12 +565,13 @@ class WildBattle:
 				first_tm, first_crit = tm, crit
 			
 			if tm == 0.0:
-				lines.append(f"🚫 {user.display_name} usou **{md.name}**! Não teve efeito em {target.display_name}.")
+				lines.append(f"🚫 {user.display_name} usou **{md.name}**!")
+				lines.append(f"   └─ Não teve efeito em {target.display_name}...")
 				return lines
 
 			if target.status["name"] == "freeze" and md.type_name.lower() == "fire" and dmg > 0:
 				target.status = {"name": None, "counter": 0}
-				lines.append(f"🔥 {target.display_name} descongelou com o calor do ataque!")
+				lines.append(f"🔥 O calor derreteu o gelo! {target.display_name} descongelou!")
 
 			actual = target.take_damage(dmg)
 			total_damage += actual
@@ -483,26 +579,29 @@ class WildBattle:
 			if target.fainted:
 				break
 
-		parts = [f"⚔️ {user.display_name} usou **{md.name}**!"]
+		main_line = f"⚔️ {user.display_name} usou **{md.name}**!"
 		
 		if total_damage > 0:
-			parts.append(f"Causou **{total_damage} de dano** em {target.display_name}.")
+			main_line += f" Causou **{total_damage} de dano**!"
 		
+		lines.append(main_line)
+		
+		effect_desc = self._describe_move_effect(md.name, effect_data)
+		if effect_desc and not lines[0].endswith("!"):
+			lines.append(effect_desc)
+		
+		details = []
 		if hits > 1:
-			parts.append(f"Acertou **{hits} vezes**!")
-		
-		effects = []
+			details.append(f"🎯 Acertou **{hits} vezes**")
 		if first_crit:
-			effects.append("💥 **CRÍTICO**")
+			details.append(f"💥 **CRÍTICO**")
 		if first_tm > 1.0:
-			effects.append("✨ **Super eficaz**")
+			details.append(f"✨ **Super eficaz**")
 		elif 0 < first_tm < 1.0:
-			effects.append("💢 Não muito eficaz")
+			details.append(f"💢 Não muito eficaz")
 		
-		if effects:
-			parts.append(" • ".join(effects) + "!")
-		
-		lines.append(" ".join(parts))
+		if details:
+			lines.append("   └─ " + " • ".join(details))
 
 		if target.fainted:
 			lines.append(f"💀 **{target.display_name} foi derrotado!**")
@@ -521,6 +620,10 @@ class WildBattle:
 	async def _apply_status_move(self, user: BattlePokemon, target: BattlePokemon, md: MoveData, effect_data: Dict[str, Any]) -> List[str]:
 		lines = [f"✨ {user.display_name} usou **{md.name}**!"]
 		changed = False
+		
+		effect_desc = self._describe_move_effect(md.name, effect_data)
+		if effect_desc:
+			lines.append(effect_desc)
 
 		for effect in effect_data.get("effects", []):
 			result = self._apply_effect(user, target, effect, 0)
@@ -529,7 +632,7 @@ class WildBattle:
 				lines.extend(result)
 
 		if not changed and not effect_data.get("effects"):
-			lines.append("💢 Mas não surtiu efeito.")
+			lines.append("💢 Mas não surtiu efeito...")
 
 		return lines
 
@@ -543,16 +646,16 @@ class WildBattle:
 			if status == "burn":
 				d = max(1, p.stats["hp"] // 16)
 				actual = p.take_damage(d)
-				lines.append(f"🔥 {prefix} {p.display_name} sofreu {actual} de dano da queimadura.")
+				lines.append(f"🔥 {prefix} {p.display_name} sofreu {actual} de dano da queimadura")
 			elif status == "poison":
 				d = max(1, p.stats["hp"] // 8)
 				actual = p.take_damage(d)
-				lines.append(f"☠️ {prefix} {p.display_name} sofreu {actual} de dano do envenenamento.")
+				lines.append(f"☠️ {prefix} {p.display_name} sofreu {actual} de dano do envenenamento")
 			elif status == "toxic":
 				p.status["counter"] += 1
 				d = max(1, (p.stats["hp"] // 16) * p.status["counter"])
 				actual = p.take_damage(d)
-				lines.append(f"☠️☠️ {prefix} {p.display_name} sofreu {actual} de dano do envenenamento grave! (nível {p.status['counter']})")
+				lines.append(f"☠️☠️ {prefix} {p.display_name} sofreu {actual} de dano do envenenamento grave (nível {p.status['counter']})")
 			
 			if p.fainted:
 				lines.append(f"💀 **{p.display_name} foi derrotado pelo status!**")
@@ -582,6 +685,8 @@ class WildBattle:
 			if self.ended:
 				return
 
+			self.lines = []
+
 			pmd = await self._fetch_move(move_id)
 			eid = self._enemy_pick()
 			
@@ -600,31 +705,29 @@ class WildBattle:
 			else:
 				order = random.choice([["player", "enemy"], ["enemy", "player"]])
 
-			lines = [f"━━━━━━━━━━━━━━━━━━━━"]
-			
 			for side in order:
 				if self.player_active.fainted or self.wild.fainted:
 					break
 
 				if side == "player":
-					lines.extend(await self._act(True, move_id, pmd))
+					self.lines.extend(await self._act(True, move_id, pmd))
 					if self.wild.fainted:
 						await self._on_win()
-						self.lines = lines
 						await self.refresh()
 						return
 				else:
-					lines.extend(await self._act(False, eid, emd))
+					if self.lines:
+						self.lines.append("")
+					self.lines.extend(await self._act(False, eid, emd))
 					if self.player_active.fainted:
 						await self._on_faint()
-						self.lines = lines
 						await self.refresh()
 						return
 
 			end_turn = self._end_of_turn()
 			if end_turn:
-				lines.append("━━━━━━━━━━━━━━━━━━━━")
-				lines.extend(end_turn)
+				self.lines.append("")
+				self.lines.extend(end_turn)
 
 			if self.wild.fainted:
 				await self._on_win()
@@ -634,7 +737,6 @@ class WildBattle:
 			if not self.ended:
 				self.turn += 1
 
-			self.lines = lines
 			await self.refresh()
 
 	async def switch_active(self, new_index: int, consume_turn: bool = True):
@@ -644,28 +746,30 @@ class WildBattle:
 			if not (0 <= new_index < len(self.player_team)) or self.player_team[new_index].fainted:
 				return
 
+			self.lines = []
 			old_name = self.player_active.display_name
 			self.active_player_idx = new_index
 			self.must_redraw_image = True
-			lines = [
-				f"━━━━━━━━━━━━━━━━━━━━",
+			
+			self.lines.extend([
 				f"🔄 {old_name} voltou!",
 				f"🔵 Vamos lá, {self.player_active.display_name}!"
-			]
+			])
 
 			if consume_turn:
+				self.lines.append("")
 				eid = self._enemy_pick()
 				if eid != "__struggle__":
 					emd = await self._fetch_move(eid)
 				else:
 					emd = MoveData("Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, [])
 				
-				lines.extend(await self._act(False, eid, emd))
+				self.lines.extend(await self._act(False, eid, emd))
 				
 				end_turn = self._end_of_turn()
 				if end_turn:
-					lines.append("━━━━━━━━━━━━━━━━━━━━")
-					lines.extend(end_turn)
+					self.lines.append("")
+					self.lines.extend(end_turn)
 
 				if self.player_active.fainted:
 					await self._on_faint()
@@ -673,7 +777,6 @@ class WildBattle:
 				if not self.ended:
 					self.turn += 1
 
-			self.lines = lines
 			await self.refresh()
 
 	def _gen3_capture(self) -> Tuple[bool, int]:
@@ -740,7 +843,7 @@ class WildBattle:
 			self.lines = [
 				f"🎉 **CAPTURA BEM-SUCEDIDA!**",
 				f"✨ {self.wild.display_name} foi capturado!",
-				f"⭐ {self.player_active.display_name} ganhou {xp} XP de experiência!"
+				f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
 			]
 			if self.actions_view:
 				self.actions_view.disable_all()
@@ -750,13 +853,10 @@ class WildBattle:
 			)
 			return True
 		else:
-			shake_text = ""
-			if shakes > 0:
-				shake_text = f"A Pokébola balançou {'🔴 ' * shakes}**{shakes}x**... "
-			lines = [
-				f"━━━━━━━━━━━━━━━━━━━━",
-				f"💢 {shake_text}mas {self.wild.display_name} escapou!"
-			]
+			self.lines = []
+			shake_text = f"🔴 {'🔴 ' * shakes}" if shakes > 0 else ""
+			self.lines.append(f"💢 {shake_text}Pokébola balançou {shakes}x... {self.wild.display_name} escapou!")
+			self.lines.append("")
 			
 			eid = self._enemy_pick()
 			if eid != "__struggle__":
@@ -764,12 +864,12 @@ class WildBattle:
 			else:
 				emd = MoveData("Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, [])
 			
-			lines.extend(await self._act(False, eid, emd))
+			self.lines.extend(await self._act(False, eid, emd))
 			
 			end_turn = self._end_of_turn()
 			if end_turn:
-				lines.append("━━━━━━━━━━━━━━━━━━━━")
-				lines.extend(end_turn)
+				self.lines.append("")
+				self.lines.extend(end_turn)
 
 			if self.player_active.fainted:
 				await self._on_faint()
@@ -777,7 +877,6 @@ class WildBattle:
 			if not self.ended:
 				self.turn += 1
 
-			self.lines = lines
 			await self.refresh()
 			return False
 
@@ -785,12 +884,11 @@ class WildBattle:
 		xp = pm.repo.tk.calc_battle_exp(self.player_active.level, self.wild.level)
 		pm.repo.tk.add_exp(self.user_id, self.player_party_raw[self.active_player_idx]["id"], xp)
 		self.ended = True
-		self.lines = [
-			f"━━━━━━━━━━━━━━━━━━━━",
-			f"💀 {self.wild.display_name} selvagem foi derrotado!",
+		self.lines.extend([
+			"",
 			f"🏆 **VITÓRIA!**",
-			f"⭐ {self.player_active.display_name} ganhou {xp} XP de experiência!"
-		]
+			f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
+		])
 		if self.actions_view:
 			self.actions_view.disable_all()
 		await self.refresh()
@@ -803,22 +901,21 @@ class WildBattle:
 		
 		if not alive:
 			self.ended = True
-			self.lines = [
-				f"━━━━━━━━━━━━━━━━━━━━",
-				f"💀 Todos os seus Pokémon foram derrotados!",
-				f"😔 **DERROTA...**"
-			]
+			self.lines.extend([
+				"",
+				f"😔 **DERROTA...**",
+				f"Todos os seus Pokémon foram derrotados!"
+			])
 			if self.actions_view:
 				self.actions_view.disable_all()
 			await self.refresh()
 			await self.interaction.channel.send("💀 **Você foi derrotado...** Todos os seus Pokémon desmaiaram.")
 			return
 
-		self.lines = [
-			f"━━━━━━━━━━━━━━━━━━━━",
-			f"💀 {self.player_active.display_name} foi derrotado!",
-			f"⚠️ Escolha outro Pokémon para continuar a batalha!"
-		]
+		self.lines.extend([
+			"",
+			f"⚠️ Escolha outro Pokémon para continuar!"
+		])
 		if self.actions_view:
 			self.actions_view.force_switch_mode = True
 
