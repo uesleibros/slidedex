@@ -1,6 +1,6 @@
 from typing import Optional, Dict, List, Tuple, Any
 from pokemon_sdk.constants import STAT_ALIASES, TYPE_CHART
-from .wild import WildBattle
+from pokemon_sdk.battle.wild import WildBattle
 import discord
 
 class MovesView(discord.ui.View):
