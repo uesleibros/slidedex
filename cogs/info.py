@@ -75,7 +75,7 @@ class Info(commands.Cog):
 		iv_percent = round((iv_total / 186) * 100, 2)
 
 		name_display =  user_pokemon.get("name").title()
-		title = f"Level {user_pokemon['level']} {name_display}#{user_pokemon.get("species_id")} {'✨' if user_pokemon['is_shiny'] else ''}"
+		title = f"Level {user_pokemon['level']} {name_display} {'✨' if user_pokemon['is_shiny'] else ''}"
 		
 		sprite_to_use = pokemon.sprites.front_shiny if user_pokemon['is_shiny'] else pokemon.sprites.front_default
 		sprite_bytes = await sprite_to_use.read() if sprite_to_use else None
@@ -85,15 +85,6 @@ class Info(commands.Cog):
 			buffer = await compose_pokemon_async(sprite_bytes, preloaded_info_backgrounds[user_pokemon['background']])
 			img_file = discord.File(buffer, filename="pokemon.png")
 			files.append(img_file)
-
-		cry_url = pokemon.cries.latest
-		if cry_url:
-			async with requests.AsyncSession() as session:
-				resp = await session.get(cry_url)
-				if resp.status_code == 200:
-					cry_ext = "ogg" if cry_url.endswith(".ogg") else "wav"
-					cry_file = discord.File(io.BytesIO(resp.content), filename=f"cry.{cry_ext}")
-					files.append(cry_file)
 
 		stats_lines = [f"**{STAT_LABELS[key]}:** {stats[key]} (IV {user_pokemon['ivs'].get(key, 0)})" for key in STAT_KEYS]
 		stats_lines[0] = f"**HP:** {current_hp}/{stats['hp']} (IV {user_pokemon['ivs'].get('hp', 0)})"
@@ -112,7 +103,7 @@ class Info(commands.Cog):
 		future_moves_lines = [f"**Lv. {lvl}:** {name.replace('-', ' ').title()}" for lvl, name in future_moves[:5]]
 
 		embed = discord.Embed(title=title, color=discord.Color.blurple())
-		embed.add_field(name="Detalhes", value=(f"**XP:** {user_pokemon['exp']}\n**Natureza:** {user_pokemon['nature']}\n**Gênero:** {user_pokemon.get('gender','N/A')}\n**Habilidade:** {str(user_pokemon.get('ability') or '-').title()}\n**Tipos:** {' / '.join(t.type.name.title() for t in sorted(pokemon.types, key=lambda x: x.slot))}\n**Item:** {str(user_pokemon.get('held_item') or '-').title()}"), inline=False)
+		embed.add_field(name="Detalhes", value=(f"**ID da Espécie:** {user_pokemon.get("species_id")}\n**XP:** {user_pokemon['exp']}\n**Natureza:** {user_pokemon['nature']}\n**Gênero:** {user_pokemon.get('gender','N/A')}\n**Habilidade:** {str(user_pokemon.get('ability') or '-').title()}\n**Tipos:** {' / '.join(t.title() for t in user_pokemon['types'])}\n**Região:** {user_pokemon['region']}\n**Item:** {str(user_pokemon.get('held_item') or '-').title()}"), inline=False)
 		embed.add_field(name="IV Geral", value=f"**{iv_total}/186 ({iv_percent}%)**", inline=False)
 		embed.add_field(name="Estatísticas", value="\n".join(stats_lines), inline=False)
 		if moves_lines:

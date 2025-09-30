@@ -212,7 +212,7 @@ class Toolkit:
 			self._save()
 			return self._deepcopy(self.db["pokemon"][idx])
 
-	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
+	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, types: List[str], region: str, is_legendary: bool, is_mythical: bool, stats: Dict, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
 		with self._lock:
 			self._ensure_user(owner_id)
 			self._validate_ivs(ivs)
@@ -234,6 +234,11 @@ class Toolkit:
 				"evs": base_evs,
 				"nature": nature,
 				"ability": ability,
+				"types": types,
+				"is_legendary": is_legendary,
+				"is_mythical": is_mythical,
+				"stats": stats,
+				"region": region,
 				"gender": gender,
 				"is_shiny": bool(shiny),
 				"background": "lab",
@@ -452,3 +457,234 @@ class Toolkit:
 		total = self.iv_total(owner_id, pokemon_id)
 
 		return round((total / 186) * 100.0, decimals)
+
+	def set_favorite(self, owner_id: str, pokemon_id: int, is_favorite: bool) -> bool:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["is_favorite"] = bool(is_favorite)
+			self._save()
+			return self.db["pokemon"][idx]["is_favorite"]
+
+	def toggle_favorite(self, owner_id: str, pokemon_id: int) -> bool:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			current = self.db["pokemon"][idx].get("is_favorite", False)
+			self.db["pokemon"][idx]["is_favorite"] = not current
+			self._save()
+			return self.db["pokemon"][idx]["is_favorite"]
+
+	def set_background(self, owner_id: str, pokemon_id: int, background: str) -> str:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["background"] = background
+			self._save()
+			return background
+
+	def get_favorites(self, user_id: str) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(user_id)
+			favorites = []
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == user_id and p.get("is_favorite", False):
+					favorites.append(self._deepcopy(p))
+			return favorites
+
+	def get_pokemon_count(self, user_id: str) -> Dict[str, int]:
+		with self._lock:
+			self._ensure_user(user_id)
+			total = 0
+			party = 0
+			box = 0
+			favorites = 0
+			shiny = 0
+			legendary = 0
+			mythical = 0
+			
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == user_id:
+					total += 1
+					if p.get("on_party", False):
+						party += 1
+					else:
+						box += 1
+					if p.get("is_favorite", False):
+						favorites += 1
+					if p.get("is_shiny", False):
+						shiny += 1
+					if p.get("is_legendary", False):
+						legendary += 1
+					if p.get("is_mythical", False):
+						mythical += 1
+			
+			return {
+				"total": total,
+				"party": party,
+				"box": box,
+				"favorites": favorites,
+				"shiny": shiny,
+				"legendary": legendary,
+				"mythical": mythical
+			}
+
+	def heal_pokemon(self, owner_id: str, pokemon_id: int) -> Dict:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			
+			p["current_hp"] = None
+			
+			for move in p.get("moves", []):
+				move["pp"] = move["pp_max"]
+			
+			self._save()
+			return self._deepcopy(p)
+
+	def heal_party(self, owner_id: str) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(owner_id)
+			healed = []
+			
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == owner_id and p.get("on_party", False):
+					p["current_hp"] = None
+					
+					for move in p.get("moves", []):
+						move["pp"] = move["pp_max"]
+					
+					healed.append(self._deepcopy(p))
+			
+			self._save()
+			return healed
+
+	def get_pokemon_by_species(self, user_id: str, species_id: int) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(user_id)
+			result = []
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == user_id and p["species_id"] == species_id:
+					result.append(self._deepcopy(p))
+			return result
+
+	def get_shiny_pokemon(self, user_id: str) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(user_id)
+			shiny = []
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == user_id and p.get("is_shiny", False):
+					shiny.append(self._deepcopy(p))
+			return shiny
+
+	def get_legendary_pokemon(self, user_id: str) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(user_id)
+			legendary = []
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == user_id and p.get("is_legendary", False):
+					legendary.append(self._deepcopy(p))
+			return legendary
+
+	def get_mythical_pokemon(self, user_id: str) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(user_id)
+			mythical = []
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == user_id and p.get("is_mythical", False):
+					mythical.append(self._deepcopy(p))
+			return mythical
+
+	def update_pokemon_stats(self, owner_id: str, pokemon_id: int, stats: Dict) -> Dict:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["stats"] = stats
+			self._save()
+			return self._deepcopy(self.db["pokemon"][idx])
+
+	def set_types(self, owner_id: str, pokemon_id: int, types: List[str]) -> List[str]:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["types"] = types
+			self._save()
+			return types
+
+	def get_pokemon_summary(self, owner_id: str, pokemon_id: int) -> Dict:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self._deepcopy(self.db["pokemon"][idx])
+			
+			p["iv_total"] = self.iv_total(owner_id, pokemon_id)
+			p["iv_percent"] = self.iv_percent(owner_id, pokemon_id)
+			p["ev_total"] = sum(p["evs"].values())
+			
+			level = p["level"]
+			nature_mod = self.NATURES.get(p["nature"], {})
+			
+			calculated_stats = {}
+			for stat in STAT_KEYS:
+				base = p["stats"].get(stat, 0)
+				iv = p["ivs"][stat]
+				ev = p["evs"][stat]
+				
+				if stat == "hp":
+					calculated_stats[stat] = int((2 * base + iv + ev // 4) * level / 100) + level + 10
+				else:
+					stat_value = int((2 * base + iv + ev // 4) * level / 100) + 5
+					if nature_mod.get("increased") == stat:
+						stat_value = int(stat_value * 1.1)
+					elif nature_mod.get("decreased") == stat:
+						stat_value = int(stat_value * 0.9)
+					calculated_stats[stat] = stat_value
+			
+			p["calculated_stats"] = calculated_stats
+			p["max_hp"] = calculated_stats["hp"]
+			
+			if p["current_hp"] is None:
+				p["current_hp"] = calculated_stats["hp"]
+			
+			return p
+
+	def bulk_update_pokemon(self, owner_id: str, pokemon_ids: List[int], updates: Dict) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(owner_id)
+			updated = []
+			
+			for pokemon_id in pokemon_ids:
+				try:
+					idx = self._get_pokemon_index(owner_id, pokemon_id)
+					p = self.db["pokemon"][idx]
+					
+					for key, value in updates.items():
+						if key in ["is_favorite", "is_shiny", "on_party"]:
+							p[key] = bool(value)
+						elif key in ["nickname", "held_item", "background", "nature", "ability", "gender"]:
+							p[key] = value
+						elif key == "level":
+							p[key] = int(value)
+					
+					updated.append(self._deepcopy(p))
+				except ValueError:
+					continue
+			
+			if updated:
+				self._save()
+			
+			return updated
+
+	def search_pokemon(self, user_id: str, query: str) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(user_id)
+			query = query.lower()
+			results = []
+			
+			for p in self.db["pokemon"]:
+				if p["owner_id"] != user_id:
+					continue
+				
+				if p.get("name") and query in p["name"].lower():
+					results.append(self._deepcopy(p))
+					continue
+				
+				if p.get("nickname") and query in p["nickname"].lower():
+					results.append(self._deepcopy(p))
+					continue
+			
+			return results

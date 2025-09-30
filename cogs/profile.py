@@ -19,6 +19,7 @@ class Profile(commands.Cog):
 			return
 
 		user_party = pm.repo.tk.get_user_party(user_id)
+		user_pokemon = pm.repo.tk.get_user_pokemon(user_id)
 		party_sprites: List[bytes] = []
 
 		for poke in user_party:
@@ -35,6 +36,13 @@ class Profile(commands.Cog):
 		embed = discord.Embed(
 			title=f"Perfil de {ctx.author.name}"
 		)
+
+		embed.add_field(name="Dinheiro", value=f"${user['money']}")
+		embed.add_field(name="Pokémon", value=f"{len(user_pokemon)}")
+
+		del user_pokemon
+		del user_party
+		del party_sprites
 
 		embed.set_image(url="attachment://profile.png")
 		await ctx.send(embed=embed, file=img_file)

@@ -5,65 +5,6 @@ import time
 import platform
 import asyncio
 from datetime import datetime, timedelta
-from PIL import Image, ImageDraw, ImageFont
-import io
-
-def _make_stats_chart(cpu, ram, latency):
-	w, h = 580, 220
-	img = Image.new("RGBA", (w, h), (25, 25, 35, 255))
-	draw = ImageDraw.Draw(img)
-	
-	try:
-		font = ImageFont.truetype("resources/fonts/DejaVuSans.ttf", 18)
-		font_small = ImageFont.truetype("resources/fonts/DejaVuSans.ttf", 14)
-	except:
-		font = ImageFont.load_default()
-		font_small = ImageFont.load_default()
-
-	stats = [
-		("CPU %", cpu, 100, 70, 90),
-		("RAM MB", ram, 600, 300, 600),
-		("Latência ms", latency, 300, 150, 300),
-	]
-
-	y = 30
-	for label, val, limit, warn, crit in stats:
-		ratio = min(val / limit, 1.0) if limit > 0 else 0
-		bar_x, bar_y = 170, y
-		bar_w, bar_h = 300, 24
-		filled_w = int(bar_w * ratio)
-
-		if val >= crit:
-			color, status = (230, 60, 60), "CRÍTICO"
-		elif val >= warn:
-			color, status = (230, 200, 60), "ALERTA"
-		else:
-			color, status = (60, 200, 100), "OK"
-
-		draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(60, 60, 80), outline=(90, 90, 120))
-		draw.rectangle([bar_x, bar_y, bar_x + filled_w, bar_y + bar_h], fill=color)
-
-		bbox = font.getbbox(label)
-		draw.text((20, bar_y + (bar_h - bbox[3]) // 2), label, fill=(230, 230, 230), font=font)
-
-		val_text = f"{val:.1f}/{limit}"
-		bbox_val = font_small.getbbox(val_text)
-		draw.text((bar_x + bar_w + 15, bar_y + (bar_h - bbox_val[3]) // 2), val_text, fill=(220, 220, 220), font=font_small)
-
-		bbox_status = font_small.getbbox(status)
-		status_x = bar_x + (bar_w - bbox_status[2]) // 2
-		status_y = bar_y + (bar_h - bbox_status[3]) // 2
-		draw.text((status_x, status_y), status, fill=(255, 255, 255), font=font_small)
-
-		y += 60
-
-	buf = io.BytesIO()
-	img.save(buf, format="PNG", optimize=False, compress_level=1)
-	buf.seek(0)
-	return buf
-
-async def make_stats_chart_async(*args, **kwargs):
-	return await asyncio.to_thread(_make_stats_chart, *args, **kwargs)
 
 class BotStats(commands.Cog):
 	def __init__(self, bot: commands.Bot):
@@ -164,11 +105,7 @@ class BotStats(commands.Cog):
 		)
 
 		embed.set_footer(text="Feito com ❤️ usando a uEngine")
-
-		buf = await make_stats_chart_async(cpu_percent, mem_usage, latency_ms)
-		file = discord.File(buf, filename="stats.png")
-		embed.set_image(url="attachment://stats.png")
-		await ctx.send(embed=embed, file=file)
+		await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot):

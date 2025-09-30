@@ -1,9 +1,10 @@
 import random
+import aiopoke
 from typing import List, Optional, Dict
 from .repository import PokemonRepository
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
-from .constants import NATURES
+from .constants import NATURES, REGIONS_GENERATION
 
 class PokemonManager:
 	def __init__(self, toolkit):
@@ -25,14 +26,19 @@ class PokemonManager:
 		owner_id: str = "wild",
 		on_party: bool = False
 	) -> Dict:
-		poke = await self.service.get_pokemon(species_id)
-		species = await self.service.get_species(species_id)
+		poke: aiopoke.Pokemon = await self.service.get_pokemon(species_id)
+		species: aiopoke.PokemonSpecies = await self.service.get_species(species_id)
 		base_stats = self.service.get_base_stats(poke)
 
 		pkm_name = poke.name
 
 		final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
 		final_nature = nature or random.choice(list(NATURES.keys()))
+
+		is_legendary: bool = species.is_legendary
+		is_mythical: bool = species.is_mythical
+		poke_types: list = [x.type.name for x in poke.types]
+		poke_region: str = REGIONS_GENERATION.get(species.generation.name, "generation-i")
 
 		gen = generate_pokemon_data(base_stats, level=level, nature=final_nature, ivs=final_ivs)
 		final_ability = ability or self.service.choose_ability(poke)
@@ -58,6 +64,10 @@ class PokemonManager:
 			"is_shiny": final_shiny,
 			"held_item": held_item,
 			"caught_at": "",
+			"types": poke_types,
+			"region": poke_region,
+			"is_legendary": is_legendary,
+			"is_mythical": is_mythical,
 			"moves": final_moves,
 			"stats": gen["stats"],
 			"current_hp": gen["current_hp"],
@@ -95,10 +105,15 @@ class PokemonManager:
 			shiny=pkmn["is_shiny"],
 			level=pkmn["level"],
 			moves=pkmn["moves"],
+			is_legendary=pkmn["is_legendary"],
+			is_mythical=pkmn["is_mythical"],
+			types=pkmn["types"],
+			region=pkmn["region"],
 			on_party=pkmn["on_party"],
 			current_hp=pkmn["current_hp"],
 			held_item=pkmn["held_item"],
 			nickname=pkmn["nickname"],
+			stats=pkmn["stats"],
 			name=pkmn["name"],
 			exp=pkmn["exp"]
 		)

@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 import discord
 from discord.ext import commands
 from utils.pokemon_emojis import get_app_emoji
@@ -40,14 +40,14 @@ class Paginator(discord.ui.View):
 			emoji = get_app_emoji(f"p_{p['species_id']}")
 			shiny = "✨ " if p.get("is_shiny", False) else ''
 			nickname = f" ({p['nickname']})" if p.get("nickname") else ''
-			fav = f" ❤" if p["is_favorite"] else ''
+			fav = f" ❤️" if p["is_favorite"] else ''
 			if p["gender"] != "Genderless":
 				gender = ":male_sign:" if p["gender"] == "Male" else ":female_sign:"
 			else:
 				gender = ":grey_question:"
 			ivp = iv_percent(p["ivs"])
 			desc_lines.append(
-				f"`{format_poke_id(poke_id)}`　{emoji}{shiny} {p['name'].title()}{nickname}#{p['species_id']} {gender}{fav}　•　Lv. {p['level']}　•　{ivp}%"
+				f"`{format_poke_id(poke_id)}`　{emoji}{shiny} {p['name'].title()}{nickname} {gender}{fav}　•　Lv. {p['level']}　•　{ivp}%"
 			)
 		embed = discord.Embed(
 			title="Seus Pokémon",
@@ -97,6 +97,10 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 		res = [p for p in res if p.get("on_party", False)]
 	if flags.get("shiny"):
 		res = [p for p in res if p.get("is_shiny", False)]
+	if flags.get("legendary"):
+		res = [p for p in res if p.get("is_legendary", False)]
+	if flags.get("mythical"):
+		res = [p for p in res if p.get("is_mythical", False)]
 	if flags.get("favorite"):
 		res = [p for p in res if p.get("is_favorite")]
 	if flags.get("gender"):
@@ -142,6 +146,15 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 			p for p in res
 			if any(q in (p.get("name", "")).lower() for q in names)
 		]
+	if flags.get("type"):
+		types = [t.lower() for group in flags["type"] for t in group]
+		res = [p for p in res if any(ptype.lower() in types for ptype in p["types"])]
+	if flags.get("region"):
+		regions = [r.lower() for group in flags["region"] for r in group]
+		res = [
+			p for p in res
+			if any(q in (p.get("region", "")).lower() for q in regions)
+		]
 	if flags.get("nickname"):
 		nicks = [n.lower() for group in flags["nickname"] for n in group]
 		res = [
@@ -185,8 +198,12 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--page", nargs="?", type=int, default=0)
 	@flags.add_flag("--name", "--n", nargs="+", action="append")
 	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
+	@flags.add_flag("--type", "--t", type=str,  nargs="+", action="append")
+	@flags.add_flag("--region", "--r", type=str, nargs="+", action="append")
 	@flags.add_flag("--gender", type=str)
 	@flags.add_flag("--shiny", action="store_true")
+	@flags.add_flag("--legendary", action="store_true")
+	@flags.add_flag("--mythical", action="store_true")
 	@flags.add_flag("--party", action="store_true")
 	@flags.add_flag("--box", action="store_true")
 	@flags.add_flag("--favorite", action="store_true")
@@ -226,6 +243,7 @@ class Pokemon(commands.Cog):
 		aliases=["p", "pk", "pkm", "pkmn"],
 		help=(
 			"Lista os Pokémon do usuário com suporte a filtros, ordenação e paginação.\n\n"
+
 			"BÁSICO\n"
 			"  --party                 Lista apenas Pokémon que estão na party\n"
 			"  --box                   Lista apenas Pokémon que estão na box\n"
@@ -237,13 +255,21 @@ class Pokemon(commands.Cog):
 			"  --nickname <texto...>   Filtra pelo nickname contendo o texto\n"
 			"  --nature <nome...>      Filtra por nature(s) específicas\n"
 			"  --ability <nome...>     Filtra por ability(ies) específicas\n"
-			"  --held_item <nome...>   Filtra por item segurado\n\n"
+			"  --held_item <nome...>   Filtra por item segurado\n"
+			"  --type <nome...>        Filtra por tipos do Pokémon (aceita múltiplos)\n"
+			"  --region <nome...>      Filtra por região de origem da espécie\n\n"
+
+			"ESPECIAL\n"
+			"  --legendary             Filtra apenas espécies lendárias\n"
+			"  --mythical              Filtra apenas espécies míticas\n\n"
+
 			"FILTRAGEM NUMÉRICA\n"
 			"  --min_iv N              Seleciona apenas Pokémon com IV total >= N (valor em %)\n"
 			"  --max_iv N              Seleciona apenas Pokémon com IV total <= N (valor em %)\n"
 			"  --min_level N           Seleciona apenas Pokémon com level >= N\n"
 			"  --max_level N           Seleciona apenas Pokémon com level <= N\n"
 			"  --level <N...>          Filtra por levels exatos (aceita vários)\n\n"
+
 			"FILTRAGEM POR IV INDIVIDUAL\n"
 			"  --hpiv <N...>           IV exato de HP\n"
 			"  --atkiv <N...>          IV exato de Attack\n"
@@ -252,18 +278,22 @@ class Pokemon(commands.Cog):
 			"  --spdefiv <N...>        IV exato de Special Defense\n"
 			"  --spdiv <N...>          IV exato de Speed\n"
 			"  --iv <N...>             IV total em % exato (ex.: 100 = perfeitos)\n\n"
+
 			"ORDENAÇÃO\n"
 			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species\n"
 			"  --reverse               Inverte a ordem de ordenação\n"
 			"  --random                Embaralha a ordem (ignora sort)\n\n"
+
 			"PAGINAÇÃO E LIMITES\n"
 			"  --page N                Define a página inicial (1-based, padrão: 1)\n"
 			"  --page_size N           Define o número de Pokémon por página (padrão: 20)\n"
 			"  --limit N               Define um limite máximo de Pokémon retornados\n\n"
+
 			"EXEMPLOS\n"
 			"  .pokemon --party\n"
 			"  .pokemon --box --shiny\n"
 			"  .pokemon --species 25 133 --min_iv 85 --sort level --reverse\n"
+			"  .pokemon --type fire flying --region kalos\n"
 			"  .pokemon --atkiv 31 --spdiv 31\n"
 			"  .pokemon --random --limit 5\n"
 			"  .pokemon --page 2 --page_size 10"
@@ -286,6 +316,48 @@ class Pokemon(commands.Cog):
 		view = Paginator(pokemons, user_id=ctx.author.id, page_size=page_size, current_page=flags.get("page", 0))
 		embed = await view.get_embed()
 		await ctx.send(embed=embed, view=view)
+
+	@commands.command(name="favorite", aliases=["fav"])
+	async def favorite_pokemon(self, ctx, pokemon_id: int):
+		user_id = str(ctx.author.id)
+		user = toolkit.get_user(user_id)
+		if not user:
+			return
+		
+		try:
+			is_favorite = toolkit.toggle_favorite(user_id, pokemon_id)
+			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+			
+			emoji = "⭐" if is_favorite else "💔"
+			action = "favoritado" if is_favorite else "removido dos favoritos"
+			
+			name = pokemon.get("nickname") or pokemon.get("name", f"Pokémon #{pokemon_id}")
+			await ctx.send(f"{emoji} **{name}** foi {action}!")
+			
+		except ValueError:
+			return
+
+	@commands.command(name="nickname", aliases=["nick"])
+	async def set_nickname(self, ctx, pokemon_id: int, *, nickname: Optional[str] = None):
+		user_id = str(ctx.author.id)
+		user = toolkit.get_user(user_id)
+		if not user:
+			return
+		
+		if nickname and len(nickname) > 20:
+			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
+		
+		try:
+			toolkit.set_nickname(user_id, pokemon_id, nickname)
+			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+			
+			if nickname:
+				await ctx.send(f"Nickname definido como **{nickname}** para o Pokémon {pokemon['name'].title()}!")
+			else:
+				species_name = pokemon.get("name", f"Pokémon #{pokemon_id}")
+				await ctx.send(f"Nickname removido! Agora é **{species_name.title()}** novamente.")
+		except ValueError:
+			return
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))

@@ -25,6 +25,18 @@ NATURES = {
 	"Quirky": (None, None)
 }
 
+REGIONS_GENERATION = {
+	"generation-i": "Kanto",
+	"generation-ii": "Johto",
+	"generation-iii": "Hoenn",
+	"generation-iv": "Sinnoh",
+	"generation-v": "Unova",
+	"generation-vi": "Kalos",
+	"generation-vii": "Alola",
+	"generation-viii": "Galar",
+	"generation-ix": "Paldea"
+}
+
 VERSION_GROUPS = ("firered-leafgreen", "emerald", "ruby-sapphire")
 STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 SHINY_ROLL = 8192

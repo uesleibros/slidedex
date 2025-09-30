@@ -9,6 +9,7 @@ from utils.canvas import compose_battle_async
 from pokemon_sdk.calculations import calculate_stats
 from utils.preloaded import preloaded_textures
 from utils.pokemon_emojis import get_app_emoji
+from helpers.effect_mapper import effect_mapper
 
 TYPE_CHART = {
 	"normal":   {"super": set(),                              "not": {"rock","steel"},                "immune": {"ghost"}},
@@ -69,8 +70,7 @@ def _hp_bar(c: int, t: int, l: int=10) -> str:
 	p = 0 if t<=0 else max(0.0, min(1.0, c/t))
 	f = int(round(l*p))
 	bar = "█"*f + "░"*(l-f)
-	color = "🟢" if p>0.5 else ("🟡" if p>0.2 else "🔴")
-	return f"{color} `[{bar}]`"
+	return f"`[{bar}]`"
 
 def _slug(move_id: Any) -> str:
 	if move_id is None: return ""
@@ -641,14 +641,14 @@ class WildBattleView(discord.ui.View):
 	def disable_all(self):
 		for item in self.children: item.disabled = True
 
-	@discord.ui.button(style=discord.ButtonStyle.primary, emoji="⚔️", label="Lutar")
+	@discord.ui.button(style=discord.ButtonStyle.primary, label="Lutar")
 	async def fight(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id)!=self.user_id: return await i.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended: return await i.response.send_message("A batalha já terminou.", ephemeral=True)
 		if self.force_switch_mode: return await i.response.edit_message(view=SwitchView(self.battle, force_only=True))
 		await i.response.edit_message(view=MovesView(self.battle))
 
-	@discord.ui.button(style=discord.ButtonStyle.success, emoji="🔁", label="Trocar")
+	@discord.ui.button(style=discord.ButtonStyle.primary, label="Trocar")
 	async def switch(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id)!=self.user_id: return await i.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended: return await i.response.send_message("A batalha já terminou.", ephemeral=True)
