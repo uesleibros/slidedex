@@ -582,15 +582,10 @@ class WildBattle:
 					changed = True
 					lines.extend(result)
 		elif md.stat_changes:
-			for stat_data in md.stat_changes:
-				if len(stat_data) >= 3:
-					stat, delta, to_self = stat_data[0], stat_data[1], stat_data[2]
-				else:
-					stat, delta = stat_data[0], stat_data[1]
-					if delta > 0:
-						to_self = True
-					else:
-						to_self = False
+			for stat_tuple in md.stat_changes:
+				stat = stat_tuple[0]
+				stages = stat_tuple[1]
+				is_self_buff = stat_tuple[2] if len(stat_tuple) > 2 else (stages > 0)
 				pokemon_target = user if to_self else target
 				result = self._apply_stat_change(pokemon_target, stat, delta)
 				if result:
@@ -924,4 +919,5 @@ class WildBattleView(discord.ui.View):
 			return await i.response.send_message("Troque de Pokémon antes de tentar capturar!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
 
