@@ -1,5 +1,62 @@
 from typing import Optional, Dict, List, Tuple, Any
 from pokemon_sdk.constants import STAT_ALIASES, TYPE_CHART
+from .wild import WildBattle
+import discord
+
+class MovesView(discord.ui.View):
+	def __init__(self, battle: WildBattle, timeout: float = 60.0):
+		super().__init__(timeout=timeout)
+		self.battle = battle
+		for mv in battle.player_active.moves:
+			key = _slug(mv["id"])
+			md = battle.move_cache.get(key)
+			label_text = (md.name if md else key.replace("-"," ").title())
+			pp, pp_max = mv["pp"], mv["pp_max"]
+			btn = discord.ui.Button(style=discord.ButtonStyle.primary, label=f"{label_text} ({pp}/{pp_max})", disabled=(pp <= 0))
+			btn.callback = self._cb(mv["id"])
+			self.add_item(btn)
+		back = discord.ui.Button(style=discord.ButtonStyle.secondary, label="Voltar")
+		async def back_cb(i: discord.Interaction):
+			if str(i.user.id)!=battle.user_id: return await i.response.send_message("Não é sua batalha!", ephemeral=True)
+			await i.response.edit_message(view=battle.actions_view)
+		back.callback = back_cb
+		self.add_item(back)
+
+	def _cb(self, move_id: str):
+		async def _run(i: discord.Interaction):
+			if str(i.user.id)!=self.battle.user_id: return await i.response.send_message("Não é sua batalha!", ephemeral=True)
+			if self.battle.ended: return await i.response.send_message("A batalha já terminou.", ephemeral=True)
+			if getattr(self.battle.actions_view, "force_switch_mode", False): return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
+			await i.response.defer()
+			await self.battle.handle_player_move(move_id)
+		return _run
+
+class SwitchView(discord.ui.View):
+	def __init__(self, battle: WildBattle, force_only: bool = False, timeout: float = 60.0):
+		super().__init__(timeout=timeout)
+		self.battle = battle
+		for i, p in enumerate(battle.player_team):
+			lbl = f"{i+1}. {p.name.title()} ({max(0,p.current_hp)}/{p.stats['hp']})"
+			btn = discord.ui.Button(style=discord.ButtonStyle.success, label=lbl, disabled=p.fainted or i==battle.active_player_idx)
+			btn.callback = self._mk(i); self.add_item(btn)
+		if not force_only:
+			back = discord.ui.Button(style=discord.ButtonStyle.secondary, label="Voltar")
+			async def back_cb(i: discord.Interaction):
+				if str(i.user.id)!=battle.user_id: return await i.response.send_message("Não é sua batalha!", ephemeral=True)
+				await i.response.edit_message(view=battle.actions_view)
+			back.callback = back_cb
+			self.add_item(back)
+
+	def _mk(self, idx: int):
+		async def _run(i: discord.Interaction):
+			if str(i.user.id)!=self.battle.user_id: return await i.response.send_message("Não é sua batalha!", ephemeral=True)
+			if self.battle.ended: return await i.response.send_message("A batalha já terminou.", ephemeral=True)
+			await i.response.defer()
+			consume = not getattr(self.battle.actions_view, "force_switch_mode", False)
+			await self.battle.switch_active(idx, consume_turn=consume)
+			if getattr(self.battle.actions_view, "force_switch_mode", False):
+				self.battle.actions_view.force_switch_mode = False
+		return _run
 
 def _get_stat(stats: Dict[str,int], key: str) -> int:
 	for alias in STAT_ALIASES.get(key, []):
