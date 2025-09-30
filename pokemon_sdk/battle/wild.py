@@ -57,7 +57,7 @@ class BattlePokemon:
 		self.is_shiny = raw.get("is_shiny", False)
 		self.stages = {key: 0 for key in ["atk","def","sp_atk","sp_def","speed","accuracy","evasion"]}
 		self.status = {"name": None, "counter": 0}
-		self.volatile = {"flinch": False, "confuse": 0}
+		self.volatile = {"flinch": False, "confuse": 0, "last_move_used": None}
 		self.sprites = {
 			"front": pokeapi_data.sprites.front_shiny if self.is_shiny else pokeapi_data.sprites.front_default,
 			"back": pokeapi_data.sprites.back_shiny if self.is_shiny else pokeapi_data.sprites.back_default
@@ -201,7 +201,7 @@ class WildBattle:
 			color=discord.Color.green()
 		)
 
-		embed.set_footer(text="Effex Engine v1.2")
+		embed.set_footer(text="Effex Engine v1.2 — alpha")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 
@@ -296,7 +296,7 @@ class WildBattle:
 		
 		return False, [f"😵 {user.display_name} está confuso... (resta {user.volatile['confuse']} turno(s))"]
 
-	def _apply_stat_change(self, target: BattlePokemon, stat: str, stages: int) -> Optional[str]:
+	def _apply_stat_change(self, pokemon: BattlePokemon, stat: str, stages: int) -> Optional[str]:
 		stat_map = {
 			"attack": "atk",
 			"defense": "def",
@@ -310,29 +310,29 @@ class WildBattle:
 		}
 		
 		mapped_stat = stat_map.get(stat, stat)
-		if mapped_stat not in target.stages:
+		if mapped_stat not in pokemon.stages:
 			return None
 		
-		old = target.stages[mapped_stat]
-		target.stages[mapped_stat] = max(-6, min(6, target.stages[mapped_stat] + stages))
+		old = pokemon.stages[mapped_stat]
+		pokemon.stages[mapped_stat] = max(-6, min(6, pokemon.stages[mapped_stat] + stages))
 		
-		if target.stages[mapped_stat] == old:
+		if pokemon.stages[mapped_stat] == old:
 			if old == 6 and stages > 0:
-				return f"   └─ 💢 {STAT_NAMES[mapped_stat]} de {target.display_name} já está no máximo!"
+				return f"   └─ 💢 {STAT_NAMES[mapped_stat]} de {pokemon.display_name} já está no máximo!"
 			elif old == -6 and stages < 0:
-				return f"   └─ 💢 {STAT_NAMES[mapped_stat]} de {target.display_name} já está no mínimo!"
+				return f"   └─ 💢 {STAT_NAMES[mapped_stat]} de {pokemon.display_name} já está no mínimo!"
 			return None
 		
-		change = target.stages[mapped_stat] - old
+		change = pokemon.stages[mapped_stat] - old
 		
 		if change > 0:
 			level = "drasticamente" if abs(change) >= 2 else ""
 			arrows = "↑" * abs(change)
-			return f"   └─ 📈 {STAT_NAMES[mapped_stat]} de {target.display_name} aumentou {level} {arrows}".strip()
+			return f"   └─ 📈 {STAT_NAMES[mapped_stat]} de {pokemon.display_name} aumentou {level} {arrows}".strip()
 		else:
 			level = "drasticamente" if abs(change) >= 2 else ""
 			arrows = "↓" * abs(change)
-			return f"   └─ 📉 {STAT_NAMES[mapped_stat]} de {target.display_name} diminuiu {level} {arrows}".strip()
+			return f"   └─ 📉 {STAT_NAMES[mapped_stat]} de {pokemon.display_name} diminuiu {level} {arrows}".strip()
 
 	def _apply_status_effect(self, target: BattlePokemon, effect_type: str) -> Optional[str]:
 		tt = _types_of(target)
@@ -416,6 +416,21 @@ class WildBattle:
 			if actual > 0:
 				lines.append(f"   └─ 💚 {user.display_name} recuperou {actual} HP!")
 
+		elif eff_type == "spite":
+			if target.volatile.get("last_move_used"):
+				pp_reduction = effect.get("pp_reduction", 4)
+				move_id = target.volatile["last_move_used"]
+				for m in target.moves:
+					if _slug(m["id"]) == _slug(move_id) and "pp" in m:
+						old_pp = m["pp"]
+						m["pp"] = max(0, m["pp"] - pp_reduction)
+						reduced = old_pp - m["pp"]
+						if reduced > 0:
+							lines.append(f"   └─ 😈 {target.display_name} perdeu {reduced} PP do último golpe usado!")
+						break
+			else:
+				lines.append(f"   └─ 💢 Mas falhou!")
+
 		return lines
 
 	def _apply_recoil(self, user: BattlePokemon, recoil: float, damage: int) -> List[str]:
@@ -475,6 +490,7 @@ class WildBattle:
 			if pp is not None and pp <= 0:
 				return [f"❌ {user.display_name} não tem mais PP para usar {md.name}!"]
 			user.dec_pp(move_id_for_pp)
+			user.volatile["last_move_used"] = move_id_for_pp
 
 		effect_data = self._get_effect_data(move_id_for_pp or "tackle")
 		
@@ -567,8 +583,8 @@ class WildBattle:
 					lines.extend(result)
 		elif md.stat_changes:
 			for stat, delta, to_self in md.stat_changes:
-				tgt = user if to_self else target
-				result = self._apply_stat_change(tgt, stat, delta)
+				pokemon_target = user if to_self else target
+				result = self._apply_stat_change(pokemon_target, stat, delta)
 				if result:
 					changed = True
 					lines.append(result)
@@ -749,7 +765,7 @@ class WildBattle:
 
 	async def attempt_capture(self) -> bool:
 		if self.player_active.fainted:
-			self.lines = ["Seu Pokémon está desmaiado! Troque antes de capturar."]
+			self.lines = ["❌ Seu Pokémon está desmaiado! Troque antes de capturar."]
 			if self.actions_view:
 				self.actions_view.force_switch_mode = True
 			await self.refresh()
@@ -783,15 +799,15 @@ class WildBattle:
 			)
 			self.ended = True
 			self.lines = [
-				f"**CAPTURA BEM-SUCEDIDA!**",
-				f"{self.wild.display_name} foi capturado!",
-				f"{self.player_active.display_name} ganhou {xp} XP!"
+				f"🎉 **CAPTURA BEM-SUCEDIDA!**",
+				f"✨ {self.wild.display_name} foi capturado!",
+				f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
 			]
 			if self.actions_view:
 				self.actions_view.disable_all()
 			await self.refresh()
 			await self.interaction.channel.send(
-				f"**Parabéns!** Você capturou **{self.wild.display_name}**!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
+				f"🎉 **Parabéns!** Você capturou **{self.wild.display_name}**!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
 			)
 			return True
 		else:
@@ -828,14 +844,14 @@ class WildBattle:
 		self.ended = True
 		self.lines.extend([
 			"",
-			f"**VITÓRIA!**",
-			f"{self.player_active.display_name} ganhou {xp} XP!"
+			f"🏆 **VITÓRIA!**",
+			f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
 		])
 		if self.actions_view:
 			self.actions_view.disable_all()
 		await self.refresh()
 		await self.interaction.channel.send(
-			f"**VITÓRIA!** Você derrotou {self.wild.display_name}!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
+			f"🏆 **VITÓRIA!** Você derrotou {self.wild.display_name}!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
 		)
 
 	async def _on_faint(self):
@@ -845,7 +861,7 @@ class WildBattle:
 			self.ended = True
 			self.lines.extend([
 				"",
-				f"**DERROTA...**",
+				f"😔 **DERROTA...**",
 				f"Todos os seus Pokémon foram derrotados!"
 			])
 			if self.actions_view:
