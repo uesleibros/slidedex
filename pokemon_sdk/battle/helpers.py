@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Any
 from pokemon_sdk.constants import STAT_ALIASES, TYPE_CHART
 
 def _get_stat(stats: Dict[str,int], key: str) -> int:
