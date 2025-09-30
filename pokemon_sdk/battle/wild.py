@@ -11,7 +11,7 @@ from pokemon_sdk.constants import TYPE_CHART, STAT_ALIASES
 from utils.preloaded import preloaded_textures
 from utils.pokemon_emojis import get_app_emoji
 from helpers.effect_mapper import effect_mapper
-from .helpers import *
+from .helpers import MoveData, _normalize_move, _pick_frlg, _canon_stat, _get_stat, _stage_mult, _apply_stage, _types_of, _type_mult, _hp_bar, _slug
 
 class BattlePokemon:
 	def __init__(self, raw: Dict[str, Any], pokeapi_data: aiopoke.Pokemon, species_data: aiopoke.PokemonSpecies):
@@ -536,5 +536,6 @@ class WildBattleView(discord.ui.View):
 		if self.force_switch_mode or self.battle.player_active.fainted: return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
 
 
