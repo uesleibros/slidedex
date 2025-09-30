@@ -587,7 +587,7 @@ class WildBattle:
 				stages = stat_tuple[1]
 				is_self_buff = stat_tuple[2] if len(stat_tuple) > 2 else (stages > 0)
 				pokemon_target = user if is_self_buff else target
-				result = self._apply_stat_change(pokemon_target, stat, delta)
+				result = self._apply_stat_change(pokemon_target, stat, stages)
 				if result:
 					changed = True
 					lines.append(result)
@@ -919,6 +919,7 @@ class WildBattleView(discord.ui.View):
 			return await i.response.send_message("Troque de Pokémon antes de tentar capturar!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
 
 
 
