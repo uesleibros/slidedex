@@ -7,39 +7,10 @@ from __main__ import pm
 from typing import List, Dict, Any, Optional, Tuple, Set
 from utils.canvas import compose_battle_async
 from pokemon_sdk.calculations import calculate_stats
+from pokemon_sdk.constants import TYPE_CHART, STAT_ALIASES
 from utils.preloaded import preloaded_textures
 from utils.pokemon_emojis import get_app_emoji
 from helpers.effect_mapper import effect_mapper
-
-TYPE_CHART = {
-	"normal":   {"super": set(),                              "not": {"rock","steel"},                "immune": {"ghost"}},
-	"fire":     {"super": {"grass","ice","bug","steel"},      "not": {"fire","water","rock","dragon"},"immune": set()},
-	"water":    {"super": {"fire","ground","rock"},           "not": {"water","grass","dragon"},      "immune": set()},
-	"grass":    {"super": {"water","ground","rock"},          "not": {"fire","grass","poison","flying","bug","dragon","steel"}, "immune": set()},
-	"electric": {"super": {"water","flying"},                 "not": {"electric","grass","dragon"},   "immune": {"ground"}},
-	"ice":      {"super": {"grass","ground","flying","dragon"},"not": {"fire","water","ice","steel"},"immune": set()},
-	"fighting": {"super": {"normal","ice","rock","dark","steel"}, "not": {"poison","flying","psychic","bug","fairy"}, "immune": {"ghost"}},
-	"poison":   {"super": {"grass","fairy"},                  "not": {"poison","ground","rock","ghost"}, "immune": {"steel"}},
-	"ground":   {"super": {"fire","electric","poison","rock","steel"}, "not": {"grass","bug"}, "immune": {"flying"}},
-	"flying":   {"super": {"grass","fighting","bug"},         "not": {"electric","rock","steel"},     "immune": set()},
-	"psychic":  {"super": {"fighting","poison"},              "not": {"psychic","steel"},             "immune": {"dark"}},
-	"bug":      {"super": {"grass","psychic","dark"},         "not": {"fire","fighting","poison","flying","ghost","steel","fairy"}, "immune": set()},
-	"rock":     {"super": {"fire","ice","flying","bug"},      "not": {"fighting","ground","steel"},   "immune": set()},
-	"ghost":    {"super": {"psychic","ghost"},                "not": {"dark"},                        "immune": {"normal"}},
-	"dragon":   {"super": {"dragon"},                         "not": {"steel"},                       "immune": {"fairy"}},
-	"dark":     {"super": {"psychic","ghost"},                "not": {"fighting","dark","fairy"},     "immune": set()},
-	"steel":    {"super": {"ice","rock","fairy"},             "not": {"fire","water","electric","steel"}, "immune": set()},
-	"fairy":    {"super": {"fighting","dragon","dark"},       "not": {"fire","poison","steel"},       "immune": set()},
-}
-
-STAT_ALIASES = {
-	"hp": ["hp"],
-	"atk": ["atk","attack"],
-	"def": ["def","defense"],
-	"sp_atk": ["sp_atk","spa","special-attack","spatk","sp_att","spatt"],
-	"sp_def": ["sp_def","spd","special-defense","spdef","sp_defense"],
-	"speed": ["speed","spe"]
-}
 
 def _get_stat(stats: Dict[str,int], key: str) -> int:
 	for alias in STAT_ALIASES.get(key, []):
@@ -666,4 +637,3 @@ class WildBattleView(discord.ui.View):
 		if self.force_switch_mode or self.battle.player_active.fainted: return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
-
