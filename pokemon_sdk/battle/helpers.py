@@ -142,7 +142,7 @@ def _normalize_move(move) -> MoveData:
 	ail = getattr(getattr(meta, "ailment", None), "name", "none")
 	ailment = None if ail in {None,"none","unknown"} else ail
 	ailment_chance = int(getattr(meta, "ailment_chance", 0) or pv["effect_chance"] or (100 if (dmg_class=="status" and ailment) else 0) or 0)
-	target_self_default = getattr(getattr(move, "target", None), "name", "") in {"user","user-or-ally","ally"}
+	
 	stat_changes = []
 	try:
 		for sc in getattr(move, "stat_changes", []) or []:
@@ -150,9 +150,11 @@ def _normalize_move(move) -> MoveData:
 			delta = int(getattr(sc, "change", 0) or 0)
 			canon = _canon_stat(raw) if raw else None
 			if canon and delta != 0:
-				target_self = target_self_default if delta>0 else not target_self_default
+				target_name = getattr(getattr(move, "target", None), "name", "")
+				target_self = target_name in {"user", "user-or-ally", "ally", "users-field", "user-and-allies"}
 				stat_changes.append((canon, delta, target_self))
 	except: pass
+	
 	return MoveData(
 		name=name, accuracy=accuracy, power=power, priority=priority, dmg_class=dmg_class, type_name=type_name,
 		min_hits=min_hits, max_hits=max_hits, flinch=flinch, drain=drain, recoil=recoil, healing=healing,
