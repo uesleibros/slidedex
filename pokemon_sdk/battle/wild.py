@@ -57,11 +57,59 @@ class BattlePokemon:
 		self.is_shiny = raw.get("is_shiny", False)
 		self.stages = {key: 0 for key in ["atk","def","sp_atk","sp_def","speed","accuracy","evasion"]}
 		self.status = {"name": None, "counter": 0}
-		self.volatile = {"flinch": False, "confuse": 0, "last_move_used": None}
+		self.volatile = {
+			"flinch": False,
+			"confuse": 0,
+			"last_move_used": None,
+			"leech_seed": False,
+			"leech_seed_by": None,
+			"ingrain": False,
+			"substitute": 0,
+			"focus_energy": False,
+			"mist": 0,
+			"light_screen": 0,
+			"reflect": 0,
+			"safeguard": 0,
+			"stockpile": 0,
+			"bind": 0,
+			"bind_by": None,
+			"trapped": False,
+			"perish_count": -1,
+			"encore": 0,
+			"encore_move": None,
+			"taunt": 0,
+			"torment": False,
+			"torment_last_move": None,
+			"disable": 0,
+			"disable_move": None,
+			"yawn": 0,
+			"curse": False,
+			"nightmare": False,
+			"destiny_bond": False,
+			"grudge": False,
+			"foresight": False,
+			"mind_reader_target": None,
+			"protect": False,
+			"endure": False,
+			"bide": 0,
+			"bide_damage": 0,
+			"rage": False,
+			"rollout": 0,
+			"fury_cutter": 0,
+			"uproar": 0,
+			"charge": False,
+			"wish": 0,
+			"wish_hp": 0,
+			"magic_coat": False,
+			"snatch": False,
+			"last_damage_taken": 0,
+			"last_damage_type": None
+		}
 		self.sprites = {
 			"front": pokeapi_data.sprites.front_shiny if self.is_shiny else pokeapi_data.sprites.front_default,
 			"back": pokeapi_data.sprites.back_shiny if self.is_shiny else pokeapi_data.sprites.back_default
 		}
+		self.types = _types_of(self)
 
 	@property
 	def fainted(self) -> bool:
@@ -77,11 +125,11 @@ class BattlePokemon:
 			val = int(val * 0.5)
 		return max(1, val)
 
-	def dec_pp(self, move_id: str) -> bool:
+	def dec_pp(self, move_id: str, amount: int = 1) -> bool:
 		slug = _slug(move_id)
 		for m in self.moves:
 			if _slug(m["id"]) == slug and "pp" in m:
-				m["pp"] = max(0, int(m["pp"]) - 1)
+				m["pp"] = max(0, int(m["pp"]) - amount)
 				return True
 		return False
 
@@ -95,6 +143,10 @@ class BattlePokemon:
 	def set_status(self, name: str, turns: Optional[int] = None) -> bool:
 		if self.status["name"]:
 			return False
+		if self.volatile.get("safeguard", 0) > 0 and name in ["burn", "poison", "toxic", "paralysis", "sleep", "freeze"]:
+			return False
+		if self.volatile.get("substitute", 0) > 0:
+			return False
 		self.status = {
 			"name": name,
 			"counter": turns if turns is not None else (random.randint(1, 3) if name == "sleep" else 0)
@@ -102,17 +154,57 @@ class BattlePokemon:
 		return True
 
 	def status_tag(self) -> str:
-		return f" [{STATUS_TAGS[self.status['name']]}]" if self.status["name"] in STATUS_TAGS else ""
+		tags = []
+		if self.status["name"] in STATUS_TAGS:
+			tags.append(STATUS_TAGS[self.status["name"]])
+		if self.volatile.get("confuse", 0) > 0:
+			tags.append("CNF")
+		if self.volatile.get("leech_seed"):
+			tags.append("SEED")
+		if self.volatile.get("substitute", 0) > 0:
+			tags.append("SUB")
+		return f" [{'/'.join(tags)}]" if tags else ""
 
-	def take_damage(self, damage: int) -> int:
+	def take_damage(self, damage: int, ignore_substitute: bool = False) -> int:
+		if not ignore_substitute and self.volatile.get("substitute", 0) > 0:
+			actual = min(damage, self.volatile["substitute"])
+			self.volatile["substitute"] -= actual
+			if self.volatile["substitute"] <= 0:
+				self.volatile["substitute"] = 0
+			return actual
+		
+		if self.volatile.get("endure") and damage >= self.current_hp and self.current_hp > 0:
+			self.current_hp = 1
+			return damage - 1
+		
 		actual = min(damage, self.current_hp)
 		self.current_hp = max(0, self.current_hp - damage)
+		
+		if self.volatile.get("rage"):
+			self.stages["atk"] = min(6, self.stages["atk"] + 1)
+		
+		if self.volatile.get("bide", 0) > 0:
+			self.volatile["bide_damage"] += actual
+		
 		return actual
 
 	def heal(self, amount: int) -> int:
 		actual = min(amount, self.stats["hp"] - self.current_hp)
 		self.current_hp = min(self.stats["hp"], self.current_hp + amount)
 		return actual
+
+	def can_switch(self) -> bool:
+		if self.volatile.get("bind", 0) > 0:
+			return False
+		if self.volatile.get("trapped"):
+			return False
+		if self.volatile.get("ingrain"):
+			return False
+		return True
+
+	def reset_stats(self):
+		for key in self.stages:
+			self.stages[key] = 0
 
 class WildBattle:
 	def __init__(self, player_party: List[Dict[str, Any]], wild: Dict[str, Any], user_id: str, interaction: discord.Interaction) -> None:
@@ -132,6 +224,8 @@ class WildBattle:
 		self.must_redraw_image = True
 		self.move_cache: Dict[str, MoveData] = {}
 		self.effect_cache: Dict[str, Dict[str, Any]] = {}
+		self.weather = {"type": None, "turns": 0}
+		self.field = {"spikes_player": 0, "spikes_wild": 0, "trick_room": 0, "gravity": 0}
 
 	@property
 	def player_active(self) -> BattlePokemon:
@@ -187,13 +281,27 @@ class WildBattle:
 	def _embed(self) -> discord.Embed:
 		desc_parts = [
 			self._hp_line(self.player_active),
-			"**VS**",
+			"⚔️ **VS** ⚔️",
 			self._hp_line(self.wild),
 			""
 		]
 		
+		weather_icons = {"sun": "☀️", "rain": "🌧️", "hail": "❄️", "sandstorm": "🌪️"}
+		if self.weather["type"] and self.weather["turns"] > 0:
+			desc_parts.append(f"{weather_icons.get(self.weather['type'], '🌤️')} {self.weather['type'].title()} ({self.weather['turns']} turnos)")
+		
+		field_effects = []
+		if self.field.get("trick_room", 0) > 0:
+			field_effects.append(f"🔄 Trick Room")
+		if self.field.get("gravity", 0) > 0:
+			field_effects.append(f"⬇️ Gravity")
+		
+		if field_effects:
+			desc_parts.extend(field_effects)
+			desc_parts.append("")
+		
 		if self.lines:
-			desc_parts.extend(self.lines)
+			desc_parts.extend(self.lines[-15:])
 		
 		embed = discord.Embed(
 			title=f"Batalha Selvagem - Turno {self.turn}",
@@ -201,7 +309,7 @@ class WildBattle:
 			color=discord.Color.green()
 		)
 
-		embed.set_footer(text="Effex Engine v1.2 — alpha")
+		embed.set_footer(text="Effex Engine v1.3 — alpha")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 
@@ -252,28 +360,42 @@ class WildBattle:
 		return self.effect_cache.get(_slug(move_id), {})
 
 	def _pre_action(self, user: BattlePokemon) -> Tuple[bool, List[str]]:
+		if user.volatile.get("bide", 0) > 0:
+			user.volatile["bide"] -= 1
+			if user.volatile["bide"] == 0:
+				return False, []
+			return True, [f"⏳ {user.display_name} está acumulando energia..."]
+		
+		if user.volatile.get("uproar", 0) > 0:
+			user.volatile["uproar"] -= 1
+		
 		if user.volatile["flinch"]:
 			user.volatile["flinch"] = False
-			return True, [f"💨 {user.display_name} recuou de medo e não conseguiu agir!"]
+			return True, [f"💨 {user.display_name} recuou de medo!"]
 		
 		status = user.status["name"]
 		counter = user.status["counter"]
 		
 		if status == "sleep":
+			if user.volatile.get("nightmare"):
+				dmg = max(1, user.stats["hp"] // 4)
+				user.take_damage(dmg, ignore_substitute=True)
+			
 			if counter > 1:
 				user.status["counter"] -= 1
-				return True, [f"💤 {user.display_name} está dormindo... (resta {user.status['counter']} turno(s))"]
+				return True, [f"💤 {user.display_name} está dormindo..."]
 			user.status = {"name": None, "counter": 0}
+			user.volatile["nightmare"] = False
 			return False, [f"👁️ {user.display_name} acordou!"]
 		
 		if status == "freeze":
 			if random.random() < 0.2:
 				user.status = {"name": None, "counter": 0}
 				return False, [f"🔥 {user.display_name} descongelou!"]
-			return True, [f"❄️ {user.display_name} está congelado e não pode se mover!"]
+			return True, [f"❄️ {user.display_name} está congelado!"]
 		
 		if status == "paralysis" and random.random() < 0.25:
-			return True, [f"⚡ {user.display_name} está paralisado e não consegue se mover!"]
+			return True, [f"⚡ {user.display_name} está paralisado!"]
 		
 		return False, []
 
@@ -292,9 +414,9 @@ class WildBattle:
 			base = (((2 * user.level / 5) + 2) * 40 * (atk / max(1, df))) / 50 + 2
 			dmg = max(1, int(base * random.uniform(0.85, 1.0)))
 			user.take_damage(dmg)
-			return True, [f"😵 {user.display_name} está confuso e se atingiu causando {dmg} de dano!"]
+			return True, [f"😵 {user.display_name} se atingiu na confusão! ({dmg} de dano)"]
 		
-		return False, [f"😵 {user.display_name} está confuso... (resta {user.volatile['confuse']} turno(s))"]
+		return False, [f"😵 {user.display_name} está confuso..."]
 
 	def _apply_stat_change(self, pokemon: BattlePokemon, stat: str, stages: int) -> Optional[str]:
 		stat_map = {
@@ -312,6 +434,9 @@ class WildBattle:
 		mapped_stat = stat_map.get(stat, stat)
 		if mapped_stat not in pokemon.stages:
 			return None
+		
+		if pokemon.volatile.get("mist", 0) > 0 and stages < 0:
+			return f"   └─ 🌫️ A névoa protegeu {pokemon.display_name}!"
 		
 		old = pokemon.stages[mapped_stat]
 		pokemon.stages[mapped_stat] = max(-6, min(6, pokemon.stages[mapped_stat] + stages))
@@ -338,9 +463,9 @@ class WildBattle:
 		tt = _types_of(target)
 		
 		immunity_checks = {
-			"burn": ("fire", f"   └─ 💢 {target.display_name} é do tipo Fogo e não pode ser queimado!"),
+			"burn": ("fire", f"   └─ 💢 {target.display_name} é do tipo Fogo!"),
 			"poison": (["steel", "poison"], f"   └─ 💢 {target.display_name} é imune a veneno!"),
-			"freeze": ("ice", f"   └─ 💢 {target.display_name} é do tipo Gelo e não pode ser congelado!")
+			"freeze": ("ice", f"   └─ 💢 {target.display_name} é do tipo Gelo!")
 		}
 		
 		if effect_type in immunity_checks:
@@ -359,24 +484,10 @@ class WildBattle:
 				"freeze": "❄️"
 			}
 			
-			status_effects = {
-				"burn": "Sofrerá dano todo turno e terá Ataque reduzido!",
-				"poison": "Sofrerá dano todo turno!",
-				"toxic": "Sofrerá dano crescente a cada turno!",
-				"paralysis": "Velocidade reduzida e pode falhar ao agir!",
-				"sleep": "Não poderá agir por alguns turnos!",
-				"freeze": "Não poderá agir até descongelar!"
-			}
-			
 			icon = status_icons.get(effect_type, "💫")
-			main = f"   └─ {icon} {target.display_name} {STATUS_MESSAGES[effect_type]}!"
-			effect = status_effects.get(effect_type, "")
-			
-			if effect:
-				return f"{main}\n   └─ ⚠️ {effect}"
-			return main
+			return f"   └─ {icon} {target.display_name} {STATUS_MESSAGES[effect_type]}!"
 		
-		return f"   └─ 💢 {target.display_name} já está afetado por outro status!"
+		return f"   └─ 💢 {target.display_name} já está afetado!"
 
 	def _apply_effect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage_dealt: int) -> List[str]:
 		lines = []
@@ -404,7 +515,6 @@ class WildBattle:
 		elif eff_type == "confusion":
 			actual_target.volatile["confuse"] = max(actual_target.volatile["confuse"], random.randint(2, 4))
 			lines.append(f"   └─ 😵 {actual_target.display_name} ficou confuso!")
-			lines.append(f"   └─ ⚠️ Pode atacar a si mesmo nos próximos turnos!")
 
 		elif eff_type == "flinch":
 			actual_target.volatile["flinch"] = True
@@ -416,20 +526,134 @@ class WildBattle:
 			if actual > 0:
 				lines.append(f"   └─ 💚 {user.display_name} recuperou {actual} HP!")
 
+		elif eff_type == "leech_seed":
+			if "grass" not in target.types:
+				target.volatile["leech_seed"] = True
+				target.volatile["leech_seed_by"] = user
+				lines.append(f"   └─ 🌱 {target.display_name} foi semeado!")
+			else:
+				lines.append(f"   └─ 💢 Não afeta tipos Grass!")
+
+		elif eff_type == "ingrain":
+			user.volatile["ingrain"] = True
+			lines.append(f"   └─ 🌿 {user.display_name} criou raízes! (Cura 1/16 HP por turno)")
+
+		elif eff_type == "substitute":
+			hp_cost = int(user.stats["hp"] * effect.get("hp_cost", 0.25))
+			if user.current_hp > hp_cost:
+				user.current_hp -= hp_cost
+				user.volatile["substitute"] = hp_cost
+				lines.append(f"   └─ 🎭 {user.display_name} criou um substituto! (-{hp_cost} HP)")
+			else:
+				lines.append(f"   └─ 💢 HP insuficiente para criar substituto!")
+
+		elif eff_type == "rest":
+			if user.current_hp < user.stats["hp"]:
+				heal = user.stats["hp"] - user.current_hp
+				user.current_hp = user.stats["hp"]
+				user.status = {"name": "sleep", "counter": 2}
+				lines.append(f"   └─ 💤 {user.display_name} dormiu e recuperou {heal} HP!")
+			else:
+				lines.append(f"   └─ 💢 HP já está cheio!")
+
+		elif eff_type == "protect":
+			user.volatile["protect"] = True
+			lines.append(f"   └─ 🛡️ {user.display_name} se protegeu!")
+
+		elif eff_type == "endure":
+			user.volatile["endure"] = True
+			lines.append(f"   └─ 💪 {user.display_name} vai aguentar!")
+
+		elif eff_type == "focus_energy":
+			user.volatile["focus_energy"] = True
+			lines.append(f"   └─ 🎯 {user.display_name} está se concentrando!")
+
+		elif eff_type == "mist":
+			user.volatile["mist"] = 5
+			lines.append(f"   └─ 🌫️ Uma névoa protege {user.display_name}!")
+
+		elif eff_type == "light_screen":
+			user.volatile["light_screen"] = effect.get("turns", 5)
+			lines.append(f"   └─ ✨ Light Screen protege contra ataques especiais!")
+
+		elif eff_type == "reflect":
+			user.volatile["reflect"] = effect.get("turns", 5)
+			lines.append(f"   └─ 🪞 Reflect protege contra ataques físicos!")
+
+		elif eff_type == "safeguard":
+			user.volatile["safeguard"] = effect.get("turns", 5)
+			lines.append(f"   └─ 🛡️ Safeguard protege contra status!")
+
+		elif eff_type == "haze":
+			user.reset_stats()
+			target.reset_stats()
+			lines.append(f"   └─ 🌫️ Todos os stats foram resetados!")
+
+		elif eff_type == "weather":
+			weather = effect.get("weather")
+			turns = effect.get("turns", 5)
+			self.weather = {"type": weather, "turns": turns}
+			weather_msgs = {"sun": "☀️ O sol está forte!", "rain": "🌧️ Começou a chover!", "hail": "❄️ Começou a gear!"}
+			lines.append(f"   └─ {weather_msgs.get(weather, '🌤️ O clima mudou!')}")
+
+		elif eff_type == "spikes":
+			side = "spikes_player" if target == self.player_active else "spikes_wild"
+			if self.field[side] < 3:
+				self.field[side] += 1
+				lines.append(f"   └─ ⚠️ Spikes foram espalhados! (nível {self.field[side]})")
+
 		elif eff_type == "spite":
 			if target.volatile.get("last_move_used"):
 				pp_reduction = effect.get("pp_reduction", 4)
 				move_id = target.volatile["last_move_used"]
-				for m in target.moves:
-					if _slug(m["id"]) == _slug(move_id) and "pp" in m:
-						old_pp = m["pp"]
-						m["pp"] = max(0, m["pp"] - pp_reduction)
-						reduced = old_pp - m["pp"]
-						if reduced > 0:
-							lines.append(f"   └─ 😈 {target.display_name} perdeu {reduced} PP do último golpe usado!")
-						break
-			else:
-				lines.append(f"   └─ 💢 Mas falhou!")
+				if target.dec_pp(move_id, pp_reduction):
+					lines.append(f"   └─ 😈 PP do último golpe reduzido!")
+
+		elif eff_type == "belly_drum":
+			hp_cost = int(user.stats["hp"] * effect.get("hp_cost", 0.5))
+			if user.current_hp > hp_cost:
+				user.current_hp -= hp_cost
+				user.stages["atk"] = 6
+				lines.append(f"   └─ 🥁 {user.display_name} maximizou seu Ataque! (-{hp_cost} HP)")
+
+		elif eff_type == "pain_split":
+			avg = (user.current_hp + target.current_hp) // 2
+			user.current_hp = avg
+			target.current_hp = avg
+			lines.append(f"   └─ 💔 HP foi dividido igualmente!")
+
+		elif eff_type == "endeavor":
+			if target.current_hp > user.current_hp:
+				dmg = target.current_hp - user.current_hp
+				target.take_damage(dmg)
+				lines.append(f"   └─ 💢 HP do oponente igualado! ({dmg} de dano)")
+
+		elif eff_type == "yawn":
+			target.volatile["yawn"] = 1
+			lines.append(f"   └─ 😴 {target.display_name} está ficando com sono...")
+
+		elif eff_type == "wish":
+			user.volatile["wish"] = 1
+			user.volatile["wish_hp"] = user.stats["hp"] // 2
+			lines.append(f"   └─ ⭐ {user.display_name} fez um desejo!")
+
+		elif eff_type == "stockpile":
+			if user.volatile["stockpile"] < 3:
+				user.volatile["stockpile"] += 1
+				lines.append(f"   └─ 📦 Energia acumulada! (Nível {user.volatile['stockpile']})")
+
+		elif eff_type == "destiny_bond":
+			user.volatile["destiny_bond"] = True
+			lines.append(f"   └─ 👻 {user.display_name} quer levar o oponente junto!")
+
+		elif eff_type == "perish_song":
+			user.volatile["perish_count"] = 3
+			target.volatile["perish_count"] = 3
+			lines.append(f"   └─ 🎵 Todos vão desmaiar em 3 turnos!")
+
+		elif eff_type == "self_destruct":
+			user.current_hp = 0
+			lines.append(f"   └─ 💥 {user.display_name} se sacrificou!")
 
 		return lines
 
@@ -437,8 +661,8 @@ class WildBattle:
 		if recoil <= 0 or damage <= 0:
 			return []
 		recoil_dmg = max(1, int(damage * recoil))
-		actual = user.take_damage(recoil_dmg)
-		return [f"   └─ 💥 {user.display_name} sofreu {actual} de dano de recuo!"]
+		actual = user.take_damage(recoil_dmg, ignore_substitute=True)
+		return [f"   └─ 💥 {user.display_name} sofreu {actual} de recuo!"]
 
 	def _apply_drain(self, user: BattlePokemon, drain: float, damage: int) -> List[str]:
 		if drain <= 0 or damage <= 0:
@@ -446,7 +670,7 @@ class WildBattle:
 		heal_amt = max(1, int(damage * drain))
 		actual = user.heal(heal_amt)
 		if actual > 0:
-			return [f"   └─ 💉 {user.display_name} drenou {actual} HP do oponente!"]
+			return [f"   └─ 💉 {user.display_name} drenou {actual} HP!"]
 		return []
 
 	async def _calc_damage(self, atk: BattlePokemon, df: BattlePokemon, md: MoveData, effect_data: Dict[str, Any]) -> Tuple[int, float, bool]:
@@ -457,45 +681,82 @@ class WildBattle:
 		if effect_data.get("fixed_damage"):
 			return effect_data["fixed_damage"], 1.0, False
 
+		if effect_data.get("level_damage"):
+			return atk.level, 1.0, False
+
 		if power <= 0:
 			return 0, 1.0, False
 
 		if md.dmg_class == "special":
 			a = atk.eff_stat("sp_atk")
 			d = df.eff_stat("sp_def")
+			if df.volatile.get("light_screen", 0) > 0:
+				d = int(d * 1.5)
 		else:
 			a = atk.eff_stat("atk")
 			d = df.eff_stat("def")
 			if atk.status["name"] == "burn":
 				a = int(a * 0.5)
+			if df.volatile.get("reflect", 0) > 0:
+				d = int(d * 1.5)
+
+		if effect_data.get("facade") and atk.status["name"] in ["burn", "poison", "toxic", "paralysis"]:
+			power *= 2
 
 		base = (((2 * atk.level / 5) + 2) * power * (a / max(1, d))) / 50 + 2
-		tm = _type_mult(md.type_name, _types_of(df))
+		
+		is_struggle = md.name.lower() == "struggle"
+		tm = 1.0 if is_struggle else _type_mult(md.type_name, df.types)
 		
 		if tm == 0.0:
 			return 0, 0.0, False
 
-		stab = 1.5 if md.type_name.lower() in _types_of(atk) else 1.0
+		stab = 1.0 if is_struggle else (1.5 if md.type_name.lower() in atk.types else 1.0)
 		
 		crit_ratio = effect_data.get("critical_hit_ratio", 0)
-		crit_chance = 0.0625 * (2 ** crit_ratio) if crit_ratio > 0 else 0.0625
+		if atk.volatile.get("focus_energy"):
+			crit_ratio += 1
+		crit_chance = 0.0 if is_struggle else (0.0625 * (2 ** crit_ratio) if crit_ratio > 0 else 0.0625)
 		crit = random.random() < crit_chance
 
-		damage = int(base * stab * tm * random.uniform(0.85, 1.0) * (1.5 if crit else 1.0))
+		weather_mult = 1.0
+		if self.weather["type"] == "sun":
+			if md.type_name.lower() == "fire":
+				weather_mult = 1.5
+			elif md.type_name.lower() == "water":
+				weather_mult = 0.5
+		elif self.weather["type"] == "rain":
+			if md.type_name.lower() == "water":
+				weather_mult = 1.5
+			elif md.type_name.lower() == "fire":
+				weather_mult = 0.5
+
+		damage = int(base * stab * tm * weather_mult * random.uniform(0.85, 1.0) * (1.5 if crit else 1.0))
 		return max(1, damage), tm, crit
 
 	async def _use_move(self, user: BattlePokemon, target: BattlePokemon, md: MoveData, move_id_for_pp: Optional[str]) -> List[str]:
-		if move_id_for_pp and move_id_for_pp != "__struggle__":
+		is_struggle = move_id_for_pp == "__struggle__"
+		
+		if move_id_for_pp and not is_struggle:
 			pp = user.get_pp(move_id_for_pp)
 			if pp is not None and pp <= 0:
-				return [f"❌ {user.display_name} não tem mais PP para usar {md.name}!"]
+				return [f"❌ {user.display_name} não tem PP!"]
 			user.dec_pp(move_id_for_pp)
 			user.volatile["last_move_used"] = move_id_for_pp
 
 		effect_data = self._get_effect_data(move_id_for_pp or "tackle")
 		
-		if md.dmg_class != "status" and md.accuracy is not None and not effect_data.get("bypass_accuracy", False):
-			if random.randint(1, 100) > int(md.accuracy):
+		if target.volatile.get("protect"):
+			if md.dmg_class != "status":
+				return [f"🛡️ {target.display_name} se protegeu do ataque!"]
+		
+		if md.accuracy is not None and not effect_data.get("bypass_accuracy", False):
+			acc = md.accuracy
+			if user.volatile.get("mind_reader_target") == target:
+				acc = None
+				user.volatile["mind_reader_target"] = None
+			
+			if acc is not None and random.randint(1, 100) > int(acc):
 				return [f"💨 {user.display_name} usou **{md.name}**, mas errou!"]
 
 		if md.dmg_class == "status" or md.power == 0:
@@ -518,37 +779,43 @@ class WildBattle:
 			if i == 0:
 				first_tm, first_crit = tm, crit
 			
-			if tm == 0.0:
+			if tm == 0.0 and not is_struggle:
 				lines.append(f"🚫 {user.display_name} usou **{md.name}**!")
-				lines.append(f"   └─ Não teve efeito em {target.display_name}...")
+				lines.append(f"   └─ Não teve efeito!")
 				return lines
 
 			if target.status["name"] == "freeze" and md.type_name.lower() == "fire" and dmg > 0:
 				target.status = {"name": None, "counter": 0}
-				lines.append(f"🔥 O calor derreteu o gelo! {target.display_name} descongelou!")
+				lines.append(f"🔥 {target.display_name} descongelou!")
 
 			actual = target.take_damage(dmg)
 			total_damage += actual
 
 			if target.fainted:
+				if target.volatile.get("destiny_bond"):
+					user.current_hp = 0
+					lines.append(f"👻 Destiny Bond ativado! {user.display_name} também caiu!")
 				break
 
-		main_line = f"⚔️ {user.display_name} usou **{md.name}**!"
-		
-		if total_damage > 0:
-			main_line += f" Causou **{total_damage} de dano**!"
-		
-		lines.append(main_line)
+		if is_struggle:
+			main_line = f"💢 {user.display_name} não tem PP!"
+			lines.append(main_line)
+			lines.append(f"⚔️ Usou **Struggle**! ({total_damage} de dano)")
+		else:
+			main_line = f"⚔️ {user.display_name} usou **{md.name}**!"
+			if total_damage > 0:
+				main_line += f" ({total_damage} de dano)"
+			lines.append(main_line)
 		
 		details = []
 		if hits > 1:
-			details.append(f"🎯 Acertou {hits}x")
+			details.append(f"🎯 {hits}x")
 		if first_crit:
 			details.append(f"💥 CRÍTICO")
 		if first_tm > 1.0:
 			details.append(f"✨ Super eficaz")
 		elif 0 < first_tm < 1.0:
-			details.append(f"💢 Não muito eficaz")
+			details.append(f"💢 Pouco eficaz")
 		
 		if details:
 			lines.append("   └─ " + " • ".join(details))
@@ -556,7 +823,11 @@ class WildBattle:
 		if target.fainted:
 			lines.append(f"💀 **{target.display_name} foi derrotado!**")
 
-		if effect_data.get("recoil"):
+		if is_struggle:
+			struggle_recoil = max(1, user.stats["hp"] // 4)
+			actual_recoil = user.take_damage(struggle_recoil, ignore_substitute=True)
+			lines.append(f"   └─ 💥 Recuo de 1/4 HP máximo! ({actual_recoil} HP)")
+		elif effect_data.get("recoil"):
 			lines.extend(self._apply_recoil(user, effect_data["recoil"], total_damage))
 
 		if effect_data.get("drain"):
@@ -586,6 +857,7 @@ class WildBattle:
 				stat = stat_tuple[0]
 				stages = stat_tuple[1]
 				is_self_buff = stat_tuple[2] if len(stat_tuple) > 2 else (stages > 0)
+				
 				pokemon_target = user if is_self_buff else target
 				result = self._apply_stat_change(pokemon_target, stat, stages)
 				if result:
@@ -593,34 +865,105 @@ class WildBattle:
 					lines.append(result)
 
 		if not changed:
-			lines.append("   └─ 💢 Mas não surtiu efeito...")
+			lines.append("   └─ 💢 Mas falhou!")
 
 		return lines
 
 	def _end_of_turn(self) -> List[str]:
 		lines = []
+		
 		for p, prefix in [(self.player_active, "🔵"), (self.wild, "🔴")]:
 			if p.fainted:
 				continue
 			
+			if p.volatile.get("wish", 0) > 0:
+				p.volatile["wish"] -= 1
+				if p.volatile["wish"] == 0:
+					heal = p.volatile.get("wish_hp", 0)
+					actual = p.heal(heal)
+					if actual > 0:
+						lines.append(f"⭐ O desejo de {p.display_name} se realizou! (+{actual} HP)")
+			
+			if p.volatile.get("yawn", 0) > 0:
+				p.volatile["yawn"] -= 1
+				if p.volatile["yawn"] == 0:
+					if p.set_status("sleep"):
+						lines.append(f"😴 {p.display_name} adormeceu de cansaço!")
+			
+			if p.volatile.get("perish_count", -1) > 0:
+				p.volatile["perish_count"] -= 1
+				if p.volatile["perish_count"] == 0:
+					p.current_hp = 0
+					lines.append(f"🎵 {p.display_name} sucumbiu ao Perish Song!")
+				else:
+					lines.append(f"🎵 {p.display_name} vai desmaiar em {p.volatile['perish_count']} turno(s)!")
+			
+			if p.volatile.get("ingrain"):
+				heal = max(1, p.stats["hp"] // 16)
+				actual = p.heal(heal)
+				if actual > 0:
+					lines.append(f"🌿 {prefix} {p.display_name} absorveu {actual} HP!")
+			
+			if p.volatile.get("leech_seed"):
+				leech_by = p.volatile.get("leech_seed_by")
+				if leech_by and not leech_by.fainted:
+					drain = max(1, p.stats["hp"] // 8)
+					actual = p.take_damage(drain, ignore_substitute=True)
+					healed = leech_by.heal(actual)
+					lines.append(f"🌱 Leech Seed drenou {actual} HP de {p.display_name}!")
+			
 			status = p.status["name"]
 			if status == "burn":
 				d = max(1, p.stats["hp"] // 16)
-				actual = p.take_damage(d)
+				actual = p.take_damage(d, ignore_substitute=True)
 				lines.append(f"🔥 {prefix} {p.display_name} sofreu {actual} de dano da queimadura")
 			elif status == "poison":
 				d = max(1, p.stats["hp"] // 8)
-				actual = p.take_damage(d)
-				lines.append(f"☠️ {prefix} {p.display_name} sofreu {actual} de dano do envenenamento")
+				actual = p.take_damage(d, ignore_substitute=True)
+				lines.append(f"☠️ {prefix} {p.display_name} sofreu {actual} de dano do veneno")
 			elif status == "toxic":
 				p.status["counter"] += 1
 				d = max(1, (p.stats["hp"] // 16) * p.status["counter"])
-				actual = p.take_damage(d)
-				lines.append(f"☠️☠️ {prefix} {p.display_name} sofreu {actual} de dano do envenenamento grave (nível {p.status['counter']})")
+				actual = p.take_damage(d, ignore_substitute=True)
+				lines.append(f"☠️☠️ {prefix} {p.display_name} sofreu {actual} de veneno grave!")
+			
+			for vol_key in ["light_screen", "reflect", "safeguard", "mist", "bind", "encore", "taunt", "disable"]:
+				if p.volatile.get(vol_key, 0) > 0:
+					p.volatile[vol_key] -= 1
+					if p.volatile[vol_key] == 0:
+						effect_names = {
+							"light_screen": "Light Screen",
+							"reflect": "Reflect",
+							"safeguard": "Safeguard",
+							"mist": "Névoa",
+							"bind": "Bind",
+							"encore": "Encore",
+							"taunt": "Taunt",
+							"disable": "Disable"
+						}
+						lines.append(f"⏱️ {effect_names[vol_key]} de {p.display_name} acabou!")
+			
+			p.volatile["protect"] = False
+			p.volatile["endure"] = False
+			p.volatile["destiny_bond"] = False
+			p.volatile["magic_coat"] = False
+			p.volatile["snatch"] = False
 			
 			if p.fainted:
-				lines.append(f"💀 **{p.display_name} foi derrotado pelo status!**")
-
+				lines.append(f"💀 **{p.display_name} desmaiou!**")
+		
+		if self.weather["type"] and self.weather["turns"] > 0:
+			self.weather["turns"] -= 1
+			if self.weather["turns"] == 0:
+				lines.append(f"🌤️ O clima voltou ao normal!")
+				self.weather["type"] = None
+			elif self.weather["type"] == "hail":
+				for p, prefix in [(self.player_active, "🔵"), (self.wild, "🔴")]:
+					if not p.fainted and "ice" not in p.types:
+						dmg = max(1, p.stats["hp"] // 16)
+						actual = p.take_damage(dmg, ignore_substitute=True)
+						lines.append(f"❄️ {prefix} {p.display_name} sofreu {actual} de dano da granizo!")
+		
 		return lines
 
 	def _enemy_pick(self) -> str:
@@ -714,7 +1057,7 @@ class WildBattle:
 			
 			self.lines.extend([
 				f"🔄 {old_name} voltou!",
-				f"Vamos lá, {self.player_active.display_name}!"
+				f"🔵 Vamos lá, {self.player_active.display_name}!"
 			])
 
 			if consume_turn:
@@ -768,7 +1111,7 @@ class WildBattle:
 
 	async def attempt_capture(self) -> bool:
 		if self.player_active.fainted:
-			self.lines = ["❌ Seu Pokémon está desmaiado! Troque antes de capturar."]
+			self.lines = ["❌ Seu Pokémon está desmaiado!"]
 			if self.actions_view:
 				self.actions_view.force_switch_mode = True
 			await self.refresh()
@@ -802,21 +1145,21 @@ class WildBattle:
 			)
 			self.ended = True
 			self.lines = [
-				f"🎉 **CAPTURA BEM-SUCEDIDA!**",
-				f"✨ {self.wild.display_name} foi capturado!",
+				f"🎉 **CAPTURA!**",
+				f"✨ {self.wild.display_name} capturado!",
 				f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
 			]
 			if self.actions_view:
 				self.actions_view.disable_all()
 			await self.refresh()
 			await self.interaction.channel.send(
-				f"🎉 **Parabéns!** Você capturou **{self.wild.display_name}**!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
+				f"🎉 **Capturou {self.wild.display_name}!** ⭐ {self.player_active.display_name} +{xp} XP"
 			)
 			return True
 		else:
 			self.lines = []
 			shake_text = f"{'<:PokeBall:1345558169090265151> ' * shakes}" if shakes > 0 else ""
-			self.lines.append(f"💢 {shake_text}Pokébola balançou {shakes}x... {self.wild.display_name} escapou!")
+			self.lines.append(f"💢 {shake_text}Escapou! ({shakes}x)")
 			self.lines.append("")
 			
 			eid = self._enemy_pick()
@@ -848,13 +1191,13 @@ class WildBattle:
 		self.lines.extend([
 			"",
 			f"🏆 **VITÓRIA!**",
-			f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
+			f"⭐ {self.player_active.display_name} +{xp} XP!"
 		])
 		if self.actions_view:
 			self.actions_view.disable_all()
 		await self.refresh()
 		await self.interaction.channel.send(
-			f"🏆 **VITÓRIA!** Você derrotou {self.wild.display_name}!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
+			f"🏆 **Vitória!** ⭐ {self.player_active.display_name} +{xp} XP"
 		)
 
 	async def _on_faint(self):
@@ -864,19 +1207,16 @@ class WildBattle:
 			self.ended = True
 			self.lines.extend([
 				"",
-				f"😔 **DERROTA...**",
-				f"Todos os seus Pokémon foram derrotados!"
+				f"😔 **DERROTA**",
+				f"Todos desmaiaram!"
 			])
 			if self.actions_view:
 				self.actions_view.disable_all()
 			await self.refresh()
-			await self.interaction.channel.send("💀 **Você foi derrotado...** Todos os seus Pokémon desmaiaram.")
+			await self.interaction.channel.send("💀 **Derrota!**")
 			return
 
-		self.lines.extend([
-			"",
-			f"Escolha outro Pokémon para continuar!"
-		])
+		self.lines.extend(["", f"Escolha outro Pokémon!"])
 		if self.actions_view:
 			self.actions_view.force_switch_mode = True
 
@@ -894,9 +1234,9 @@ class WildBattleView(discord.ui.View):
 	@discord.ui.button(style=discord.ButtonStyle.primary, label="Lutar", emoji="⚔️")
 	async def fight(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id) != self.user_id:
-			return await i.response.send_message("Esta não é sua batalha!", ephemeral=True)
+			return await i.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await i.response.send_message("A batalha já terminou.", ephemeral=True)
+			return await i.response.send_message("Batalha encerrada.", ephemeral=True)
 		if self.force_switch_mode:
 			return await i.response.edit_message(view=SwitchView(self.battle, force_only=True))
 		await i.response.edit_message(view=MovesView(self.battle))
@@ -904,23 +1244,18 @@ class WildBattleView(discord.ui.View):
 	@discord.ui.button(style=discord.ButtonStyle.primary, label="Trocar", emoji="🔄")
 	async def switch(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id) != self.user_id:
-			return await i.response.send_message("Esta não é sua batalha!", ephemeral=True)
+			return await i.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await i.response.send_message("A batalha já terminou.", ephemeral=True)
+			return await i.response.send_message("Batalha encerrada.", ephemeral=True)
 		await i.response.edit_message(view=SwitchView(self.battle))
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:PokeBall:1345558169090265151>", label="Capturar")
 	async def capture(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id) != self.user_id:
-			return await i.response.send_message("Esta não é sua batalha!", ephemeral=True)
+			return await i.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await i.response.send_message("A batalha já terminou.", ephemeral=True)
+			return await i.response.send_message("Batalha encerrada.", ephemeral=True)
 		if self.force_switch_mode or self.battle.player_active.fainted:
-			return await i.response.send_message("Troque de Pokémon antes de tentar capturar!", ephemeral=True)
+			return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
-
-
-
-
-
