@@ -494,7 +494,7 @@ class WildBattle:
 
 		effect_data = self._get_effect_data(move_id_for_pp or "tackle")
 		
-		if md.accuracy is not None and not effect_data.get("bypass_accuracy", False):
+		if md.dmg_class != "status" and md.accuracy is not None and not effect_data.get("bypass_accuracy", False):
 			if random.randint(1, 100) > int(md.accuracy):
 				return [f"💨 {user.display_name} usou **{md.name}**, mas errou!"]
 
@@ -919,6 +919,7 @@ class WildBattleView(discord.ui.View):
 			return await i.response.send_message("Troque de Pokémon antes de tentar capturar!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
 
 
 
