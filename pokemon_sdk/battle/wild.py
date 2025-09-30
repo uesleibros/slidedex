@@ -200,13 +200,14 @@ class WildBattle:
 			description="\n".join(desc_parts),
 			color=discord.Color.green()
 		)
-		embed.set_footer(text="Effex Engine v1.1")
+
+		embed.set_footer(text="Effex Engine v1.2")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 
 	async def start(self):
 		self.actions_view = WildBattleView(self)
-		self.lines = ["⚔️ A batalha começou!"]
+		self.lines = ["A batalha começou!"]
 		self.message = await self.interaction.channel.send(
 			embed=self._embed(),
 			file=await self._compose_image(),
@@ -481,7 +482,7 @@ class WildBattle:
 			if random.randint(1, 100) > int(md.accuracy):
 				return [f"💨 {user.display_name} usou **{md.name}**, mas errou!"]
 
-		if not effect_data.get("damage", True) and md.dmg_class == "status":
+		if md.dmg_class == "status" or md.power == 0:
 			return await self._apply_status_move(user, target, md, effect_data)
 
 		lines = []
@@ -558,19 +559,19 @@ class WildBattle:
 
 		effects = effect_data.get("effects", [])
 		
-		if not effects and md.stat_changes:
+		if effects:
+			for effect in effects:
+				result = self._apply_effect(user, target, effect, 0)
+				if result:
+					changed = True
+					lines.extend(result)
+		elif md.stat_changes:
 			for stat, delta, to_self in md.stat_changes:
 				tgt = user if to_self else target
 				result = self._apply_stat_change(tgt, stat, delta)
 				if result:
 					changed = True
 					lines.append(result)
-		else:
-			for effect in effects:
-				result = self._apply_effect(user, target, effect, 0)
-				if result:
-					changed = True
-					lines.extend(result)
 
 		if not changed:
 			lines.append("   └─ 💢 Mas não surtiu efeito...")
@@ -748,7 +749,7 @@ class WildBattle:
 
 	async def attempt_capture(self) -> bool:
 		if self.player_active.fainted:
-			self.lines = ["❌ Seu Pokémon está desmaiado! Troque antes de capturar."]
+			self.lines = ["Seu Pokémon está desmaiado! Troque antes de capturar."]
 			if self.actions_view:
 				self.actions_view.force_switch_mode = True
 			await self.refresh()
@@ -782,15 +783,15 @@ class WildBattle:
 			)
 			self.ended = True
 			self.lines = [
-				f"🎉 **CAPTURA BEM-SUCEDIDA!**",
-				f"✨ {self.wild.display_name} foi capturado!",
-				f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
+				f"**CAPTURA BEM-SUCEDIDA!**",
+				f"{self.wild.display_name} foi capturado!",
+				f"{self.player_active.display_name} ganhou {xp} XP!"
 			]
 			if self.actions_view:
 				self.actions_view.disable_all()
 			await self.refresh()
 			await self.interaction.channel.send(
-				f"🎉 **Parabéns!** Você capturou **{self.wild.display_name}**!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
+				f"**Parabéns!** Você capturou **{self.wild.display_name}**!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
 			)
 			return True
 		else:
@@ -827,14 +828,14 @@ class WildBattle:
 		self.ended = True
 		self.lines.extend([
 			"",
-			f"🏆 **VITÓRIA!**",
-			f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
+			f"**VITÓRIA!**",
+			f"{self.player_active.display_name} ganhou {xp} XP!"
 		])
 		if self.actions_view:
 			self.actions_view.disable_all()
 		await self.refresh()
 		await self.interaction.channel.send(
-			f"🏆 **VITÓRIA!** Você derrotou {self.wild.display_name}!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
+			f"**VITÓRIA!** Você derrotou {self.wild.display_name}!\n⭐ {self.player_active.display_name} recebeu **{xp} XP**."
 		)
 
 	async def _on_faint(self):
@@ -844,7 +845,7 @@ class WildBattle:
 			self.ended = True
 			self.lines.extend([
 				"",
-				f"😔 **DERROTA...**",
+				f"**DERROTA...**",
 				f"Todos os seus Pokémon foram derrotados!"
 			])
 			if self.actions_view:
