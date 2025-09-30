@@ -187,18 +187,16 @@ class WildBattle:
 	def _embed(self) -> discord.Embed:
 		desc_parts = [
 			self._hp_line(self.player_active),
-			"⚔️ **VS** ⚔️",
+			"**VS**",
 			self._hp_line(self.wild),
 			""
 		]
 		
 		if self.lines:
-			desc_parts.append("```ansi")
 			desc_parts.extend(self.lines)
-			desc_parts.append("```")
 		
 		embed = discord.Embed(
-			title=f"⚔️ Batalha Selvagem - Turno {self.turn}",
+			title=f"Batalha Selvagem - Turno {self.turn}",
 			description="\n".join(desc_parts),
 			color=discord.Color.green()
 		)
@@ -854,7 +852,7 @@ class WildBattle:
 			return True
 		else:
 			self.lines = []
-			shake_text = f"🔴 {'🔴 ' * shakes}" if shakes > 0 else ""
+			shake_text = f"<:PokeBall:1345558169090265151> {'<:PokeBall:1345558169090265151> ' * shakes}" if shakes > 0 else ""
 			self.lines.append(f"💢 {shake_text}Pokébola balançou {shakes}x... {self.wild.display_name} escapou!")
 			self.lines.append("")
 			
@@ -914,7 +912,7 @@ class WildBattle:
 
 		self.lines.extend([
 			"",
-			f"⚠️ Escolha outro Pokémon para continuar!"
+			f"Escolha outro Pokémon para continuar!"
 		])
 		if self.actions_view:
 			self.actions_view.force_switch_mode = True
@@ -930,31 +928,32 @@ class WildBattleView(discord.ui.View):
 		for item in self.children:
 			item.disabled = True
 
-	@discord.ui.button(style=discord.ButtonStyle.primary, label="⚔️ Lutar", emoji="⚔️")
+	@discord.ui.button(style=discord.ButtonStyle.primary, label="Lutar", emoji="⚔️")
 	async def fight(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id) != self.user_id:
-			return await i.response.send_message("❌ Esta não é sua batalha!", ephemeral=True)
+			return await i.response.send_message("Esta não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await i.response.send_message("⚠️ A batalha já terminou.", ephemeral=True)
+			return await i.response.send_message("A batalha já terminou.", ephemeral=True)
 		if self.force_switch_mode:
 			return await i.response.edit_message(view=SwitchView(self.battle, force_only=True))
 		await i.response.edit_message(view=MovesView(self.battle))
 
-	@discord.ui.button(style=discord.ButtonStyle.primary, label="🔄 Trocar", emoji="🔄")
+	@discord.ui.button(style=discord.ButtonStyle.primary, label="Trocar", emoji="🔄")
 	async def switch(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id) != self.user_id:
-			return await i.response.send_message("❌ Esta não é sua batalha!", ephemeral=True)
+			return await i.response.send_message("Esta não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await i.response.send_message("⚠️ A batalha já terminou.", ephemeral=True)
+			return await i.response.send_message("A batalha já terminou.", ephemeral=True)
 		await i.response.edit_message(view=SwitchView(self.battle))
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:PokeBall:1345558169090265151>", label="Capturar")
 	async def capture(self, i: discord.Interaction, b: discord.ui.Button):
 		if str(i.user.id) != self.user_id:
-			return await i.response.send_message("❌ Esta não é sua batalha!", ephemeral=True)
+			return await i.response.send_message("Esta não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await i.response.send_message("⚠️ A batalha já terminou.", ephemeral=True)
+			return await i.response.send_message("A batalha já terminou.", ephemeral=True)
 		if self.force_switch_mode or self.battle.player_active.fainted:
-			return await i.response.send_message("⚠️ Troque de Pokémon antes de tentar capturar!", ephemeral=True)
+			return await i.response.send_message("Troque de Pokémon antes de tentar capturar!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
