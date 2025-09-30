@@ -200,12 +200,13 @@ class WildBattle:
 			description="\n".join(desc_parts),
 			color=discord.Color.green()
 		)
+		embed.set_footer(text="Effex Engine v1.1")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 
 	async def start(self):
 		self.actions_view = WildBattleView(self)
-		self.lines = ["A batalha começou!"]
+		self.lines = ["⚔️ A batalha começou!"]
 		self.message = await self.interaction.channel.send(
 			embed=self._embed(),
 			file=await self._compose_image(),
@@ -557,15 +558,19 @@ class WildBattle:
 
 		effects = effect_data.get("effects", [])
 		
-		if not effects:
-			lines.append("   └─ 💢 Mas não surtiu efeito...")
-			return lines
-
-		for effect in effects:
-			result = self._apply_effect(user, target, effect, 0)
-			if result:
-				changed = True
-				lines.extend(result)
+		if not effects and md.stat_changes:
+			for stat, delta, to_self in md.stat_changes:
+				tgt = user if to_self else target
+				result = self._apply_stat_change(tgt, stat, delta)
+				if result:
+					changed = True
+					lines.append(result)
+		else:
+			for effect in effects:
+				result = self._apply_effect(user, target, effect, 0)
+				if result:
+					changed = True
+					lines.extend(result)
 
 		if not changed:
 			lines.append("   └─ 💢 Mas não surtiu efeito...")
