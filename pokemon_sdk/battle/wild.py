@@ -530,6 +530,11 @@ class WildBattle:
 				gender=self.wild_raw["gender"],
 				shiny=self.wild_raw.get("is_shiny", False),
 				level=self.wild_raw["level"],
+				is_legendary=self.wild_raw["is_legendary"],
+				is_mythical=self.wild_raw["is_mythical"],
+				types=self.wild_raw["types"],
+				region=self.wild_raw["region"],
+				stats=self.wild_raw["stats"],
 				exp=self.wild_raw.get("exp", 0),
 				moves=self.wild_raw.get("moves", []),
 				nickname=self.wild_raw.get("nickname"),
@@ -661,3 +666,4 @@ class WildBattleView(discord.ui.View):
 		if self.force_switch_mode or self.battle.player_active.fainted: return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
