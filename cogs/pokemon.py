@@ -159,7 +159,7 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 		nicks = [n.lower() for group in flags["nickname"] for n in group]
 		res = [
 			p for p in res
-			if any(q in (p.get("nickname", "")).lower() for q in nicks)
+			if any(q in (p.get("nickname", "") or "").lower() for q in nicks)
 		]
 	if flags.get("nature"):
 		natures = [n.lower() for group in flags["nature"] for n in group]
@@ -360,4 +360,5 @@ class Pokemon(commands.Cog):
 			return
 
 async def setup(bot: commands.Bot):
+
 	await bot.add_cog(Pokemon(bot))
