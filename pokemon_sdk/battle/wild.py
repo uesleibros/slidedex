@@ -1,4 +1,16 @@
-import discord import aiopoke import random import math import asyncio from main import pm from typing import List, Dict, Any, Optional, Tuple, Set from utils.canvas import compose_battle_async from pokemon_sdk.calculations import calculate_stats from pokemon_sdk.constants import TYPE_CHART, STAT_ALIASES from utils.preloaded import preloaded_textures from utils.pokemon_emojis import get_app_emoji from helpers.effect_mapper import effect_mapper
+import discord 
+import aiopoke 
+import random 
+import math 
+import asyncio 
+from main import pm 
+from typing import List, Dict, Any, Optional, Tuple, Set 
+from utils.canvas import compose_battle_async 
+from pokemon_sdk.calculations import calculate_stats 
+from pokemon_sdk.constants import TYPE_CHART, STAT_ALIASES
+from utils.preloaded import preloaded_textures 
+from utils.pokemon_emojis import get_app_emoji
+from helpers.effect_mapper import effect_mapper
 
 def _get_stat(stats: Dict[str,int], key: str) -> int: for alias in STAT_ALIASES.get(key, []): if alias in stats: return int(stats[alias]) return 1
 
@@ -482,4 +494,5 @@ async def capture(self, i: discord.Interaction, b: discord.ui.Button):
 	if self.force_switch_mode or self.battle.player_active.fainted: return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 	await i.response.defer()
 	await self.battle.attempt_capture()
+
 
