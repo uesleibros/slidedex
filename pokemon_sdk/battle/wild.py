@@ -852,7 +852,7 @@ class WildBattle:
 			return True
 		else:
 			self.lines = []
-			shake_text = f"<:PokeBall:1345558169090265151> {'<:PokeBall:1345558169090265151> ' * shakes}" if shakes > 0 else ""
+			shake_text = f"{'<:PokeBall:1345558169090265151> ' * shakes}" if shakes > 0 else ""
 			self.lines.append(f"💢 {shake_text}Pokébola balançou {shakes}x... {self.wild.display_name} escapou!")
 			self.lines.append("")
 			
@@ -956,4 +956,5 @@ class WildBattleView(discord.ui.View):
 			return await i.response.send_message("Troque de Pokémon antes de tentar capturar!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
 
