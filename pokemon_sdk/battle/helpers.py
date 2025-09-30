@@ -1,10 +1,9 @@
 from typing import Optional, Dict, List, Tuple, Any
 from pokemon_sdk.constants import STAT_ALIASES, TYPE_CHART
-from pokemon_sdk.battle.wild import WildBattle
 import discord
 
 class MovesView(discord.ui.View):
-	def __init__(self, battle: WildBattle, timeout: float = 60.0):
+	def __init__(self, battle: object, timeout: float = 60.0):
 		super().__init__(timeout=timeout)
 		self.battle = battle
 		for mv in battle.player_active.moves:
@@ -32,7 +31,7 @@ class MovesView(discord.ui.View):
 		return _run
 
 class SwitchView(discord.ui.View):
-	def __init__(self, battle: WildBattle, force_only: bool = False, timeout: float = 60.0):
+	def __init__(self, battle: object, force_only: bool = False, timeout: float = 60.0):
 		super().__init__(timeout=timeout)
 		self.battle = battle
 		for i, p in enumerate(battle.player_team):
