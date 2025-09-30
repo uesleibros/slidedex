@@ -281,7 +281,7 @@ class WildBattle:
 	def _embed(self) -> discord.Embed:
 		desc_parts = [
 			self._hp_line(self.player_active),
-			"⚔️ **VS** ⚔️",
+			"**VS**",
 			self._hp_line(self.wild),
 			""
 		]
@@ -1259,3 +1259,4 @@ class WildBattleView(discord.ui.View):
 			return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
