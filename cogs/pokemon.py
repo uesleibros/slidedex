@@ -137,7 +137,7 @@ class ConfirmationView(discord.ui.View):
 		self.user_id = user_id
 		self.value = None
 
-	@discord.ui.button(label="Confirmar", style=discord.ButtonStyle.green, emoji="✅")
+	@discord.ui.button(label="Confirmar", style=discord.ButtonStyle.green)
 	async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
 		if interaction.user.id != self.user_id:
 			return await interaction.response.send_message("Esta confirmação não é para você!", ephemeral=True)
@@ -145,7 +145,7 @@ class ConfirmationView(discord.ui.View):
 		self.stop()
 		await interaction.response.defer()
 
-	@discord.ui.button(label="Cancelar", style=discord.ButtonStyle.red, emoji="❌")
+	@discord.ui.button(label="Cancelar", style=discord.ButtonStyle.red)
 	async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
 		if interaction.user.id != self.user_id:
 			return await interaction.response.send_message("Esta confirmação não é para você!", ephemeral=True)
@@ -587,7 +587,7 @@ class Pokemon(commands.Cog):
 			message_parts.append("\n**Incluindo:**")
 			message_parts.extend(details)
 		
-		message_parts.append("\n*Você tem 60 segundos para confirmar.*")
+		message_parts.append("\n-# *Você tem 60 segundos para confirmar.*")
 		
 		view = ConfirmationView(ctx.author.id, timeout=60)
 		message = await ctx.send("\n".join(message_parts), view=view)
@@ -621,4 +621,3 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
-
