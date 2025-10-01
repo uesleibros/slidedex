@@ -106,8 +106,8 @@ def _compose_profile(
             if i >= len(coords) or not sprite_bytes:
                 break
             x, y, w, h = coords[i]
-            spr = _process_sprite_crop(sprite_bytes, int(w * 0.5), int(h * 0.5))
-            composed.paste(spr, (int(x * 0.5), int(y * 0.5)), spr)
+            spr = _process_sprite_crop(sprite_bytes, int(w * 0.5), int(h * 0.5), crop=False)
+            composed.paste(spr, (x, y), spr)
 
         buf = io.BytesIO()
         composed.save(buf, format="PNG", optimize=False, compress_level=1)
@@ -124,6 +124,7 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
+
 
 
 
