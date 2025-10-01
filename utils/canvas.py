@@ -33,7 +33,7 @@ def _compose_pokemon(
 ) -> io.BytesIO:
 	composed = background.copy()
 	try:
-		spr = _to_box(sprite_bytes, box_size)
+		spr = _process_sprite_crop(sprite_bytes, box_size, box_size, crop=False)
 		x = (composed.width - spr.width) // 2
 		y = ground_y - spr.height
 		composed.paste(spr, (x, y), spr)
@@ -44,7 +44,7 @@ def _compose_pokemon(
 	finally:
 		composed.close()
 
-def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int, crop: bool = True, scale_boost: float = 1.0) -> Image.Image:
+def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int, crop: bool = True) -> Image.Image:
 	im = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
 	try:
 		bbox = im.getbbox()
@@ -56,7 +56,6 @@ def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int, crop: bool = True,
 			im = im.crop((0, 0, cw, crop_h))
 
 		sf = min(w / im.width, h / im.height)
-		sf *= scale_boost
 		nw, nh = int(im.width * sf), int(im.height * sf)
 		res = im.resize((nw, nh), Image.Resampling.NEAREST)
 
@@ -82,7 +81,7 @@ def _compose_battle(
 	try:
 		if player_bytes:
 			player_box_size = int(box_size * 0.8)
-			p = _process_sprite_crop(player_bytes, player_box_size, player_box_size, crop=False, scale_boost=1.2)
+			p = _process_sprite_crop(player_bytes, player_box_size, player_box_size, crop=False)
 			composed.paste(p, (player_x, player_ground_y - p.height), p)
 		if enemy_bytes:
 			enemy_box_size = int(box_size * 0.6)
@@ -124,16 +123,3 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
-
-
-
-
-
-
-
-
-
-
-
-
-
