@@ -418,19 +418,63 @@ class Pokemon(commands.Cog):
 		if not pokemons:
 			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
 
+		pokemons_to_fav = [p for p in pokemons if not p.get("is_favorite")]
+		
+		if not pokemons_to_fav:
+			return await ctx.send("Todos os Pokémon encontrados já estão favoritados!")
+
+		stats = analyze_pokemons(pokemons_to_fav)
+		
+		message_parts = [f"Você tem certeza que quer **favoritar {len(pokemons_to_fav)}** pokémon?"]
+		
+		details = []
+		if stats["event"] > 0:
+			details.append(f"• **{stats['event']}** Pokémon de Eventos")
+		if stats["rare"] > 0:
+			details.append(f"• **{stats['rare']}** Pokémon Raros (Lendários e Míticos)")
+		if stats["shiny"] > 0:
+			details.append(f"• **{stats['shiny']}** Pokémon Shiny")
+		if stats["iv_100"] > 0:
+			details.append(f"• **{stats['iv_100']}** Pokémon com **IV = 100%**")
+		if stats["iv_90_100"] > 0:
+			details.append(f"• **{stats['iv_90_100']}** Pokémon com **IV ≥ 90%, < 100%**")
+		if stats["iv_80_90"] > 0:
+			details.append(f"• **{stats['iv_80_90']}** Pokémon com **IV ≥ 80%, < 90%**")
+		
+		if details:
+			message_parts.append("\n**Incluindo:**")
+			message_parts.extend(details)
+		
+		message_parts.append("\n-# *Você tem 60 segundos para confirmar.*")
+		
+		view = ConfirmationView(ctx.author.id, timeout=60)
+		message = await ctx.send("\n".join(message_parts), view=view)
+		
+		await view.wait()
+		
+		if view.value is None or view.value is False:
+			for item in view.children:
+				item.disabled = True
+			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=None)
+			return
+
 		count = 0
-		for pokemon in pokemons:
-			if not pokemon.get("is_favorite"):
-				try:
-					toolkit.toggle_favorite(user_id, pokemon["id"])
-					count += 1
-				except ValueError:
-					continue
+		for pokemon in pokemons_to_fav:
+			try:
+				toolkit.toggle_favorite(user_id, pokemon["id"])
+				count += 1
+			except ValueError:
+				continue
 
 		if count == 0:
-			await ctx.send("Todos os Pokémon encontrados já estão favoritados!")
+			result_text = "Não foi possível favoritar nenhum Pokémon!"
 		else:
-			await ctx.send(f"❤️ {count} Pokémon foram favoritados!")
+			result_text = f"❤️ **{count}** Pokémon foram favoritados!"
+		
+		for item in view.children:
+			item.disabled = True
+		
+		await message.edit(content=result_text, view=None)
 
 	@flags.add_flag("--name", "--n", nargs="+", action="append")
 	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
@@ -485,19 +529,63 @@ class Pokemon(commands.Cog):
 		if not pokemons:
 			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
 
+		pokemons_to_unfav = [p for p in pokemons if p.get("is_favorite")]
+		
+		if not pokemons_to_unfav:
+			return await ctx.send("Nenhum dos Pokémon encontrados está favoritado!")
+
+		stats = analyze_pokemons(pokemons_to_unfav)
+		
+		message_parts = [f"Você tem certeza que quer **desfavoritar {len(pokemons_to_unfav)}** pokémon?"]
+		
+		details = []
+		if stats["event"] > 0:
+			details.append(f"• **{stats['event']}** Pokémon de Eventos")
+		if stats["rare"] > 0:
+			details.append(f"• **{stats['rare']}** Pokémon Raros (Lendários e Míticos)")
+		if stats["shiny"] > 0:
+			details.append(f"• **{stats['shiny']}** Pokémon Shiny")
+		if stats["iv_100"] > 0:
+			details.append(f"• **{stats['iv_100']}** Pokémon com **IV = 100%**")
+		if stats["iv_90_100"] > 0:
+			details.append(f"• **{stats['iv_90_100']}** Pokémon com **IV ≥ 90%, < 100%**")
+		if stats["iv_80_90"] > 0:
+			details.append(f"• **{stats['iv_80_90']}** Pokémon com **IV ≥ 80%, < 90%**")
+		
+		if details:
+			message_parts.append("\n**Incluindo:**")
+			message_parts.extend(details)
+		
+		message_parts.append("\n-# *Você tem 60 segundos para confirmar.*")
+		
+		view = ConfirmationView(ctx.author.id, timeout=60)
+		message = await ctx.send("\n".join(message_parts), view=view)
+		
+		await view.wait()
+		
+		if view.value is None or view.value is False:
+			for item in view.children:
+				item.disabled = True
+			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=None)
+			return
+
 		count = 0
-		for pokemon in pokemons:
-			if pokemon.get("is_favorite"):
-				try:
-					toolkit.toggle_favorite(user_id, pokemon["id"])
-					count += 1
-				except ValueError:
-					continue
+		for pokemon in pokemons_to_unfav:
+			try:
+				toolkit.toggle_favorite(user_id, pokemon["id"])
+				count += 1
+			except ValueError:
+				continue
 
 		if count == 0:
-			await ctx.send("Nenhum dos Pokémon encontrados estava favoritado!")
+			result_text = "Não foi possível desfavoritar nenhum Pokémon!"
 		else:
-			await ctx.send(f"💔 {count} Pokémon foram removidos dos favoritos!")
+			result_text = f"💔 **{count}** Pokémon foram removidos dos favoritos!"
+		
+		for item in view.children:
+			item.disabled = True
+		
+		await message.edit(content=result_text, view=None)
 
 	@flags.add_flag("newname", nargs="+")
 	@flags.add_flag("--name", "--n", nargs="+", action="append")
@@ -597,7 +685,7 @@ class Pokemon(commands.Cog):
 		if view.value is None or view.value is False:
 			for item in view.children:
 				item.disabled = True
-			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=view)
+			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=None)
 			return
 		
 		count = 0
@@ -611,13 +699,13 @@ class Pokemon(commands.Cog):
 		if count == 0:
 			result_text = "Não foi possível alterar o nickname de nenhum Pokémon!"
 		else:
-			action = f"alterado **{nickname}**" if nickname else "removido"
+			action = f"alterado para **{nickname}**" if nickname else "removido"
 			result_text = f"Nickname {action} para **{count}** Pokémon!"
 		
 		for item in view.children:
 			item.disabled = True
 		
-		await message.edit(content=result_text, view=view)
+		await message.edit(content=result_text, view=None)
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
