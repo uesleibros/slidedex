@@ -24,12 +24,12 @@ STAT_NAMES = {
 }
 
 STATUS_TAGS = {
-	"burn": "BRN",
-	"poison": "PSN",
-	"paralysis": "PAR",
-	"sleep": "SLP",
-	"freeze": "FRZ",
-	"toxic": "TOX"
+	"burn": "<:brn_status:1422760909830619156>",
+	"poison": "<:psn_status:1422760971310469215>",
+	"paralysis": "<:prz_status:1422761122813182006>",
+	"sleep": "<:slp_status:1422761029951029300>",
+	"freeze": "<:frz_status:1422761075744440372>",
+	"toxic": "<:psn_status:1422760971310469215>"
 }
 
 STATUS_MESSAGES = {
@@ -1258,4 +1258,5 @@ class WildBattleView(discord.ui.View):
 			return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
 
