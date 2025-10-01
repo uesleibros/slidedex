@@ -44,6 +44,26 @@ def _compose_pokemon(
 	finally:
 		composed.close()
 
+def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int) -> Image.Image:
+    im = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
+    try:
+        cw, ch = im.size
+        crop_h = int(ch / 1.6)
+        crop = im.crop((0, 0, cw, crop_h))
+
+        sf = min(w / crop.width, h / crop.height)
+        nw, nh = int(crop.width * sf), int(crop.height * sf)
+        res = crop.resize((nw, nh), Image.Resampling.NEAREST)
+
+        final = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+
+        x = (w - nw) // 2
+        y = h - nh
+        final.paste(res, (x, y), res)
+        return final
+    finally:
+        im.close()
+
 def _compose_battle(
 	player_bytes: bytes,
 	enemy_bytes: bytes,
@@ -57,10 +77,11 @@ def _compose_battle(
 	composed = background.copy()
 	try:
 		if player_bytes:
-			p = _to_box(player_bytes, int(box_size * 1.5))
+			player_box_size = int(box_size * 1.5)
+			p = _process_sprite_crop(player_bytes, player_box_size, player_box_size)
 			composed.paste(p, (player_x, player_ground_y - p.height), p)
 		if enemy_bytes:
-			e = _to_box(enemy_bytes, box_size)
+			e = _process_sprite_crop(enemy_bytes, box_size, box_size)
 			composed.paste(e, (enemy_x, enemy_ground_y - e.height), e)
 		buf = io.BytesIO()
 		composed.save(buf, format="PNG", optimize=False, compress_level=1)
@@ -68,23 +89,6 @@ def _compose_battle(
 		return buf
 	finally:
 		composed.close()
-
-def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int) -> Image.Image:
-    im = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
-    try:
-        cw, ch = im.size
-        crop_h = int(ch / 1.6)
-        crop = im.crop((0, 0, cw, crop_h))
-
-        sf = min(w / crop.width, h / crop.height)
-        nw, nh = int(crop.width * sf), int(crop.height * sf)
-        res = crop.resize((nw, nh), Image.Resampling.NEAREST)
-
-        final = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        final.paste(res, ((w - nw) // 2, (h - nh) // 2), res)
-        return final
-    finally:
-        im.close()
 
 def _compose_profile(
     party_sprites: List[bytes],
