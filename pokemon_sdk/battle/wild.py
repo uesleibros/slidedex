@@ -14,6 +14,7 @@ from .effects import EffectHandler
 from .status import StatusHandler
 from .capture import CaptureSystem
 from .helpers import SwitchView, MovesView, MoveData, _normalize_move, _hp_bar, _slug
+from .pokeballs import PokeBallSystem, BallType
 
 class WildBattle:
     def __init__(self, player_party: List[Dict[str, Any]], wild: Dict[str, Any], user_id: str, interaction: discord.Interaction) -> None:
@@ -37,6 +38,9 @@ class WildBattle:
         self.field = {"spikes_player": 0, "spikes_wild": 0, "trick_room": 0, "gravity": 0}
         self.damage_calculator = DamageCalculator(self.weather)
         self.effect_handler = EffectHandler()
+        self.ball_type = BallType.POKE_BALL
+        self.location_type = "normal"
+        self.time_of_day = "day"
     
     @property
     def player_active(self) -> BattlePokemon:
@@ -449,7 +453,13 @@ class WildBattle:
             await self.refresh()
             return False
         
-        success, shakes = CaptureSystem.attempt_capture_gen3(self.wild)
+        success, shakes = CaptureSystem.attempt_capture_gen3(
+            wild=self.wild,
+            ball_type=self.ball_type,
+            turn=self.turn,
+            time_of_day=self.time_of_day,
+            location_type=self.location_type
+        )
         
         if success:
             xp = pm.repo.tk.calc_battle_exp(self.player_active.level, self.wild.level)
@@ -597,4 +607,5 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
 
