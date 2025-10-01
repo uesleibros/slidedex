@@ -437,6 +437,8 @@ class Pokemon(commands.Cog):
 		else:
 			await ctx.send(f"💔 {count} Pokémon foram removidos dos favoritos!")
 
+	@flags.add_flag("newname", nargs="+")
+	
 	@flags.add_flag("--name", "--n", nargs="+", action="append")
 	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
 	@flags.add_flag("--type", "--t", type=str, nargs="+", action="append")
@@ -482,9 +484,9 @@ class Pokemon(commands.Cog):
 		)
 	)
 	@requires_account()
-	async def nicknameall_command(self, ctx: commands.Context, *, nickname: Optional[str] = None, **flags):
+	async def nicknameall_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
-		nickname = nickname.strip()
+		nickname = flags.get("newname", "").strip()
 		
 		if nickname and len(nickname) > 20:
 			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
@@ -512,4 +514,5 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
 
