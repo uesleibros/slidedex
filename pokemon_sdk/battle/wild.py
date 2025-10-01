@@ -799,9 +799,9 @@ class WildBattle:
 		if is_struggle:
 			main_line = f"💢 {user.display_name} não tem PP!"
 			lines.append(main_line)
-			lines.append(f"⚔️ Usou **Struggle**! ({total_damage} de dano)")
+			lines.append(f"Usou **Struggle**! ({total_damage} de dano)")
 		else:
-			main_line = f"⚔️ {user.display_name} usou **{md.name}**!"
+			main_line = f"{user.display_name} usou **{md.name}**!"
 			if total_damage > 0:
 				main_line += f" ({total_damage} de dano)"
 			lines.append(main_line)
@@ -1110,7 +1110,7 @@ class WildBattle:
 
 	async def attempt_capture(self) -> bool:
 		if self.player_active.fainted:
-			self.lines = ["❌ Seu Pokémon está desmaiado!"]
+			self.lines = ["Seu Pokémon está desmaiado!"]
 			if self.actions_view:
 				self.actions_view.force_switch_mode = True
 			await self.refresh()
@@ -1207,7 +1207,7 @@ class WildBattle:
 			self.lines.extend([
 				"",
 				f"😔 **DERROTA**",
-				f"Todos desmaiaram!"
+				f"Todos os seus pokémon desmaiaram!"
 			])
 			if self.actions_view:
 				self.actions_view.disable_all()
@@ -1258,5 +1258,6 @@ class WildBattleView(discord.ui.View):
 			return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await i.response.defer()
 		await self.battle.attempt_capture()
+
 
 
