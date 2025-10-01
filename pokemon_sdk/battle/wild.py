@@ -454,7 +454,7 @@ class WildBattle:
             return False
 
         already_caught = pm.repo.tk.has_caught_species(self.user_id, self.wild.species_id)
-        success, shakes, _ = CaptureSystem.attempt_capture_gen3(
+        success, shakes, ball_modifier = CaptureSystem.attempt_capture_gen3(
             wild=self.wild,
             ball_type=self.ball_type,
             turn=self.turn,
@@ -617,6 +617,7 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
 
 
 
