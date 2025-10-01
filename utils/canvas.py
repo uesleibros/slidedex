@@ -44,25 +44,25 @@ def _compose_pokemon(
 	finally:
 		composed.close()
 
-def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int) -> Image.Image:
-    im = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
-    try:
-        cw, ch = im.size
-        crop_h = int(ch / 1.6)
-        crop = im.crop((0, 0, cw, crop_h))
+def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int, crop: bool = True) -> Image.Image:
+	im = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
+	try:
+		if crop:
+			cw, ch = im.size
+			crop_h = int(ch / 1.6)
+			im = im.crop((0, 0, cw, crop_h))
 
-        sf = min(w / crop.width, h / crop.height)
-        nw, nh = int(crop.width * sf), int(crop.height * sf)
-        res = crop.resize((nw, nh), Image.Resampling.NEAREST)
+		sf = min(w / im.width, h / im.height)
+		nw, nh = int(im.width * sf), int(im.height * sf)
+		res = im.resize((nw, nh), Image.Resampling.NEAREST)
 
-        final = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-
-        x = (w - nw) // 2
-        y = h - nh
-        final.paste(res, (x, y), res)
-        return final
-    finally:
-        im.close()
+		final = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+		x = (w - nw) // 2
+		y = h - nh
+		final.paste(res, (x, y), res)
+		return final
+	finally:
+		im.close()
 
 def _compose_battle(
 	player_bytes: bytes,
@@ -78,11 +78,11 @@ def _compose_battle(
 	try:
 		if player_bytes:
 			player_box_size = int(box_size * 1.6)
-			p = _process_sprite_crop(player_bytes, player_box_size, player_box_size)
+			p = _process_sprite_crop(player_bytes, player_box_size, player_box_size, crop=False)
 			composed.paste(p, (player_x, player_ground_y - p.height), p)
 		if enemy_bytes:
 			enemy_box_size = int(box_size * 1.2)
-			e = _process_sprite_crop(enemy_bytes, enemy_box_size, enemy_box_size)
+			e = _process_sprite_crop(enemy_bytes, enemy_box_size, enemy_box_size, crop=False)
 			composed.paste(e, (enemy_x, enemy_ground_y - e.height), e)
 		buf = io.BytesIO()
 		composed.save(buf, format="PNG", optimize=False, compress_level=1)
@@ -120,6 +120,3 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
-
-
-
