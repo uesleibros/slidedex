@@ -135,7 +135,6 @@ class Pokemon(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
 
-	# Filter
 	@flags.add_flag("--page", nargs="?", type=int, default=0)
 	@flags.add_flag("--name", "--n", nargs="+", action="append")
 	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
@@ -148,19 +147,13 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--party", action="store_true")
 	@flags.add_flag("--box", action="store_true")
 	@flags.add_flag("--favorite", action="store_true")
-
 	@flags.add_flag("--held_item", nargs="+", action="append")
 	@flags.add_flag("--nature", nargs="+", action="append")
 	@flags.add_flag("--ability", nargs="+", action="append")
-
 	@flags.add_flag("--species", nargs="+", action="append", type=int)
-
-	# Sort
 	@flags.add_flag("--reverse", action="store_true")
 	@flags.add_flag("--random", action="store_true")
 	@flags.add_flag("--sort", type=str)
-
-	# IV
 	@flags.add_flag("--min_iv", type=int)
 	@flags.add_flag("--max_iv", type=int)
 	@flags.add_flag("--min_level", type=int)
@@ -173,18 +166,14 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--spdefiv", nargs="+", action="append")
 	@flags.add_flag("--spdiv", nargs="+", action="append")
 	@flags.add_flag("--iv", nargs="+", action="append")
-
-	# Skip/Page Size
 	@flags.add_flag("--page_size", type=int, default=20)
 	@flags.add_flag("--limit", type=int)
-
 	@commands.cooldown(3, 5, commands.BucketType.user)
 	@flags.command(
 		name="pokemon",
 		aliases=["p", "pk", "pkm", "pkmn"],
 		help=(
 			"Lista os Pokémon do usuário com suporte a filtros, ordenação e paginação.\n\n"
-
 			"BÁSICO\n"
 			"  --party                 Lista apenas Pokémon que estão na party\n"
 			"  --box                   Lista apenas Pokémon que estão na box\n"
@@ -199,18 +188,15 @@ class Pokemon(commands.Cog):
 			"  --held_item <nome...>   Filtra por item segurado\n"
 			"  --type <nome...>        Filtra por tipos do Pokémon (aceita múltiplos)\n"
 			"  --region <nome...>      Filtra por região de origem da espécie\n\n"
-
 			"ESPECIAL\n"
 			"  --legendary             Filtra apenas espécies lendárias\n"
 			"  --mythical              Filtra apenas espécies míticas\n\n"
-
 			"FILTRAGEM NUMÉRICA\n"
 			"  --min_iv N              Seleciona apenas Pokémon com IV total >= N (valor em %)\n"
 			"  --max_iv N              Seleciona apenas Pokémon com IV total <= N (valor em %)\n"
 			"  --min_level N           Seleciona apenas Pokémon com level >= N\n"
 			"  --max_level N           Seleciona apenas Pokémon com level <= N\n"
 			"  --level <N...>          Filtra por levels exatos (aceita vários)\n\n"
-
 			"FILTRAGEM POR IV INDIVIDUAL\n"
 			"  --hpiv <N...>           IV exato de HP\n"
 			"  --atkiv <N...>          IV exato de Attack\n"
@@ -219,17 +205,14 @@ class Pokemon(commands.Cog):
 			"  --spdefiv <N...>        IV exato de Special Defense\n"
 			"  --spdiv <N...>          IV exato de Speed\n"
 			"  --iv <N...>             IV total em % exato (ex.: 100 = perfeitos)\n\n"
-
 			"ORDENAÇÃO\n"
 			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species\n"
 			"  --reverse               Inverte a ordem de ordenação\n"
 			"  --random                Embaralha a ordem (ignora sort)\n\n"
-
 			"PAGINAÇÃO E LIMITES\n"
 			"  --page N                Define a página inicial (1-based, padrão: 1)\n"
 			"  --page_size N           Define o número de Pokémon por página (padrão: 20)\n"
 			"  --limit N               Define um limite máximo de Pokémon retornados\n\n"
-
 			"EXEMPLOS\n"
 			"  .pokemon --party\n"
 			"  .pokemon --box --shiny\n"
@@ -243,7 +226,6 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def pokemon_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
-
 		pokemons = toolkit.get_user_pokemon(user_id)
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
@@ -273,12 +255,27 @@ class Pokemon(commands.Cog):
 		try:
 			is_favorite = toolkit.toggle_favorite(user_id, pokemon_id)
 			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
-			
 			emoji = "❤️" if is_favorite else "💔"
 			action = "favoritado" if is_favorite else "removido dos favoritos"
-			
 			await ctx.send(f"{emoji} {format_pokemon_display(pokemon, bold_name=True)} foi {action}!")
+		except ValueError:
+			return
+
+	@commands.command(name="unfavourite", aliases=["unfav", "unfavorite"])
+	@requires_account()
+	async def unfavourite_pokemon(self, ctx, pokemon_id: int):
+		user_id = str(ctx.author.id)
+		user = toolkit.get_user(user_id)
+		if not user:
+			return
+		
+		try:
+			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+			if not pokemon.get("is_favorite"):
+				return await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
 			
+			toolkit.toggle_favorite(user_id, pokemon_id)
+			await ctx.send(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
 		except ValueError:
 			return
 
@@ -286,6 +283,7 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def set_nickname(self, ctx, pokemon_id: int, *, nickname: Optional[str] = None):
 		user_id = str(ctx.author.id)
+		nickname = nickname.strip()
 		user = toolkit.get_user(user_id)
 		if not user:
 			return
@@ -303,6 +301,213 @@ class Pokemon(commands.Cog):
 				await ctx.send(f"Nickname do {format_pokemon_display(pokemon, bold_name=True)} removido!")
 		except ValueError:
 			return
+
+	@flags.add_flag("--name", "--n", nargs="+", action="append")
+	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
+	@flags.add_flag("--type", "--t", type=str, nargs="+", action="append")
+	@flags.add_flag("--region", "--r", type=str, nargs="+", action="append")
+	@flags.add_flag("--gender", type=str)
+	@flags.add_flag("--shiny", action="store_true")
+	@flags.add_flag("--legendary", action="store_true")
+	@flags.add_flag("--mythical", action="store_true")
+	@flags.add_flag("--party", action="store_true")
+	@flags.add_flag("--box", action="store_true")
+	@flags.add_flag("--favorite", action="store_true")
+	@flags.add_flag("--held_item", nargs="+", action="append")
+	@flags.add_flag("--nature", nargs="+", action="append")
+	@flags.add_flag("--ability", nargs="+", action="append")
+	@flags.add_flag("--species", nargs="+", action="append", type=int)
+	@flags.add_flag("--reverse", action="store_true")
+	@flags.add_flag("--random", action="store_true")
+	@flags.add_flag("--sort", type=str)
+	@flags.add_flag("--min_iv", type=int)
+	@flags.add_flag("--max_iv", type=int)
+	@flags.add_flag("--min_level", type=int)
+	@flags.add_flag("--max_level", type=int)
+	@flags.add_flag("--level", nargs="+", action="append")
+	@flags.add_flag("--hpiv", nargs="+", action="append")
+	@flags.add_flag("--atkiv", nargs="+", action="append")
+	@flags.add_flag("--defiv", nargs="+", action="append")
+	@flags.add_flag("--spatkiv", nargs="+", action="append")
+	@flags.add_flag("--spdefiv", nargs="+", action="append")
+	@flags.add_flag("--spdiv", nargs="+", action="append")
+	@flags.add_flag("--iv", nargs="+", action="append")
+	@flags.add_flag("--limit", type=int)
+	@flags.command(
+		name="favoriteall",
+		aliases=["favall"],
+		help=(
+			"Marca todos os Pokémon que correspondem aos filtros como favoritos.\n\n"
+			"Aceita as mesmas flags de filtro do comando .pokemon\n\n"
+			"EXEMPLOS\n"
+			"  .favoriteall --shiny\n"
+			"  .favoriteall --species 25 --min_iv 90\n"
+			"  .favoriteall --legendary --box"
+		)
+	)
+	@requires_account()
+	async def favoriteall_command(self, ctx: commands.Context, **flags):
+		user_id = str(ctx.author.id)
+		pokemons = toolkit.get_user_pokemon(user_id)
+		pokemons = apply_filters(pokemons, flags)
+		pokemons = apply_sort_limit(pokemons, flags)
+
+		if not pokemons:
+			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
+
+		count = 0
+		for pokemon in pokemons:
+			if not pokemon.get("is_favorite"):
+				try:
+					toolkit.toggle_favorite(user_id, pokemon["id"])
+					count += 1
+				except ValueError:
+					continue
+
+		if count == 0:
+			await ctx.send("Todos os Pokémon encontrados já estão favoritados!")
+		else:
+			await ctx.send(f"❤️ {count} Pokémon foram favoritados!")
+
+	@flags.add_flag("--name", "--n", nargs="+", action="append")
+	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
+	@flags.add_flag("--type", "--t", type=str, nargs="+", action="append")
+	@flags.add_flag("--region", "--r", type=str, nargs="+", action="append")
+	@flags.add_flag("--gender", type=str)
+	@flags.add_flag("--shiny", action="store_true")
+	@flags.add_flag("--legendary", action="store_true")
+	@flags.add_flag("--mythical", action="store_true")
+	@flags.add_flag("--party", action="store_true")
+	@flags.add_flag("--box", action="store_true")
+	@flags.add_flag("--favorite", action="store_true")
+	@flags.add_flag("--held_item", nargs="+", action="append")
+	@flags.add_flag("--nature", nargs="+", action="append")
+	@flags.add_flag("--ability", nargs="+", action="append")
+	@flags.add_flag("--species", nargs="+", action="append", type=int)
+	@flags.add_flag("--reverse", action="store_true")
+	@flags.add_flag("--random", action="store_true")
+	@flags.add_flag("--sort", type=str)
+	@flags.add_flag("--min_iv", type=int)
+	@flags.add_flag("--max_iv", type=int)
+	@flags.add_flag("--min_level", type=int)
+	@flags.add_flag("--max_level", type=int)
+	@flags.add_flag("--level", nargs="+", action="append")
+	@flags.add_flag("--hpiv", nargs="+", action="append")
+	@flags.add_flag("--atkiv", nargs="+", action="append")
+	@flags.add_flag("--defiv", nargs="+", action="append")
+	@flags.add_flag("--spatkiv", nargs="+", action="append")
+	@flags.add_flag("--spdefiv", nargs="+", action="append")
+	@flags.add_flag("--spdiv", nargs="+", action="append")
+	@flags.add_flag("--iv", nargs="+", action="append")
+	@flags.add_flag("--limit", type=int)
+	@flags.command(
+		name="unfavouriteall",
+		aliases=["unfavall", "unfavoriteall"],
+		help=(
+			"Remove todos os Pokémon que correspondem aos filtros dos favoritos.\n\n"
+			"Aceita as mesmas flags de filtro do comando .pokemon\n\n"
+			"EXEMPLOS\n"
+			"  .unfavouriteall --favorite\n"
+			"  .unfavouriteall --species 25 --max_iv 50\n"
+			"  .unfavouriteall --box --min_level 1 --max_level 10"
+		)
+	)
+	@requires_account()
+	async def unfavouriteall_command(self, ctx: commands.Context, **flags):
+		user_id = str(ctx.author.id)
+		pokemons = toolkit.get_user_pokemon(user_id)
+		pokemons = apply_filters(pokemons, flags)
+		pokemons = apply_sort_limit(pokemons, flags)
+
+		if not pokemons:
+			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
+
+		count = 0
+		for pokemon in pokemons:
+			if pokemon.get("is_favorite"):
+				try:
+					toolkit.toggle_favorite(user_id, pokemon["id"])
+					count += 1
+				except ValueError:
+					continue
+
+		if count == 0:
+			await ctx.send("Nenhum dos Pokémon encontrados estava favoritado!")
+		else:
+			await ctx.send(f"💔 {count} Pokémon foram removidos dos favoritos!")
+
+	@flags.add_flag("--name", "--n", nargs="+", action="append")
+	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
+	@flags.add_flag("--type", "--t", type=str, nargs="+", action="append")
+	@flags.add_flag("--region", "--r", type=str, nargs="+", action="append")
+	@flags.add_flag("--gender", type=str)
+	@flags.add_flag("--shiny", action="store_true")
+	@flags.add_flag("--legendary", action="store_true")
+	@flags.add_flag("--mythical", action="store_true")
+	@flags.add_flag("--party", action="store_true")
+	@flags.add_flag("--box", action="store_true")
+	@flags.add_flag("--favorite", action="store_true")
+	@flags.add_flag("--held_item", nargs="+", action="append")
+	@flags.add_flag("--nature", nargs="+", action="append")
+	@flags.add_flag("--ability", nargs="+", action="append")
+	@flags.add_flag("--species", nargs="+", action="append", type=int)
+	@flags.add_flag("--reverse", action="store_true")
+	@flags.add_flag("--random", action="store_true")
+	@flags.add_flag("--sort", type=str)
+	@flags.add_flag("--min_iv", type=int)
+	@flags.add_flag("--max_iv", type=int)
+	@flags.add_flag("--min_level", type=int)
+	@flags.add_flag("--max_level", type=int)
+	@flags.add_flag("--level", nargs="+", action="append")
+	@flags.add_flag("--hpiv", nargs="+", action="append")
+	@flags.add_flag("--atkiv", nargs="+", action="append")
+	@flags.add_flag("--defiv", nargs="+", action="append")
+	@flags.add_flag("--spatkiv", nargs="+", action="append")
+	@flags.add_flag("--spdefiv", nargs="+", action="append")
+	@flags.add_flag("--spdiv", nargs="+", action="append")
+	@flags.add_flag("--iv", nargs="+", action="append")
+	@flags.add_flag("--limit", type=int)
+	@flags.command(
+		name="nicknameall",
+		aliases=["nickall"],
+		help=(
+			"Define o mesmo nickname para todos os Pokémon que correspondem aos filtros.\n\n"
+			"Aceita as mesmas flags de filtro do comando .pokemon\n"
+			"Requer a flag --nickname_text com o texto do nickname (máximo 20 caracteres)\n\n"
+			"EXEMPLOS\n"
+			"  .nicknameall Campeão --species 25\n"
+			"  .nicknameall Shiny --shiny\n"
+			"  .nicknameall --box (remove nickname de todos na box)"
+		)
+	)
+	@requires_account()
+	async def nicknameall_command(self, ctx: commands.Context, nickname: Optional[str] = None, **flags):
+		user_id = str(ctx.author.id)
+		nickname = nickname.strip()
+		
+		if nickname and len(nickname) > 20:
+			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
+		
+		pokemons = toolkit.get_user_pokemon(user_id)
+		pokemons = apply_filters(pokemons, flags)
+		pokemons = apply_sort_limit(pokemons, flags)
+
+		if not pokemons:
+			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
+
+		count = 0
+		for pokemon in pokemons:
+			try:
+				toolkit.set_nickname(user_id, pokemon["id"], nickname if nickname else None)
+				count += 1
+			except ValueError:
+				continue
+
+		if count == 0:
+			await ctx.send("Não foi possível alterar o nickname de nenhum Pokémon!")
+		else:
+			action = f"definido como **{nickname}**" if nickname else "removido"
+			await ctx.send(f"Nickname {action} para {count} Pokémon!")
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
