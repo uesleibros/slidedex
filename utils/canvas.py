@@ -80,7 +80,7 @@ def _compose_battle(
 	composed = background.copy()
 	try:
 		if player_bytes:
-			player_box_size = int(box_size * 0.8)
+			player_box_size = int(box_size)
 			p = _process_sprite_crop(player_bytes, player_box_size, player_box_size, crop=False)
 			composed.paste(p, (player_x, player_ground_y - p.height), p)
 		if enemy_bytes:
@@ -123,6 +123,7 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
+
 
 
 
