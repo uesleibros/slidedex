@@ -749,6 +749,14 @@ class Toolkit:
 				self._save()
 			
 			return updated
+			
+	def has_caught_species(self, user_id: str, species_id: int) -> bool:
+		with self._lock:
+			self._ensure_user(user_id)
+			for p in self.db["pokemon"]:
+				if p["owner_id"] == user_id and p["species_id"] == int(species_id):
+					return True
+			return False
 
 	def search_pokemon(self, user_id: str, query: str) -> List[Dict]:
 		with self._lock:
@@ -768,4 +776,5 @@ class Toolkit:
 					results.append(self._deepcopy(p))
 					continue
 			
+
 			return results
