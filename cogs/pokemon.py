@@ -486,7 +486,7 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def nicknameall_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
-		nickname = flags.get("newname", "").strip()
+		nickname = " ".join(flags.get("newname", []))
 		
 		if nickname and len(nickname) > 20:
 			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
@@ -514,5 +514,3 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
-
-
