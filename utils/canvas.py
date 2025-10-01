@@ -72,9 +72,9 @@ def _compose_battle(
 	enemy_bytes: bytes,
 	background: Image.Image,
 	box_size: int = 170,
-	player_ground_y: int = 300,
-	enemy_ground_y: int = 150,
-	player_x: int = 20,
+	player_ground_y: int = 230,
+	enemy_ground_y: int = 130,
+	player_x: int = 30,
 	enemy_x: int = 290
 ) -> io.BytesIO:
 	composed = background.copy()
@@ -123,6 +123,7 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
+
 
 
 
