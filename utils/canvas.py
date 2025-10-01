@@ -81,7 +81,7 @@ def _process_sprite_crop(
 def _compose_pokemon(
     sprite_bytes: bytes,
     background: Image.Image,
-    box_size: int = 100,
+    box_size: int = 130,
     ground_y: int = 180,
     scale_boost: float = 1.0
 ) -> io.BytesIO:
@@ -112,7 +112,7 @@ def _compose_battle(
     player_bytes: bytes,
     enemy_bytes: bytes,
     background: Image.Image,
-    box_size: int = 170,
+    box_size: int = 140,
     player_ground_y: int = 250,
     enemy_ground_y: int = 130,
     player_x: int = 20,
@@ -191,5 +191,6 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
     return await asyncio.to_thread(_compose_profile, *args, **kwargs)
+
 
 
