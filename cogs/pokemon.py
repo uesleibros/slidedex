@@ -253,11 +253,12 @@ class Pokemon(commands.Cog):
 			return
 		
 		try:
-			is_favorite = toolkit.toggle_favorite(user_id, pokemon_id)
 			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
-			emoji = "❤️" if is_favorite else "💔"
-			action = "favoritado" if is_favorite else "removido dos favoritos"
-			await ctx.send(f"{emoji} {format_pokemon_display(pokemon, bold_name=True)} foi {action}!")
+			if pokemon.get("is_favorite"):
+				return await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
+			
+			toolkit.toggle_favorite(user_id, pokemon_id)
+			await ctx.send(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
 		except ValueError:
 			return
 
@@ -481,7 +482,7 @@ class Pokemon(commands.Cog):
 		)
 	)
 	@requires_account()
-	async def nicknameall_command(self, ctx: commands.Context, nickname: Optional[str] = None, **flags):
+	async def nicknameall_command(self, ctx: commands.Context, *, nickname: Optional[str] = None, **flags):
 		user_id = str(ctx.author.id)
 		nickname = nickname.strip()
 		
@@ -511,3 +512,4 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
