@@ -445,7 +445,7 @@ class WildBattle:
             
             await self.refresh()
     
-    async def attempt_capture(self) -> bool:
+    async def attempt_capture(self, ball_type: str = BallType.POKE_BALL) -> bool:
         if self.player_active.fainted:
             self.lines = ["Seu Pokémon está desmaiado!"]
             if self.actions_view:
@@ -617,6 +617,7 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
 
 
 
