@@ -11,7 +11,7 @@ def format_pokemon_display(pokemon: dict, bold_name: Optional[bool] = False, sho
 	parts: list = []
 
 	if pokemon.get("is_shiny", False):
-		parts.append("✨")
+		parts.append("<:shinystar:1422797880036429855>")
 
 	emoji = get_app_emoji(f"p_{pokemon['species_id']}")
 	parts.append(emoji)
@@ -25,5 +25,6 @@ def format_pokemon_display(pokemon: dict, bold_name: Optional[bool] = False, sho
 		parts.append(f"{name} ({pokemon['nickname']})")
 	else:
 		parts.append(name)
+
 
 	return " ".join(parts)
