@@ -86,7 +86,19 @@ class WildBattle:
     def _hp_line(self, p: BattlePokemon) -> str:
         bar = _hp_bar(p.current_hp, p.stats["hp"])
         hp_percent = (p.current_hp / p.stats["hp"] * 100) if p.stats["hp"] > 0 else 0
-        return f"{format_pokemon_display(p.raw, bold_name=True)} {p.status_tag()} Lv{p.level}\n{bar} {max(0, p.current_hp)}/{p.stats['hp']} ({hp_percent:.1f}%)"
+        base_line = f"{format_pokemon_display(p.raw, bold_name=True)} {p.status_tag()} Lv{p.level}\n{bar} {max(0, p.current_hp)}/{p.stats['hp']} ({hp_percent:.1f}%)"
+
+        stage_info = []
+        if p.stages.get("accuracy", 0) != 0:
+            acc = p.stages["accuracy"]
+            stage_info.append(f"ACC: {acc:+d}")
+        if p.stages.get("evasion", 0) != 0:
+            eva = p.stages["evasion"]
+            stage_info.append(f"EVA: {eva:+d}")
+        
+        if stage_info:
+            base_line += f" [{' | '.join(stage_info)}]"
+        return base_line
     
     def _embed(self) -> discord.Embed:
         desc_parts = [
@@ -585,3 +597,4 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
