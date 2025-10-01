@@ -453,7 +453,7 @@ class WildBattle:
             await self.refresh()
             return False
         
-        success, shakes = CaptureSystem.attempt_capture_gen3(
+        success, shakes, _ = CaptureSystem.attempt_capture_gen3(
             wild=self.wild,
             ball_type=self.ball_type,
             turn=self.turn,
@@ -607,5 +607,6 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
 
 
