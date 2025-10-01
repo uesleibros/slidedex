@@ -33,7 +33,7 @@ def _compose_pokemon(
 ) -> io.BytesIO:
 	composed = background.copy()
 	try:
-		sprite_box_size = int(box_size * 0.8)
+		sprite_box_size = int(box_size * 0.6)
 		spr = _process_sprite_crop(sprite_bytes, sprite_box_size, sprite_box_size, crop=False)
 		x = (composed.width - spr.width) // 2
 		y = ground_y - spr.height
@@ -124,5 +124,6 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
+
 
 
