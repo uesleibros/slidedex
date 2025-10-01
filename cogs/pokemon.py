@@ -263,6 +263,7 @@ class Pokemon(commands.Cog):
 		await ctx.send(embed=embed, view=view)
 
 	@commands.command(name="favorite", aliases=["fav"])
+	@requires_account()
 	async def favorite_pokemon(self, ctx, pokemon_id: int):
 		user_id = str(ctx.author.id)
 		user = toolkit.get_user(user_id)
@@ -282,6 +283,7 @@ class Pokemon(commands.Cog):
 			return
 
 	@commands.command(name="nickname", aliases=["nick"])
+	@requires_account()
 	async def set_nickname(self, ctx, pokemon_id: int, *, nickname: Optional[str] = None):
 		user_id = str(ctx.author.id)
 		user = toolkit.get_user(user_id)
