@@ -452,13 +452,15 @@ class WildBattle:
                 self.actions_view.force_switch_mode = True
             await self.refresh()
             return False
-        
+
+        already_caught = pm.repo.tk.has_caught_species(self.user_id, self.wild.species_id)
         success, shakes, _ = CaptureSystem.attempt_capture_gen3(
             wild=self.wild,
             ball_type=self.ball_type,
             turn=self.turn,
             time_of_day=self.time_of_day,
             location_type=self.location_type
+            already_caught=already_caught
         )
         
         if success:
@@ -607,6 +609,7 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
 
 
 
