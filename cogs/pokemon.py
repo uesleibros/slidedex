@@ -15,7 +15,7 @@ async def generate_pokemon_embed(pokemons, start, end, total, current_page):
 		poke_id = p["id"]
 		fav = f" ❤️" if p["is_favorite"] else ''
 		if p["gender"] != "Genderless":
-			gender = ":male_sign:" if p["gender"] == "Male" else ":female_sign:"
+			gender = "<:sign_male:1422816545029099621>" if p["gender"] == "Male" else "<:sign_female:1422816627136663582>"
 		else:
 			gender = ":grey_question:"
 		ivp = iv_percent(p["ivs"])
@@ -709,3 +709,4 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
