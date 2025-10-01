@@ -131,6 +131,70 @@ def apply_sort_limit(pokemons: List[Dict], flags) -> List[Dict]:
 		res = res[:flags.get("limit")]
 	return res
 
+class ConfirmationView(discord.ui.View):
+	def __init__(self, user_id: int, timeout: int = 60):
+		super().__init__(timeout=timeout)
+		self.user_id = user_id
+		self.value = None
+
+	@discord.ui.button(label="Confirmar", style=discord.ButtonStyle.green, emoji="✅")
+	async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+		if interaction.user.id != self.user_id:
+			return await interaction.response.send_message("Esta confirmação não é para você!", ephemeral=True)
+		self.value = True
+		self.stop()
+		await interaction.response.defer()
+
+	@discord.ui.button(label="Cancelar", style=discord.ButtonStyle.red, emoji="❌")
+	async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+		if interaction.user.id != self.user_id:
+			return await interaction.response.send_message("Esta confirmação não é para você!", ephemeral=True)
+		self.value = False
+		self.stop()
+		await interaction.response.defer()
+
+	async def on_timeout(self):
+		self.value = False
+		for item in self.children:
+			item.disabled = True
+
+def analyze_pokemons(pokemons: List[Dict]) -> Dict:
+	stats = {
+		"event": 0,
+		"rare": 0,
+		"regional": 0,
+		"iv_80_90": 0,
+		"iv_90_100": 0,
+		"iv_100": 0,
+		"shiny": 0
+	}
+	
+	regional_forms = ["alolan", "galarian", "hisuian", "paldean"]
+	
+	for p in pokemons:
+		if p.get("is_event"):
+			stats["event"] += 1
+		
+		if p.get("is_legendary") or p.get("is_mythical") or p.get("is_ultra_beast"):
+			stats["rare"] += 1
+		
+		name = p.get("name", "").lower()
+		if any(region in name for region in regional_forms):
+			stats["regional"] += 1
+		
+		ivp = iv_percent(p["ivs"])
+		if ivp == 100:
+			stats["iv_100"] += 1
+		elif ivp >= 90:
+			stats["iv_90_100"] += 1
+		elif ivp >= 80:
+			stats["iv_80_90"] += 1
+		
+		if p.get("is_shiny"):
+			stats["shiny"] += 1
+	
+	return stats
+
 class Pokemon(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
@@ -284,7 +348,8 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def set_nickname(self, ctx, pokemon_id: int, *, nickname: Optional[str] = None):
 		user_id = str(ctx.author.id)
-		nickname = nickname.strip()
+		if nickname:
+			nickname = nickname.strip()
 		user = toolkit.get_user(user_id)
 		if not user:
 			return
@@ -438,7 +503,6 @@ class Pokemon(commands.Cog):
 			await ctx.send(f"💔 {count} Pokémon foram removidos dos favoritos!")
 
 	@flags.add_flag("newname", nargs="+")
-	
 	@flags.add_flag("--name", "--n", nargs="+", action="append")
 	@flags.add_flag("--nickname", "--nck", nargs="*", action="append")
 	@flags.add_flag("--type", "--t", type=str, nargs="+", action="append")
@@ -475,18 +539,20 @@ class Pokemon(commands.Cog):
 		aliases=["nickall"],
 		help=(
 			"Define o mesmo nickname para todos os Pokémon que correspondem aos filtros.\n\n"
-			"Aceita as mesmas flags de filtro do comando .pokemon\n"
-			"Requer a flag --nickname_text com o texto do nickname (máximo 20 caracteres)\n\n"
+			"Aceita as mesmas flags de filtro do comando .pokemon\n\n"
 			"EXEMPLOS\n"
 			"  .nicknameall Campeão --species 25\n"
 			"  .nicknameall Shiny --shiny\n"
-			"  .nicknameall --box (remove nickname de todos na box)"
+			"  .nicknameall clear --box (remove nickname de todos na box)"
 		)
 	)
 	@requires_account()
 	async def nicknameall_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
 		nickname = " ".join(flags.get("newname", []))
+		
+		if nickname.lower() == "clear":
+			nickname = ""
 		
 		if nickname and len(nickname) > 20:
 			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
@@ -498,6 +564,57 @@ class Pokemon(commands.Cog):
 		if not pokemons:
 			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
 
+		stats = analyze_pokemons(pokemons)
+		
+		action_text = f"rename {len(pokemons)} pokémon to `{nickname}`" if nickname else f"remove nicknames from {len(pokemons)} pokémon"
+		
+		embed = discord.Embed(
+			title="⚠️ Confirmação Necessária",
+			description=f"Are you sure you want to {action_text}?",
+			color=discord.Color.orange()
+		)
+		
+		details = []
+		if stats["event"] > 0:
+			details.append(f"- **{stats['event']}** Event Pokémon")
+		if stats["rare"] > 0:
+			details.append(f"- **{stats['rare']}** Rare Pokémon (Legendaries, Mythicals and Ultra Beasts)")
+		if stats["regional"] > 0:
+			details.append(f"- **{stats['regional']}** Regional Form Pokémon (Alolans, Galarians, Hisuians and Paldeans)")
+		if stats["shiny"] > 0:
+			details.append(f"- **{stats['shiny']}** Shiny Pokémon")
+		if stats["iv_100"] > 0:
+			details.append(f"- **{stats['iv_100']}** Pokémon with **IV = 100%**")
+		if stats["iv_90_100"] > 0:
+			details.append(f"- **{stats['iv_90_100']}** Pokémon with **IV ≥ 90%, < 100%**")
+		if stats["iv_80_90"] > 0:
+			details.append(f"- **{stats['iv_80_90']}** Pokémon with **IV ≥ 80%, < 90%**")
+		
+		if details:
+			embed.add_field(
+				name="### This includes:",
+				value="\n".join(details),
+				inline=False
+			)
+		
+		embed.set_footer(text="Você tem 60 segundos para confirmar")
+		
+		view = ConfirmationView(ctx.author.id, timeout=60)
+		message = await ctx.send(embed=embed, view=view)
+		
+		await view.wait()
+		
+		if view.value is None or view.value is False:
+			embed.title = "❌ Operação Cancelada"
+			embed.description = "A operação foi cancelada ou expirou."
+			embed.color = discord.Color.red()
+			embed.clear_fields()
+			embed.set_footer(text="")
+			for item in view.children:
+				item.disabled = True
+			await message.edit(embed=embed, view=view)
+			return
+		
 		count = 0
 		for pokemon in pokemons:
 			try:
@@ -507,10 +624,23 @@ class Pokemon(commands.Cog):
 				continue
 
 		if count == 0:
-			await ctx.send("Não foi possível alterar o nickname de nenhum Pokémon!")
+			result_text = "Não foi possível alterar o nickname de nenhum Pokémon!"
+			color = discord.Color.red()
 		else:
 			action = f"definido como **{nickname}**" if nickname else "removido"
-			await ctx.send(f"Nickname {action} para {count} Pokémon!")
+			result_text = f"✏️ Nickname {action} para **{count}** Pokémon!"
+			color = discord.Color.green()
+		
+		embed.title = "✅ Operação Concluída"
+		embed.description = result_text
+		embed.color = color
+		embed.clear_fields()
+		embed.set_footer(text="")
+		
+		for item in view.children:
+			item.disabled = True
+		
+		await message.edit(embed=embed, view=view)
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
