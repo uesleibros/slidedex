@@ -96,7 +96,7 @@ def _compose_battle(
 			composed.paste(p, (player_x, player_ground_y - p.height), p)
 		if enemy_bytes:
 			enemy_box_size = int(box_size * 0.6)
-			e = _process_sprite_crop(enemy_bytes, enemy_box_size, enemy_box_size, crop=False)
+			e = _process_sprite_crop(enemy_bytes, box_size, box_size, crop=False, scale_boost=1.0, max_height_ratio=0.75)
 			composed.paste(e, (enemy_x, enemy_ground_y - e.height), e)
 		buf = io.BytesIO()
 		composed.save(buf, format="PNG", optimize=False, compress_level=1)
@@ -135,6 +135,7 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
 	
+
 
 
 
