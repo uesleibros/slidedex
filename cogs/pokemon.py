@@ -14,13 +14,9 @@ async def generate_pokemon_embed(pokemons, start, end, total, current_page):
 	for p in pokemons:
 		poke_id = p["id"]
 		fav = f" ❤️" if p["is_favorite"] else ''
-		if p["gender"] != "Genderless":
-			gender = "<:sign_male:1422816545029099621>" if p["gender"] == "Male" else "<:sign_female:1422816627136663582>"
-		else:
-			gender = ":grey_question:"
 		ivp = iv_percent(p["ivs"])
 		desc_lines.append(
-			f"`{format_poke_id(poke_id)}`　{format_pokemon_display(p)} {gender}{fav}　•　Lv. {p['level']}　•　{ivp}%"
+			f"`{format_poke_id(poke_id)}`　{format_pokemon_display(p)} {fav}　•　Lv. {p['level']}　•　{ivp}%"
 		)
 	embed = discord.Embed(
 		title="Seus Pokémon",
@@ -709,4 +705,5 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
 
