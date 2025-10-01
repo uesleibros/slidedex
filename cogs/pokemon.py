@@ -162,25 +162,19 @@ def analyze_pokemons(pokemons: List[Dict]) -> Dict:
 	stats = {
 		"event": 0,
 		"rare": 0,
-		"regional": 0,
 		"iv_80_90": 0,
 		"iv_90_100": 0,
 		"iv_100": 0,
-		"shiny": 0
+		"shiny": 0,
+		"favorite": 0
 	}
 	
-	regional_forms = ["alolan", "galarian", "hisuian", "paldean"]
-	
 	for p in pokemons:
-		if p.get("is_event"):
+		if p.get("is_event") or p.get("event"):
 			stats["event"] += 1
 		
-		if p.get("is_legendary") or p.get("is_mythical") or p.get("is_ultra_beast"):
+		if p.get("is_legendary") or p.get("is_mythical"):
 			stats["rare"] += 1
-		
-		name = p.get("name", "").lower()
-		if any(region in name for region in regional_forms):
-			stats["regional"] += 1
 		
 		ivp = iv_percent(p["ivs"])
 		if ivp == 100:
@@ -192,6 +186,9 @@ def analyze_pokemons(pokemons: List[Dict]) -> Dict:
 		
 		if p.get("is_shiny"):
 			stats["shiny"] += 1
+		
+		if p.get("is_favorite"):
+			stats["favorite"] += 1
 	
 	return stats
 
@@ -566,53 +563,43 @@ class Pokemon(commands.Cog):
 
 		stats = analyze_pokemons(pokemons)
 		
-		action_text = f"rename {len(pokemons)} pokémon to `{nickname}`" if nickname else f"remove nicknames from {len(pokemons)} pokémon"
+		action_text = f"renomear **{len(pokemons)}** pokémon para `{nickname}`" if nickname else f"remover nicknames de **{len(pokemons)}** pokémon"
 		
-		embed = discord.Embed(
-			title="⚠️ Confirmação Necessária",
-			description=f"Are you sure you want to {action_text}?",
-			color=discord.Color.orange()
-		)
+		message_parts = [f"Você tem certeza que quer {action_text}?"]
 		
 		details = []
 		if stats["event"] > 0:
-			details.append(f"- **{stats['event']}** Event Pokémon")
+			details.append(f"• **{stats['event']}** Event Pokémon")
 		if stats["rare"] > 0:
-			details.append(f"- **{stats['rare']}** Rare Pokémon (Legendaries, Mythicals and Ultra Beasts)")
+			details.append(f"• **{stats['rare']}** Pokémon Raros (Lendários e Míticos)")
 		if stats["regional"] > 0:
-			details.append(f"- **{stats['regional']}** Regional Form Pokémon (Alolans, Galarians, Hisuians and Paldeans)")
+			details.append(f"• **{stats['regional']}** Regional Form Pokémon (Alolans, Galarians, Hisuians and Paldeans)")
 		if stats["shiny"] > 0:
-			details.append(f"- **{stats['shiny']}** Shiny Pokémon")
+			details.append(f"• **{stats['shiny']}** Pokémon Shiny")
+		if stats["favorite"] > 0:
+			details.append(f"• **{stats['favorite']}** Pokémon Favoritados")
 		if stats["iv_100"] > 0:
-			details.append(f"- **{stats['iv_100']}** Pokémon with **IV = 100%**")
+			details.append(f"• **{stats['iv_100']}** Pokémon com **IV = 100%**")
 		if stats["iv_90_100"] > 0:
-			details.append(f"- **{stats['iv_90_100']}** Pokémon with **IV ≥ 90%, < 100%**")
+			details.append(f"• **{stats['iv_90_100']}** Pokémon com **IV ≥ 90%, < 100%**")
 		if stats["iv_80_90"] > 0:
-			details.append(f"- **{stats['iv_80_90']}** Pokémon with **IV ≥ 80%, < 90%**")
+			details.append(f"• **{stats['iv_80_90']}** Pokémon com **IV ≥ 80%, < 90%**")
 		
 		if details:
-			embed.add_field(
-				name="### This includes:",
-				value="\n".join(details),
-				inline=False
-			)
+			message_parts.append("\n**Incluindo:**")
+			message_parts.extend(details)
 		
-		embed.set_footer(text="Você tem 60 segundos para confirmar")
+		message_parts.append("\n*Você tem 60 segundos para confirmar.*")
 		
 		view = ConfirmationView(ctx.author.id, timeout=60)
-		message = await ctx.send(embed=embed, view=view)
+		message = await ctx.send("\n".join(message_parts), view=view)
 		
 		await view.wait()
 		
 		if view.value is None or view.value is False:
-			embed.title = "❌ Operação Cancelada"
-			embed.description = "A operação foi cancelada ou expirou."
-			embed.color = discord.Color.red()
-			embed.clear_fields()
-			embed.set_footer(text="")
 			for item in view.children:
 				item.disabled = True
-			await message.edit(embed=embed, view=view)
+			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=view)
 			return
 		
 		count = 0
@@ -625,22 +612,14 @@ class Pokemon(commands.Cog):
 
 		if count == 0:
 			result_text = "Não foi possível alterar o nickname de nenhum Pokémon!"
-			color = discord.Color.red()
 		else:
-			action = f"definido como **{nickname}**" if nickname else "removido"
-			result_text = f"✏️ Nickname {action} para **{count}** Pokémon!"
-			color = discord.Color.green()
-		
-		embed.title = "✅ Operação Concluída"
-		embed.description = result_text
-		embed.color = color
-		embed.clear_fields()
-		embed.set_footer(text="")
+			action = f"alterado **{nickname}**" if nickname else "removido"
+			result_text = f"Nickname {action} para **{count}** Pokémon!"
 		
 		for item in view.children:
 			item.disabled = True
 		
-		await message.edit(embed=embed, view=view)
+		await message.edit(content=result_text, view=view)
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
