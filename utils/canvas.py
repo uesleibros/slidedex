@@ -47,6 +47,9 @@ def _compose_pokemon(
 def _process_sprite_crop(sprite_bytes: bytes, w: int, h: int, crop: bool = True) -> Image.Image:
 	im = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
 	try:
+		bbox = im.getbbox()
+        if bbox:
+            im = im.crop(bbox)
 		if crop:
 			cw, ch = im.size
 			crop_h = int(ch / 1.6)
@@ -120,4 +123,5 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
+
 
