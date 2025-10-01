@@ -459,7 +459,7 @@ class WildBattle:
             ball_type=self.ball_type,
             turn=self.turn,
             time_of_day=self.time_of_day,
-            location_type=self.location_type
+            location_type=self.location_type,
             already_caught=already_caught
         )
         
@@ -609,6 +609,7 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
 
 
 
