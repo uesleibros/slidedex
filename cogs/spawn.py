@@ -7,6 +7,7 @@ from utils.preloaded import preloaded_backgrounds
 from utils.pokemon_emojis import get_app_emoji
 from utils.spawn_text import get_spawn_text
 from utils.canvas import compose_pokemon_async
+from utils.formatting import format_pokemon_display
 from pokemon_sdk.battle.wild import WildBattle
 from pokemon_sdk.constants import SHINY_ROLL
 
@@ -35,7 +36,6 @@ class BattleView(discord.ui.View):
 
 		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
 		await battle.setup()
-		#await battle.render_embed()
 		await battle.start()
 
 		await interaction.message.edit(view=self)
@@ -57,9 +57,6 @@ class Spawn(commands.Cog):
 		
 		poke = await pm.service.get_pokemon(pokemon_query.lower())
 		species = await pm.service.get_species(poke.id)
-
-		name = poke.name
-		emoji = get_app_emoji(f"p_{poke.id}")
 
 		is_legendary = bool(getattr(species, "is_legendary", False))
 		is_mythical = bool(getattr(species, "is_mythical", False))
@@ -96,7 +93,7 @@ class Spawn(commands.Cog):
 		file = discord.File(fp=buffer, filename="spawn.png")
 
 		title = "✨ Um Pokémon Shiny Selvagem Apareceu! ✨" if is_shiny else "Um Pokémon Selvagem Apareceu!"
-		desc = get_spawn_text(habitat_name, f"{emoji} **{name.capitalize()}**{' SHINY' if is_shiny else ''}!")
+		desc = get_spawn_text(habitat_name, f"{format_pokemon_display(wild, bold_name=True)}!")
 
 		embed = discord.Embed(
 			title=title,

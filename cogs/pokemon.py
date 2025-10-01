@@ -2,92 +2,33 @@ import random
 from typing import Dict, List, Optional
 import discord
 from discord.ext import commands
-from utils.pokemon_emojis import get_app_emoji
 from pokemon_sdk.calculations import iv_percent
-from utils.formatting import format_poke_id
+from utils.formatting import format_poke_id, format_pokemon_display
 from helpers.flags import flags
+from helpers.paginator import Paginator
+from helpers.checks import requires_account
 from __main__ import toolkit
 
-class Paginator(discord.ui.View):
-	def __init__(self, pokemons, user_id: int, page_size: Optional[int] = 20, current_page: Optional[int] = 0):
-		super().__init__(timeout=120)
-		self.pokemons = pokemons
-		self.page_size = max(page_size, 1)
-		self.user_id = user_id
-		self.total = len(pokemons)
-
-		max_page = max((self.total - 1) // self.page_size, 0)
-		self.current_page = min(max(current_page - 1, 0), max_page)
-
-		self.update_buttons()
-
-	async def interaction_check(self, interaction: discord.Interaction) -> bool:
-		return interaction.user.id == self.user_id
-
-	def update_buttons(self):
-		self.first_page.disabled = self.current_page == 0
-		self.prev_page.disabled = self.current_page == 0
-		max_page = (self.total - 1) // self.page_size
-		self.next_page.disabled = self.current_page == max_page
-		self.last_page.disabled = self.current_page == max_page
-
-	async def get_embed(self) -> discord.Embed:
-		start = self.current_page * self.page_size
-		end = min(start + self.page_size, self.total)
-		desc_lines = []
-		for p in self.pokemons[start:end]:
-			poke_id = p["id"]
-			emoji = get_app_emoji(f"p_{p['species_id']}")
-			shiny = "✨ " if p.get("is_shiny", False) else ''
-			nickname = f" ({p['nickname']})" if p.get("nickname") else ''
-			fav = f" ❤️" if p["is_favorite"] else ''
-			if p["gender"] != "Genderless":
-				gender = ":male_sign:" if p["gender"] == "Male" else ":female_sign:"
-			else:
-				gender = ":grey_question:"
-			ivp = iv_percent(p["ivs"])
-			desc_lines.append(
-				f"`{format_poke_id(poke_id)}`　{emoji}{shiny} {p['name'].title()}{nickname} {gender}{fav}　•　Lv. {p['level']}　•　{ivp}%"
-			)
-		embed = discord.Embed(
-			title="Seus Pokémon",
-			description="\n".join(desc_lines) if desc_lines else "Sem resultados",
-			color=discord.Color.pink()
+async def generate_pokemon_embed(pokemons, start, end, total, current_page):
+	desc_lines = []
+	for p in pokemons:
+		poke_id = p["id"]
+		fav = f" ❤️" if p["is_favorite"] else ''
+		if p["gender"] != "Genderless":
+			gender = ":male_sign:" if p["gender"] == "Male" else ":female_sign:"
+		else:
+			gender = ":grey_question:"
+		ivp = iv_percent(p["ivs"])
+		desc_lines.append(
+			f"`{format_poke_id(poke_id)}`　{format_pokemon_display(p)} {gender}{fav}　•　Lv. {p['level']}　•　{ivp}%"
 		)
-		embed.set_footer(text=f"Mostrando {start+1}–{end} de {self.total}")
-		return embed
-
-	@discord.ui.button(emoji="⏮️", style=discord.ButtonStyle.secondary)
-	async def first_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-		self.current_page = 0
-		self.update_buttons()
-		embed = await self.get_embed()
-		await interaction.response.edit_message(embed=embed, view=self)
-
-	@discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
-	async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-		if self.current_page > 0:
-			self.current_page -= 1
-		self.update_buttons()
-		embed = await self.get_embed()
-		await interaction.response.edit_message(embed=embed, view=self)
-
-	@discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
-	async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-		max_page = (self.total - 1) // self.page_size
-		if self.current_page < max_page:
-			self.current_page += 1
-		self.update_buttons()
-		embed = await self.get_embed()
-		await interaction.response.edit_message(embed=embed, view=self)
-
-	@discord.ui.button(emoji="⏭️", style=discord.ButtonStyle.secondary)
-	async def last_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-		self.current_page = (self.total - 1) // self.page_size
-		self.update_buttons()
-		embed = await self.get_embed()
-		await interaction.response.edit_message(embed=embed, view=self)
-
+	embed = discord.Embed(
+		title="Seus Pokémon",
+		description="\n".join(desc_lines) if desc_lines else "Sem resultados",
+		color=discord.Color.pink()
+	)
+	embed.set_footer(text=f"Mostrando {start+1}–{end} de {total}")
+	return embed
 
 def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 	res = pokemons
@@ -299,11 +240,9 @@ class Pokemon(commands.Cog):
 			"  .pokemon --page 2 --page_size 10"
 		)
 	)
+	@requires_account()
 	async def pokemon_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
-		user = toolkit.get_user(user_id)
-		if not user:
-			return
 
 		pokemons = toolkit.get_user_pokemon(user_id)
 		pokemons = apply_filters(pokemons, flags)
@@ -313,7 +252,13 @@ class Pokemon(commands.Cog):
 			return await ctx.send("Nenhum Pokémon encontrado com esses filtros.")
 
 		page_size = flags.get("page_size") if flags.get("page_size") and flags.get("page_size", 20) > 0 else 20
-		view = Paginator(pokemons, user_id=ctx.author.id, page_size=page_size, current_page=flags.get("page", 0))
+		view = Paginator(
+			items=pokemons,
+			user_id=ctx.author.id,
+			embed_generator=generate_pokemon_embed,
+			page_size=page_size,
+			current_page=flags.get("page", 0)
+		)
 		embed = await view.get_embed()
 		await ctx.send(embed=embed, view=view)
 
@@ -328,11 +273,10 @@ class Pokemon(commands.Cog):
 			is_favorite = toolkit.toggle_favorite(user_id, pokemon_id)
 			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
 			
-			emoji = "⭐" if is_favorite else "💔"
+			emoji = "❤️" if is_favorite else "💔"
 			action = "favoritado" if is_favorite else "removido dos favoritos"
 			
-			name = pokemon.get("nickname") or pokemon.get("name", f"Pokémon #{pokemon_id}")
-			await ctx.send(f"{emoji} **{name}** foi {action}!")
+			await ctx.send(f"{emoji} {format_pokemon_display(pokemon, bold_name=True)} foi {action}!")
 			
 		except ValueError:
 			return
@@ -352,13 +296,11 @@ class Pokemon(commands.Cog):
 			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
 			
 			if nickname:
-				await ctx.send(f"Nickname definido como **{nickname}** para o Pokémon {pokemon['name'].title()}!")
+				await ctx.send(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
 			else:
-				species_name = pokemon.get("name", f"Pokémon #{pokemon_id}")
-				await ctx.send(f"Nickname removido! Agora é **{species_name.title()}** novamente.")
+				await ctx.send(f"Nickname do {format_pokemon_display(pokemon, bold_name=True)} removido!")
 		except ValueError:
 			return
 
 async def setup(bot: commands.Bot):
-
 	await bot.add_cog(Pokemon(bot))

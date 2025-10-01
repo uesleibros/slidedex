@@ -5,18 +5,17 @@ from __main__ import pm
 from discord.ext import commands
 from utils.preloaded import preloaded_textures
 from utils.canvas import compose_profile_async
+from helpers.checks import requires_account
 
 class Profile(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
 
 	@commands.command(name="profile", aliases=["pf", "prof", "pfl"])
+	@requires_account()
 	async def profile_command(self, ctx: commands.Context) -> None:
 		user_id: str = str(ctx.author.id)
 		user = pm.repo.tk.get_user(user_id)
-
-		if not user:
-			return
 
 		user_party = pm.repo.tk.get_user_party(user_id)
 		user_pokemon = pm.repo.tk.get_user_pokemon(user_id)

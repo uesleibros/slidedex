@@ -7,11 +7,11 @@ from __main__ import pm
 from typing import List, Dict, Any, Optional, Tuple, Set
 from utils.canvas import compose_battle_async
 from pokemon_sdk.calculations import calculate_stats
-from pokemon_sdk.constants import TYPE_CHART, STAT_ALIASES
 from utils.preloaded import preloaded_textures
 from utils.pokemon_emojis import get_app_emoji
-from helpers.effect_mapper import effect_mapper
-from .helpers import SwitchView, MovesView, MoveData, _normalize_move, _pick_frlg, _canon_stat, _get_stat, _stage_mult, _apply_stage, _types_of, _type_mult, _hp_bar, _slug
+from utils.formatting import format_pokemon_display
+from data.effect_mapper import effect_mapper
+from .helpers import SwitchView, MovesView, MoveData, _normalize_move, _get_stat, _apply_stage, _types_of, _type_mult, _hp_bar, _slug
 
 STAT_NAMES = {
 	"atk": "Ataque",
@@ -273,10 +273,9 @@ class WildBattle:
 		return discord.File(buf, filename="battle.png")
 
 	def _hp_line(self, p: BattlePokemon) -> str:
-		emoji = get_app_emoji(f"p_{p.species_id}")
 		bar = _hp_bar(p.current_hp, p.stats["hp"])
 		hp_percent = (p.current_hp / p.stats["hp"] * 100) if p.stats["hp"] > 0 else 0
-		return f"{emoji} **{p.display_name}**{p.status_tag()} Lv{p.level}\n{bar} {max(0, p.current_hp)}/{p.stats['hp']} ({hp_percent:.1f}%)"
+		return f"{format_pokemon_display(p.raw, bold_name=True)} {p.status_tag()} Lv{p.level}\n{bar} {max(0, p.current_hp)}/{p.stats['hp']} ({hp_percent:.1f}%)"
 
 	def _embed(self) -> discord.Embed:
 		desc_parts = [

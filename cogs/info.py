@@ -8,7 +8,6 @@ from pokemon_sdk.constants import STAT_KEYS
 from datetime import datetime
 from utils.canvas import compose_pokemon_async
 from utils.preloaded import preloaded_info_backgrounds
-from curl_cffi import requests
 from typing import Optional
 
 STAT_LABELS = {

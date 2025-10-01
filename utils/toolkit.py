@@ -246,6 +246,7 @@ class Toolkit:
 				"is_favorite": False,
 				"caught_at": datetime.utcnow().isoformat(),
 				"moves": [],
+				"pending_moves": [],
 				"current_hp": current_hp if current_hp is None else int(current_hp),
 				"on_party": final_on_party
 			}
@@ -285,14 +286,27 @@ class Toolkit:
 		with self._lock:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
 			p = self.db["pokemon"][idx]
+			old_level = p["level"]
 			p["exp"] += int(exp_gain)
 			lvl = p["level"]
+			levels_gained = []
+			
 			while p["exp"] >= self.exp_to_next_level(lvl):
 				p["exp"] -= self.exp_to_next_level(lvl)
 				lvl += 1
+				levels_gained.append(lvl)
+			
 			p["level"] = lvl
+			
+			if levels_gained:
+				p["current_hp"] = None
+			
 			self._save()
-			return self._deepcopy(p)
+			
+			result = self._deepcopy(p)
+			result["levels_gained"] = levels_gained
+			result["old_level"] = old_level
+			return result
 
 	def calc_battle_exp(self, poke_level: int, enemy_level: int) -> int:
 		base = enemy_level * 10
@@ -397,6 +411,74 @@ class Toolkit:
 			self._save()
 			return self._deepcopy(mv)
 
+	def can_learn_move(self, owner_id: str, pokemon_id: int) -> bool:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			return len(p.get("moves", [])) < MOVES_LIMIT
+
+	def get_pending_moves(self, owner_id: str, pokemon_id: int) -> List[str]:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			return list(p.get("pending_moves", []))
+
+	def add_pending_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[str]:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			pending = p.setdefault("pending_moves", [])
+			if move_id not in pending:
+				pending.append(move_id)
+				self._save()
+			return list(pending)
+
+	def remove_pending_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[str]:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			pending = p.setdefault("pending_moves", [])
+			if move_id in pending:
+				pending.remove(move_id)
+				self._save()
+			return list(pending)
+
+	def clear_pending_moves(self, owner_id: str, pokemon_id: int) -> List[str]:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["pending_moves"] = []
+			self._save()
+			return []
+
+	def learn_move(self, owner_id: str, pokemon_id: int, move_id: str, pp_max: int, replace_move_id: Optional[str] = None) -> List[Dict]:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			moves = list(p.get("moves", []))
+			
+			if replace_move_id:
+				moves = [m for m in moves if m["id"] != replace_move_id]
+			
+			if len(moves) >= MOVES_LIMIT:
+				raise ValueError("Move slots full, must specify move to replace")
+			
+			moves.append({"id": move_id, "pp": int(pp_max), "pp_max": int(pp_max)})
+			p["moves"] = moves
+			
+			pending = p.setdefault("pending_moves", [])
+			if move_id in pending:
+				pending.remove(move_id)
+				p["pending_moves"] = pending
+			
+			self._save()
+			return self._deepcopy(moves)
+
+	def has_move(self, owner_id: str, pokemon_id: int, move_id: str) -> bool:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			moves = self.db["pokemon"][idx].get("moves", [])
+			return any(m["id"] == move_id for m in moves)
+
 	def remove_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[Dict]:
 		with self._lock:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
@@ -455,7 +537,6 @@ class Toolkit:
 
 	def iv_percent(self, owner_id: str, pokemon_id: int, decimals: int = 2) -> float:
 		total = self.iv_total(owner_id, pokemon_id)
-
 		return round((total / 186) * 100.0, decimals)
 
 	def set_favorite(self, owner_id: str, pokemon_id: int, is_favorite: bool) -> bool:
