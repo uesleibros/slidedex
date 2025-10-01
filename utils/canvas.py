@@ -29,7 +29,7 @@ def _compose_pokemon(
 	sprite_bytes: bytes,
 	background: Image.Image,
 	box_size: int = 200,
-	ground_y: int = 205
+	ground_y: int = 190
 ) -> io.BytesIO:
 	composed = background.copy()
 	try:
@@ -124,6 +124,7 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
+
 
 
 
