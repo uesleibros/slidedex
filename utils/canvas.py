@@ -31,7 +31,8 @@ def _process_sprite_crop(
     h: int,
     crop: bool = True,
     scale_boost: float = 1.0,
-    max_height_ratio: float = 1.0
+    max_height_ratio: float = 1.0,
+    force_height: bool = False
 ) -> Image.Image:
     im = Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
     try:
@@ -42,13 +43,19 @@ def _process_sprite_crop(
             cw, ch = im.size
             crop_h = int(ch / 1.6)
             im = im.crop((0, 0, cw, crop_h))
-        sf = min(w / im.width, h / im.height)
-        sf *= scale_boost
+
+        if force_height:
+            sf = (h / im.height) * scale_boost
+        else:
+            sf = min(w / im.width, h / im.height) * scale_boost
+
         nw, nh = int(im.width * sf), int(im.height * sf)
+
         if nh > int(h * max_height_ratio):
             ratio = (h * max_height_ratio) / nh
             nw = int(nw * ratio)
             nh = int(nh * ratio)
+
         res = im.resize((nw, nh), Image.Resampling.NEAREST)
         final = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         x = (w - nw) // 2
@@ -96,7 +103,7 @@ def _compose_battle(
 			composed.paste(p, (player_x, player_ground_y - p.height), p)
 		if enemy_bytes:
 			enemy_box_size = int(box_size * 0.6)
-			e = _process_sprite_crop(enemy_bytes, box_size, box_size, crop=False, scale_boost=1.0, max_height_ratio=0.6)
+			e = _process_sprite_crop(enemy_bytes, box_size, box_size, crop=False, scale_boost=1.0, max_height_ratio=0.6, force_height=True)
 			composed.paste(e, (enemy_x, enemy_ground_y - e.height), e)
 		buf = io.BytesIO()
 		composed.save(buf, format="PNG", optimize=False, compress_level=1)
@@ -135,6 +142,7 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
 	return await asyncio.to_thread(_compose_profile, *args, **kwargs)
 	
+
 
 
 
