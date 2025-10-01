@@ -569,11 +569,9 @@ class Pokemon(commands.Cog):
 		
 		details = []
 		if stats["event"] > 0:
-			details.append(f"• **{stats['event']}** Event Pokémon")
+			details.append(f"• **{stats['event']}** Pokémon de Eventos")
 		if stats["rare"] > 0:
 			details.append(f"• **{stats['rare']}** Pokémon Raros (Lendários e Míticos)")
-		if stats["regional"] > 0:
-			details.append(f"• **{stats['regional']}** Regional Form Pokémon (Alolans, Galarians, Hisuians and Paldeans)")
 		if stats["shiny"] > 0:
 			details.append(f"• **{stats['shiny']}** Pokémon Shiny")
 		if stats["favorite"] > 0:
@@ -623,3 +621,4 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
