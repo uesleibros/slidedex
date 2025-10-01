@@ -74,7 +74,8 @@ class Info(commands.Cog):
 		iv_percent = round((iv_total / 186) * 100, 2)
 
 		name_display =  user_pokemon.get("name").title()
-		title = f"Level {user_pokemon['level']} {name_display} {'✨' if user_pokemon['is_shiny'] else ''}"
+		nick_display = f" ({user_pokemon.get('nickname')})" if user_pokemon.get("nickname") else ""
+		title = f"Level {user_pokemon['level']} {name_display}{nick_display} {'<:shinystar:1422797880036429855>' if user_pokemon['is_shiny'] else ''}"
 		
 		sprite_to_use = pokemon.sprites.front_shiny if user_pokemon['is_shiny'] else pokemon.sprites.front_default
 		sprite_bytes = await sprite_to_use.read() if sprite_to_use else None
@@ -150,4 +151,5 @@ class Info(commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
+
 	await bot.add_cog(Info(bot))
