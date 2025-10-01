@@ -463,6 +463,9 @@ class WildBattle:
             already_caught=already_caught
         )
         
+        ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
+        ball_name = PokeBallSystem.get_ball_name(ball_type)
+        
         if success:
             xp = pm.repo.tk.calc_battle_exp(self.player_active.level, self.wild.level)
             pm.repo.tk.add_exp(self.user_id, self.player_party_raw[self.active_player_idx]["id"], xp)
@@ -488,9 +491,14 @@ class WildBattle:
                 on_party=pm.repo.tk.can_add_to_party(self.user_id)
             )
             self.ended = True
+            bonus_text = ""
+            if ball_modifier > 1.0:
+                bonus_text = f" (Bônus {ball_modifier:.1f}x)"
+            
             self.lines = [
                 f"🎉 **CAPTURA!**",
-                f"✨ {self.wild.display_name} capturado!",
+                f"{ball_emoji} Capturado com {ball_name}!{bonus_text}",
+                f"✨ {self.wild.display_name} foi adicionado à sua Pokédex!",
                 f"⭐ {self.player_active.display_name} ganhou {xp} XP!"
             ]
             if self.actions_view:
@@ -502,7 +510,7 @@ class WildBattle:
             return True
         else:
             self.lines = []
-            shake_text = f"{'<:PokeBall:1345558169090265151> ' * shakes}" if shakes > 0 else ""
+            shake_text = f"{ball_emoji} " * shakes if shakes > 0 else ""
             self.lines.append(f"💢 {shake_text}Escapou! ({shakes}x)")
             self.lines.append("")
             
@@ -609,6 +617,7 @@ class WildBattleView(discord.ui.View):
             return await i.response.send_message("Troque de Pokémon!", ephemeral=True)
         await i.response.defer()
         await self.battle.attempt_capture()
+
 
 
 
