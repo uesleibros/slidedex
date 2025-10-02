@@ -207,7 +207,7 @@ class WildBattle:
 			color=discord.Color.green()
 		)
 		
-		embed.set_footer(text="Effex Engine v1.5 — Fully Featured Battle System")
+		embed.set_footer(text="Effex Engine v1.5 — B.A.G.O.S")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 	
@@ -1494,4 +1494,5 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
+
 
