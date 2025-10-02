@@ -32,7 +32,7 @@ class PokeBallSystem:
     BALL_DATA = {
         BallType.POKE_BALL: {
             "name": "Poké Ball",
-            "emoji": "<:PokeBall:1345558169090265151>",
+            "emoji": ":pokeball_pixel:",
             "base_modifier": 1.0,
             "description": "Bola padrão para capturar Pokémon"
         },
