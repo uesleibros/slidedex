@@ -205,8 +205,8 @@ class Raid(commands.Cog):
             shiny=is_shiny
         )
         
-        boss["stats"]["hp"] = int(boss["stats"]["hp"] * 3)
-        boss["current_hp"] = boss["stats"]["hp"]
+        boss["base_stats"]["hp"] = int(boss["base_stats"]["hp"] * 3)
+        boss["current_hp"] = boss["base_stats"]["hp"]
         
         buffer = await compose_pokemon_async(sprite_bytes, self.preloaded_backgrounds[habitat_name])
         file = discord.File(fp=buffer, filename="raid.png")
