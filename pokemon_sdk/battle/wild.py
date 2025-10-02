@@ -587,7 +587,7 @@ class WildBattle:
 		
 		# Efeitos secundários
 		for effect in effect_data.get("effects", []):
-			effect_results = self.effect_handler.apply_effect(user, target, effect, total_damage)
+			effect_results = self.effect_handler.apply_effect(user, target, effect, total_damage, move_data)
 			if effect_results:
 				lines.extend(effect_results)
 		
@@ -709,7 +709,7 @@ class WildBattle:
 		
 		if effects:
 			for effect in effects:
-				result = self.effect_handler.apply_effect(user, target, effect, 0)
+				result = self.effect_handler.apply_effect(user, target, effect, 0, move_data)
 				if result:
 					has_effect = True
 					lines.extend(result)
@@ -720,7 +720,7 @@ class WildBattle:
 				
 				affected_pokemon = user if is_self_buff else target
 				effect = {"type": "stat_change", "stat": stat, "stages": stages}
-				result = self.effect_handler.apply_effect(user, affected_pokemon, effect, 0)
+				result = self.effect_handler.apply_effect(user, affected_pokemon, effect, 0, move_data)
 				if result:
 					has_effect = True
 					lines.extend(result)
@@ -1494,5 +1494,6 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
+
 
 
