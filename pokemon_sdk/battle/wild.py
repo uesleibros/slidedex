@@ -49,7 +49,14 @@ class WildBattle:
 		self.move_cache: Dict[str, MoveData] = {}
 		self.effect_cache: Dict[str, Dict[str, Any]] = {}
 		self.weather = {"type": None, "turns": 0}
-		self.field = {"spikes_player": 0, "spikes_wild": 0, "trick_room": 0, "gravity": 0}
+		self.field = {
+			"spikes_player": 0, 
+			"spikes_wild": 0, 
+			"trick_room": 0, 
+			"gravity": 0,
+			"mud_sport": 0,
+			"water_sport": 0
+		}
 		self.damage_calculator = DamageCalculator(self.weather)
 		self.effect_handler = EffectHandler()
 		self.ball_type = BallType.POKE_BALL
@@ -140,6 +147,12 @@ class WildBattle:
 		)
 
 		stage_modifications = []
+		for stat_key in ["atk", "def", "sp_atk", "sp_def", "speed"]:
+			stage_value = pokemon.stages.get(stat_key, 0)
+			if stage_value != 0:
+				stat_abbrev = stat_key.upper().replace("_", "")
+				stage_modifications.append(f"{stat_abbrev}: {stage_value:+d}")
+		
 		if pokemon.stages.get("accuracy", 0) != 0:
 			stage_modifications.append(f"ACC: {pokemon.stages['accuracy']:+d}")
 		if pokemon.stages.get("evasion", 0) != 0:
@@ -158,6 +171,7 @@ class WildBattle:
 			""
 		]
 		
+		# Weather display
 		weather_icons = {"sun": "☀️", "rain": "🌧️", "hail": "❄️", "sandstorm": "🌪️"}
 		if self.weather["type"] and self.weather["turns"] > 0:
 			icon = weather_icons.get(self.weather["type"], "🌤️")
@@ -165,11 +179,20 @@ class WildBattle:
 				f"{icon} {self.weather['type'].title()} ({self.weather['turns']} turnos)"
 			)
 		
+		# Field effects
 		field_status = []
 		if self.field.get("trick_room", 0) > 0:
-			field_status.append("🔄 Trick Room")
+			field_status.append(f"🔄 Trick Room ({self.field['trick_room']})")
 		if self.field.get("gravity", 0) > 0:
-			field_status.append("⬇️ Gravity")
+			field_status.append(f"⬇️ Gravity ({self.field['gravity']})")
+		if self.field.get("mud_sport", 0) > 0:
+			field_status.append(f"⚡ Mud Sport ({self.field['mud_sport']})")
+		if self.field.get("water_sport", 0) > 0:
+			field_status.append(f"🔥 Water Sport ({self.field['water_sport']})")
+		if self.field.get("spikes_player", 0) > 0:
+			field_status.append(f"⚠️ Spikes (Player: {self.field['spikes_player']})")
+		if self.field.get("spikes_wild", 0) > 0:
+			field_status.append(f"⚠️ Spikes (Wild: {self.field['spikes_wild']})")
 		
 		if field_status:
 			description_components.extend(field_status)
@@ -184,7 +207,7 @@ class WildBattle:
 			color=discord.Color.green()
 		)
 		
-		embed.set_footer(text="Effex Engine v1.4 — alpha")
+		embed.set_footer(text="Effex Engine v1.5 — Fully Featured Battle System")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 	
@@ -192,6 +215,11 @@ class WildBattle:
 		self.battle_participants.add(self.active_player_idx)
 		self.actions_view = WildBattleView(self)
 		self.lines = [f"A batalha começou! Vamos lá, {self.player_active.display_name}!"]
+		
+		# Entry hazards damage
+		entry_damage = self._process_entry_hazards(self.player_active, is_player=True)
+		if entry_damage:
+			self.lines.extend(entry_damage)
 
 		battle_tracker.add(self.user_id)
 		self.message = await self.interaction.channel.send(
@@ -260,6 +288,58 @@ class WildBattle:
 	def _get_effect_data(self, move_id: str) -> Dict[str, Any]:
 		return self.effect_cache.get(_slug(move_id), {})
 	
+	def _check_move_restrictions(self, user: BattlePokemon, move_id: str, move_data: MoveData) -> Optional[str]:
+		"""Verifica se o movimento pode ser usado."""
+		
+		# Recharge após Hyper Beam
+		if user.volatile.get("must_recharge"):
+			user.volatile["must_recharge"] = False
+			return f"⚡ {user.display_name} precisa recarregar!"
+		
+		# Flinch
+		if user.volatile.get("flinch"):
+			return f"😰 {user.display_name} se encolheu!"
+		
+		# Disable
+		if user.volatile.get("disable", 0) > 0:
+			disabled_move = user.volatile.get("disable_move")
+			if disabled_move and _slug(disabled_move) == _slug(move_id):
+				return f"🚫 {move_data.name} está desabilitado!"
+		
+		# Encore - força uso de um movimento específico
+		if user.volatile.get("encore", 0) > 0:
+			encore_move = user.volatile.get("encore_move")
+			if encore_move and _slug(encore_move) != _slug(move_id):
+				return f"👏 {user.display_name} deve usar {encore_move}!"
+		
+		# Taunt - não pode usar movimentos de status
+		if user.volatile.get("taunt", 0) > 0 and move_data.dmg_class == "status":
+			return f"😤 {user.display_name} está provocado e não pode usar movimentos de status!"
+		
+		# Torment - não pode repetir o último movimento
+		if user.volatile.get("torment"):
+			last_move = user.volatile.get("torment_last_move")
+			if last_move and _slug(last_move) == _slug(move_id):
+				return f"😈 {user.display_name} não pode repetir o mesmo movimento!"
+		
+		# Imprison - não pode usar movimentos que o oponente tem
+		if user.volatile.get("imprisoned_moves"):
+			if _slug(move_id) in user.volatile["imprisoned_moves"]:
+				return f"🔒 {move_data.name} está selado!"
+		
+		# Attract/Infatuation
+		if user.volatile.get("attract") or user.volatile.get("attracted"):
+			if random.random() < 0.5:  # 50% chance de não atacar
+				return f"💕 {user.display_name} está apaixonado e não consegue atacar!"
+		
+		# Heal Block previne movimentos de cura
+		effect_data = self._get_effect_data(move_id)
+		if user.volatile.get("heal_block", 0) > 0:
+			if effect_data.get("type") == "heal" or "heal" in str(move_data.name).lower():
+				return f"🚫 {user.display_name} não pode usar movimentos de cura!"
+		
+		return None
+	
 	async def _execute_move(
 		self,
 		user: BattlePokemon,
@@ -269,27 +349,121 @@ class WildBattle:
 	) -> List[str]:
 		is_struggle = move_id == "__struggle__"
 		
+		# Decrementar PP
 		if move_id and not is_struggle:
 			pp = user.get_pp(move_id)
 			if pp is not None and pp <= 0:
-				return [f"❌ {user.display_name} não tem PP!"]
+				return [f"❌ {user.display_name} não tem PP para {move_data.name}!"]
 			user.dec_pp(move_id)
 			user.volatile["last_move_used"] = move_id
+			user.volatile["last_move_type"] = move_data.type_name.lower()
+			
+			# Atualiza torment
+			if user.volatile.get("torment"):
+				user.volatile["torment_last_move"] = move_id
 		
 		effect_data = self._get_effect_data(move_id or "tackle")
 		
+		# Protect/Detect
 		if target.volatile.get("protect") and move_data.dmg_class != "status":
 			return [BattleMessages.protected(target.display_name)]
 		
+		# King's Shield
+		if target.volatile.get("kings_shield") and move_data.dmg_class != "status":
+			if effect_data.get("makes_contact"):
+				user.modify_stat_stage("atk", -1)
+				return [
+					BattleMessages.protected(target.display_name),
+					f"   └─ ⚔️ Ataque de {user.display_name} foi reduzido pelo contato!"
+				]
+			return [BattleMessages.protected(target.display_name)]
+		
+		# Spiky Shield
+		if target.volatile.get("spiky_shield") and move_data.dmg_class != "status":
+			if effect_data.get("makes_contact"):
+				damage = max(1, user.stats["hp"] // 8)
+				user.take_damage(damage, ignore_substitute=True)
+				return [
+					BattleMessages.protected(target.display_name),
+					f"   └─ 🔱 {user.display_name} foi machucado pelos espinhos! ({damage} de dano)"
+				]
+			return [BattleMessages.protected(target.display_name)]
+		
+		# Baneful Bunker
+		if target.volatile.get("baneful_bunker") and move_data.dmg_class != "status":
+			if effect_data.get("makes_contact"):
+				result = StatusHandler.apply_status_effect(user, "poison")
+				return [
+					BattleMessages.protected(target.display_name),
+					result if result else f"   └─ ☠️ {user.display_name} foi envenenado!"
+				]
+			return [BattleMessages.protected(target.display_name)]
+		
+		# Semi-invulnerable (Fly, Dig, Dive, etc)
+		if target.is_semi_invulnerable():
+			# Alguns movimentos atingem durante semi-invulnerabilidade
+			two_turn_move = target.volatile.get("two_turn_move", "")
+			
+			# Earthquake/Magnitude atinge Dig
+			if two_turn_move == "dig" and _slug(move_id) in ["earthquake", "magnitude"]:
+				pass  # Continua
+			# Gust/Twister atinge Fly/Bounce
+			elif two_turn_move in ["fly", "bounce"] and _slug(move_id) in ["gust", "twister"]:
+				pass  # Continua
+			# Surf/Whirlpool atinge Dive
+			elif two_turn_move == "dive" and _slug(move_id) in ["surf", "whirlpool"]:
+				pass  # Continua
+			# Thunder atinge durante Fly
+			elif two_turn_move == "fly" and _slug(move_id) == "thunder":
+				pass  # Continua
+			else:
+				return [f"💨 {user.display_name} errou! {target.display_name} está inacessível!"]
+		
+		# Accuracy check
 		if move_data.accuracy is not None and not effect_data.get("bypass_accuracy", False):
 			accuracy = move_data.accuracy
+			
+			# Mind Reader/Lock-On garante acerto
 			if user.volatile.get("mind_reader_target") == target:
 				accuracy = None
 				user.volatile["mind_reader_target"] = None
+				user.volatile["mind_reader_turns"] = 0
 			
-			if accuracy is not None and random.randint(1, 100) > int(accuracy):
-				return [BattleMessages.miss(user.display_name, move_data.name)]
+			# No Guard ability sempre acerta
+			user_ability = user.get_effective_ability()
+			target_ability = target.get_effective_ability()
+			if user_ability == "no_guard" or target_ability == "no_guard":
+				accuracy = None
+			
+			# Calcula modificadores de accuracy/evasion
+			if accuracy is not None:
+				acc_stage = user.stages.get("accuracy", 0)
+				eva_stage = target.stages.get("evasion", 0)
+				
+				# Foresight/Odor Sleuth/Miracle Eye ignoram evasão
+				if target.volatile.get("foresight") or target.volatile.get("identified") or target.volatile.get("miracle_eye"):
+					eva_stage = min(0, eva_stage)  # Ignora aumentos
+				
+				# Keen Eye/Unaware ignoram mudanças de evasão
+				if user_ability == "keen_eye":
+					eva_stage = 0
+				if user_ability == "unaware":
+					acc_stage = 0
+					eva_stage = 0
+				
+				# Gravity aumenta accuracy
+				if self.field.get("gravity", 0) > 0:
+					acc_stage += 2
+				
+				stage_diff = acc_stage - eva_stage
+				stage_multiplier = max(3, 3 + stage_diff) / max(3, 3 - stage_diff)
+				
+				final_accuracy = accuracy * stage_multiplier
+				
+				if random.randint(1, 100) > int(final_accuracy):
+					return [BattleMessages.miss(user.display_name, move_data.name)]
 		
+		# Executa o movimento
 		if move_data.dmg_class == "status" or move_data.power == 0:
 			return await self._apply_status_move(user, target, move_data, effect_data)
 		
@@ -311,10 +485,24 @@ class WildBattle:
 			min_hits = multi_hit.get("min", 1)
 			max_hits = multi_hit.get("max", 1)
 			if max_hits > 1:
-				hits = random.randint(min_hits, max_hits)
+				# Skill Link ability sempre dá 5 hits
+				if user.get_effective_ability() == "skill_link":
+					hits = max_hits
+				else:
+					# 35% chance de 2 hits, 35% de 3, 15% de 4, 15% de 5
+					roll = random.random()
+					if roll < 0.35:
+						hits = 2
+					elif roll < 0.70:
+						hits = 3
+					elif roll < 0.85:
+						hits = 4
+					else:
+						hits = 5
 		
 		total_damage = 0
 		first_multiplier, first_crit = 1.0, False
+		actual_hits = 0
 		
 		for i in range(hits):
 			if target.fainted:
@@ -330,46 +518,127 @@ class WildBattle:
 			if multiplier == 0.0 and not is_struggle:
 				return [BattleMessages.no_effect(user.display_name, move_data.name)]
 			
+			# Thaw com movimento de fogo
 			if target.status["name"] == "freeze" and move_data.type_name.lower() == "fire" and damage > 0:
 				target.status = {"name": None, "counter": 0}
 				lines.append(f"🔥 {target.display_name} descongelou!")
 			
+			# Wake-Up Slap acorda o alvo
+			if effect_data.get("wake_up_slap") and target.status["name"] == "sleep":
+				target.status = {"name": None, "counter": 0}
+				lines.append(f"👋 {target.display_name} acordou!")
+			
+			# Smelling Salts cura paralisia
+			if effect_data.get("smelling_salts") and target.status["name"] == "paralysis":
+				target.status = {"name": None, "counter": 0}
+				lines.append(f"👃 {target.display_name} se recuperou da paralisia!")
+			
 			actual_damage = target.take_damage(damage)
 			total_damage += actual_damage
+			actual_hits += 1
 			
+			# Interrompe se o alvo desmaiou
 			if target.fainted:
+				# Destiny Bond
 				if target.volatile.get("destiny_bond"):
 					user.current_hp = 0
 					lines.append(f"👻 Destiny Bond ativado! {user.display_name} também caiu!")
+				
+				# Grudge drena todo o PP
+				if target.volatile.get("grudge") and not is_struggle:
+					move_data_user = user.get_move_data(user.volatile.get("last_move_used"))
+					if move_data_user:
+						move_data_user["pp"] = 0
+						lines.append(f"👻 Grudge ativou! PP de {move_data.name} foi drenado!")
+				
 				break
 		
+		# Mensagem de dano
 		if is_struggle:
-			lines.append(f"💢 {user.display_name} não tem PP!")
-			lines.append(f"Usou **Struggle**! ({total_damage} de dano)")
+			lines.insert(0, f"💢 {user.display_name} não tem PP!")
+			lines.insert(1, f"Usou **Struggle**! ({total_damage} de dano)")
 		else:
-			lines.append(BattleMessages.damage(user.display_name, move_data.name, total_damage))
+			lines.insert(0, BattleMessages.damage(user.display_name, move_data.name, total_damage))
 		
-		detail_line = BattleMessages.details(hits if hits > 1 else None, first_crit, first_multiplier)
+		# Detalhes (hits, crit, effectiveness)
+		detail_line = BattleMessages.details(actual_hits if actual_hits > 1 else None, first_crit, first_multiplier)
 		if detail_line:
-			lines.append(detail_line)
+			lines.insert(1, detail_line)
 		
 		if target.fainted:
 			lines.append(BattleMessages.fainted(target.display_name))
 		
+		# Recoil damage
 		recoil_damage = self._calculate_recoil(total_damage, effect_data, is_struggle, user)
 		if recoil_damage:
 			lines.append(recoil_damage)
 		
+		# Drain/Absorb healing
 		drain_healing = self._calculate_drain(total_damage, effect_data, user)
 		if drain_healing:
 			lines.append(drain_healing)
 		
+		# Recharge (Hyper Beam, etc)
+		if effect_data.get("recharge"):
+			user.volatile["must_recharge"] = True
+		
+		# Increment counters
+		self._update_move_counters(user, move_data, effect_data, did_hit=True)
+		
+		# Efeitos secundários
 		for effect in effect_data.get("effects", []):
 			effect_results = self.effect_handler.apply_effect(user, target, effect, total_damage)
 			if effect_results:
 				lines.extend(effect_results)
 		
+		# Rage boost quando atinge
+		if user.volatile.get("rage") or user.volatile.get("rage_active"):
+			if total_damage > 0:
+				user.modify_stat_stage("atk", 1)
+				lines.append(f"   └─ 😡 Ataque de {user.display_name} aumentou pela Rage!")
+		
 		return lines
+	
+	def _update_move_counters(
+		self, 
+		user: BattlePokemon, 
+		move_data: MoveData, 
+		effect_data: Dict[str, Any],
+		did_hit: bool
+	) -> None:
+		"""Atualiza contadores de movimentos consecutivos."""
+		move_id = _slug(move_data.id)
+		
+		# Rollout
+		if move_id == "rollout":
+			if did_hit:
+				user.volatile["rollout_count"] = user.volatile.get("rollout_count", 0) + 1
+			else:
+				user.volatile["rollout_count"] = 0
+		
+		# Ice Ball
+		if move_id == "ice_ball":
+			if did_hit:
+				user.volatile["ice_ball_count"] = user.volatile.get("ice_ball_count", 0) + 1
+			else:
+				user.volatile["ice_ball_count"] = 0
+		
+		# Fury Cutter
+		if move_id == "fury_cutter":
+			if did_hit:
+				user.volatile["fury_cutter_count"] = user.volatile.get("fury_cutter_count", 0) + 1
+			else:
+				user.volatile["fury_cutter_count"] = 0
+		
+		# Echoed Voice
+		if move_id == "echoed_voice":
+			if did_hit:
+				user.volatile["echoed_voice_count"] = user.volatile.get("echoed_voice_count", 0) + 1
+			else:
+				user.volatile["echoed_voice_count"] = 0
+		
+		# Marca se o último movimento acertou
+		user.volatile["last_move_hit"] = did_hit
 	
 	def _calculate_recoil(
 		self,
@@ -378,6 +647,10 @@ class WildBattle:
 		is_struggle: bool,
 		user: BattlePokemon
 	) -> Optional[str]:
+		# Rock Head ability previne recoil
+		if user.get_effective_ability() == "rock_head" and not is_struggle:
+			return None
+		
 		if is_struggle:
 			recoil = max(1, int(user.stats["hp"] * BattleConstants.STRUGGLE_RECOIL_RATIO))
 			actual = user.take_damage(recoil, ignore_substitute=True)
@@ -398,6 +671,14 @@ class WildBattle:
 	) -> Optional[str]:
 		if effect_data.get("drain"):
 			drain = max(1, int(total_damage * effect_data["drain"]))
+			
+			# Big Root aumenta drenagem em 30%
+			if user.volatile.get("held_item") == "big_root":
+				drain = int(drain * 1.3)
+			
+			# Liquid Ooze causa dano ao invés de curar
+			# (precisaria checar ability do alvo)
+			
 			actual = user.heal(drain)
 			if actual > 0:
 				return BattleMessages.drain(user.display_name, actual)
@@ -412,6 +693,17 @@ class WildBattle:
 	) -> List[str]:
 		lines = [f"✨ {user.display_name} usou **{move_data.name}**!"]
 		has_effect = False
+		
+		# Magic Coat reflete movimentos de status
+		if target.volatile.get("magic_coat"):
+			lines.append(f"   └─ ✨ {target.display_name} refletiu com Magic Coat!")
+			# Troca user e target
+			user, target = target, user
+		
+		# Snatch rouba movimentos que afetam o usuário
+		if effect_data.get("target") == "self" and target.volatile.get("snatch"):
+			lines.append(f"   └─ 🎯 {target.display_name} roubou o movimento com Snatch!")
+			user, target = target, user
 		
 		effects = effect_data.get("effects", [])
 		
@@ -447,35 +739,109 @@ class WildBattle:
 		user = self.player_active if is_player_turn else self.wild
 		target = self.wild if is_player_turn else self.player_active
 		
+		# Pre-action status checks (sleep, freeze, paralysis)
 		action_blocked, pre_messages = StatusHandler.check_pre_action(user)
 		if action_blocked:
 			return pre_messages
 		
+		# Confusion check
 		confusion_blocked, confusion_messages = StatusHandler.check_confusion(user)
 		if confusion_blocked:
 			return pre_messages + confusion_messages
 		
-		return pre_messages + confusion_messages + await self._execute_move(user, target, move_data, move_id)
+		# Move restriction checks
+		restriction_msg = self._check_move_restrictions(user, move_id, move_data)
+		if restriction_msg:
+			return pre_messages + confusion_messages + [restriction_msg]
+		
+		# Executa o movimento
+		move_result = await self._execute_move(user, target, move_data, move_id)
+		
+		return pre_messages + confusion_messages + move_result
 	
 	def _select_enemy_move(self) -> str:
-		available_moves = [m for m in self.wild.moves if int(m.get("pp", 0)) > 0]
-		return str(random.choice(available_moves)["id"]) if available_moves else "__struggle__"
+		"""Seleciona movimento do inimigo considerando restrições."""
+		available_moves = []
+		
+		for m in self.wild.moves:
+			move_id = str(m["id"])
+			pp = int(m.get("pp", 0))
+			
+			if pp <= 0:
+				continue
+			
+			# Verifica se está desabilitado
+			if self.wild.is_move_disabled(move_id):
+				continue
+			
+			available_moves.append(m)
+		
+		if not available_moves:
+			return "__struggle__"
+		
+		# Escolha aleatória (AI simples)
+		return str(random.choice(available_moves)["id"])
 	
 	def _determine_turn_order(
 		self,
 		player_move: MoveData,
 		enemy_move: MoveData
 	) -> List[str]:
+		"""Determina ordem de turno considerando prioridade e velocidade."""
+		
+		# Prioridade
 		if player_move.priority != enemy_move.priority:
 			return ["player", "enemy"] if player_move.priority > enemy_move.priority else ["enemy", "player"]
 		
+		# Velocidade
 		player_speed = self.player_active.eff_stat("speed")
 		enemy_speed = self.wild.eff_stat("speed")
 		
-		if player_speed != enemy_speed:
-			return ["player", "enemy"] if player_speed > enemy_speed else ["enemy", "player"]
+		# Quick Claw (item que dá 20% de chance de atacar primeiro)
+		player_item = self.player_active.volatile.get("held_item", "")
+		enemy_item = self.wild.volatile.get("held_item", "")
 		
+		if player_item == "quick_claw" and random.random() < 0.2:
+			return ["player", "enemy"]
+		if enemy_item == "quick_claw" and random.random() < 0.2:
+			return ["enemy", "player"]
+		
+		# Trick Room inverte ordem de velocidade
+		if self.field.get("trick_room", 0) > 0:
+			if player_speed != enemy_speed:
+				return ["player", "enemy"] if player_speed < enemy_speed else ["enemy", "player"]
+		else:
+			if player_speed != enemy_speed:
+				return ["player", "enemy"] if player_speed > enemy_speed else ["enemy", "player"]
+		
+		# Speed tie - aleatório
 		return random.choice([["player", "enemy"], ["enemy", "player"]])
+	
+	def _process_entry_hazards(self, pokemon: BattlePokemon, is_player: bool) -> List[str]:
+		"""Processa dano de entry hazards ao entrar em campo."""
+		lines = []
+		
+		# Spikes
+		spikes_key = "spikes_player" if is_player else "spikes_wild"
+		spikes_layers = self.field.get(spikes_key, 0)
+		
+		if spikes_layers > 0:
+			# Flying types e Levitate são imunes
+			if "flying" in pokemon.types or pokemon.get_effective_ability() == "levitate":
+				return lines
+			
+			# Magic Guard previne dano indireto
+			if pokemon.get_effective_ability() == "magic_guard":
+				return lines
+			
+			# Dano: 1 layer = 12.5%, 2 layers = 16.66%, 3 layers = 25%
+			damage_ratios = {1: 0.125, 2: 0.1666, 3: 0.25}
+			damage = max(1, int(pokemon.stats["hp"] * damage_ratios.get(spikes_layers, 0.125)))
+			
+			actual = pokemon.take_damage(damage, ignore_substitute=True)
+			lines.append(f"⚠️ {pokemon.display_name} foi ferido por Spikes! ({actual} de dano)")
+		
+		return lines
 	
 	async def handle_player_move(self, move_id: str) -> None:
 		async with self.lock:
@@ -483,6 +849,10 @@ class WildBattle:
 				return
 			
 			self.lines = []
+			
+			# Limpa volatiles de turno
+			self.player_active.clear_turn_volatiles()
+			self.wild.clear_turn_volatiles()
 			
 			player_move_data = await self._fetch_move(move_id)
 			enemy_move_id = self._select_enemy_move()
@@ -519,12 +889,8 @@ class WildBattle:
 						await self.refresh()
 						return
 			
-			end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-			if end_turn_effects:
-				self.lines.append("")
-				self.lines.extend(end_turn_effects)
-			
-			await self._process_weather_effects()
+			# End of turn processing
+			await self._process_end_of_turn()
 			
 			if self.wild.fainted:
 				await self._handle_victory()
@@ -536,7 +902,182 @@ class WildBattle:
 			
 			await self.refresh()
 	
+	async def _process_end_of_turn(self) -> None:
+		"""Processa todos os efeitos de fim de turno."""
+		self.lines.append("")
+		
+		# Status conditions (poison, burn, etc)
+		status_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
+		if status_effects:
+			self.lines.extend(status_effects)
+		
+		# Volatile effects para cada Pokémon
+		for pokemon, prefix in [(self.player_active, "🔵"), (self.wild, "🔴")]:
+			if pokemon.fainted:
+				continue
+			
+			# Leech Seed
+			if pokemon.volatile.get("leech_seed"):
+				seeder = pokemon.volatile.get("leech_seed_by")
+				if seeder and not seeder.fainted:
+					drain = max(1, pokemon.stats["hp"] // 8)
+					actual_drain = pokemon.take_damage(drain, ignore_substitute=True)
+					actual_heal = seeder.heal(actual_drain)
+					self.lines.append(
+						f"🌱 {prefix} {pokemon.display_name} perdeu {actual_drain} HP para Leech Seed!"
+					)
+					if actual_heal > 0:
+						self.lines.append(f"   └─ {seeder.display_name} recuperou {actual_heal} HP!")
+			
+			# Bind/Wrap damage
+			if pokemon.volatile.get("bind", 0) > 0:
+				bind_damage = pokemon.volatile.get("bind_damage", pokemon.stats["hp"] // 16)
+				actual = pokemon.take_damage(bind_damage, ignore_substitute=True)
+				bind_type = pokemon.volatile.get("bind_type", "bind")
+				self.lines.append(
+					f"🎯 {prefix} {pokemon.display_name} sofreu {actual} de dano de {bind_type}!"
+				)
+			
+			# Ingrain healing
+			if pokemon.volatile.get("ingrain"):
+				heal = max(1, pokemon.stats["hp"] // 16)
+				actual = pokemon.heal(heal)
+				if actual > 0:
+					self.lines.append(
+						f"🌿 {prefix} {pokemon.display_name} recuperou {actual} HP com Ingrain!"
+					)
+			
+			# Aqua Ring healing
+			if pokemon.volatile.get("aqua_ring"):
+				heal = max(1, pokemon.stats["hp"] // 16)
+				actual = pokemon.heal(heal)
+				if actual > 0:
+					self.lines.append(
+						f"💧 {prefix} {pokemon.display_name} recuperou {actual} HP com Aqua Ring!"
+					)
+			
+			# Wish healing (decreases counter, heals when reaches 0)
+			if pokemon.volatile.get("wish", 0) > 0:
+				pokemon.volatile["wish"] -= 1
+				if pokemon.volatile["wish"] == 0:
+					wish_hp = pokemon.volatile.get("wish_hp", pokemon.stats["hp"] // 2)
+					actual = pokemon.heal(wish_hp)
+					if actual > 0:
+						self.lines.append(
+							f"⭐ {prefix} O desejo de {pokemon.display_name} se realizou! (+{actual} HP)"
+						)
+			
+			# Nightmare damage
+			if pokemon.volatile.get("nightmare") and pokemon.status.get("name") == "sleep":
+				damage = max(1, pokemon.stats["hp"] // 4)
+				actual = pokemon.take_damage(damage, ignore_substitute=True)
+				self.lines.append(
+					f"😱 {prefix} {pokemon.display_name} está tendo pesadelos! ({actual} de dano)"
+				)
+			
+			# Curse damage
+			if pokemon.volatile.get("curse"):
+				damage = max(1, pokemon.stats["hp"] // 4)
+				actual = pokemon.take_damage(damage, ignore_substitute=True)
+				self.lines.append(
+					f"👻 {prefix} {pokemon.display_name} foi amaldiçoado! ({actual} de dano)"
+				)
+			
+			# Perish Song counter
+			if pokemon.volatile.get("perish_count", -1) >= 0:
+				pokemon.volatile["perish_count"] -= 1
+				count = pokemon.volatile["perish_count"]
+				
+				if count == 0:
+					pokemon.current_hp = 0
+					self.lines.append(
+						f"🎵 {prefix} {pokemon.display_name} desmaiou pela Perish Song!"
+					)
+				elif count > 0:
+					self.lines.append(
+						f"🎵 {prefix} Perish count: {count}"
+					)
+		
+		# Decrement volatile counters
+		for pokemon in [self.player_active, self.wild]:
+			if pokemon.fainted:
+				continue
+			
+			# Bind
+			if pokemon.volatile.get("bind", 0) > 0:
+				pokemon.volatile["bind"] -= 1
+				if pokemon.volatile["bind"] <= 0:
+					pokemon.volatile["bind"] = 0
+					pokemon.volatile["bind_by"] = None
+					self.lines.append(f"   └─ {pokemon.display_name} se libertou!")
+			
+			# Yawn -> Sleep
+			if pokemon.volatile.get("yawn", 0) > 0:
+				pokemon.volatile["yawn"] += 1
+				if pokemon.volatile["yawn"] >= 2:
+					pokemon.volatile["yawn"] = 0
+					result = StatusHandler.apply_status_effect(pokemon, "sleep")
+					if result:
+						self.lines.append(result)
+			
+			# Encore
+			if pokemon.volatile.get("encore", 0) > 0:
+				pokemon.volatile["encore"] -= 1
+				if pokemon.volatile["encore"] <= 0:
+					pokemon.volatile["encore"] = 0
+					pokemon.volatile["encore_move"] = None
+					self.lines.append(f"   └─ Encore de {pokemon.display_name} acabou!")
+			
+			# Disable
+			if pokemon.volatile.get("disable", 0) > 0:
+				pokemon.volatile["disable"] -= 1
+				if pokemon.volatile["disable"] <= 0:
+					pokemon.volatile["disable"] = 0
+					pokemon.volatile["disable_move"] = None
+			
+			# Taunt
+			if pokemon.volatile.get("taunt", 0) > 0:
+				pokemon.volatile["taunt"] -= 1
+				if pokemon.volatile["taunt"] <= 0:
+					pokemon.volatile["taunt"] = 0
+					self.lines.append(f"   └─ Taunt de {pokemon.display_name} acabou!")
+			
+			# Uproar
+			if pokemon.volatile.get("uproar", 0) > 0:
+				pokemon.volatile["uproar"] -= 1
+				if pokemon.volatile["uproar"] <= 0:
+					pokemon.volatile["uproar"] = 0
+					pokemon.volatile["uproar_active"] = False
+					self.lines.append(f"   └─ {pokemon.display_name} parou de fazer alvoroço!")
+			
+			# Magnet Rise, Telekinesis, etc
+			for key in ["magnet_rise", "telekinesis", "heal_block", "embargo"]:
+				if pokemon.volatile.get(key, 0) > 0:
+					pokemon.volatile[key] -= 1
+			
+			# Light Screen, Reflect, Safeguard, Mist
+			for key in ["light_screen", "reflect", "safeguard", "mist"]:
+				if pokemon.volatile.get(key, 0) > 0:
+					pokemon.volatile[key] -= 1
+					if pokemon.volatile[key] <= 0:
+						effect_names = {
+							"light_screen": "Light Screen",
+							"reflect": "Reflect",
+							"safeguard": "Safeguard",
+							"mist": "Mist"
+						}
+						self.lines.append(
+							f"   └─ {effect_names[key]} de {pokemon.display_name} acabou!"
+						)
+		
+		# Weather effects
+		await self._process_weather_effects()
+		
+		# Field effects
+		await self._process_field_effects()
+	
 	async def _process_weather_effects(self) -> None:
+		"""Processa efeitos de clima."""
 		if not self.weather["type"] or self.weather["turns"] <= 0:
 			return
 		
@@ -545,14 +1086,85 @@ class WildBattle:
 		if self.weather["turns"] == 0:
 			self.lines.append("🌤️ O clima voltou ao normal!")
 			self.weather["type"] = None
-		elif self.weather["type"] == "hail":
+			return
+		
+		weather_type = self.weather["type"]
+		
+		# Sandstorm damage
+		if weather_type == "sandstorm":
 			for pokemon, prefix in [(self.player_active, "🔵"), (self.wild, "🔴")]:
-				if not pokemon.fainted and "ice" not in pokemon.types:
-					damage = max(1, int(pokemon.stats["hp"] * BattleConstants.HAIL_DAMAGE_RATIO))
-					actual = pokemon.take_damage(damage, ignore_substitute=True)
-					self.lines.append(
-						f"❄️ {prefix} {pokemon.display_name} sofreu {actual} de dano da granizo!"
-					)
+				if pokemon.fainted:
+					continue
+				
+				# Imune: Rock, Ground, Steel types, Sand Veil/Rush, Overcoat, Magic Guard
+				types = pokemon.get_effective_types()
+				ability = pokemon.get_effective_ability()
+				
+				if any(t in types for t in ["rock", "ground", "steel"]):
+					continue
+				if ability in ["sand_veil", "sand_rush", "sand_force", "overcoat", "magic_guard"]:
+					continue
+				
+				damage = max(1, int(pokemon.stats["hp"] * BattleConstants.SANDSTORM_DAMAGE_RATIO))
+				actual = pokemon.take_damage(damage, ignore_substitute=True)
+				self.lines.append(
+					f"🌪️ {prefix} {pokemon.display_name} sofreu {actual} de dano da tempestade de areia!"
+				)
+		
+		# Hail damage
+		elif weather_type == "hail":
+			for pokemon, prefix in [(self.player_active, "🔵"), (self.wild, "🔴")]:
+				if pokemon.fainted:
+					continue
+				
+				# Imune: Ice type, Snow Cloak, Ice Body, Overcoat, Magic Guard
+				types = pokemon.get_effective_types()
+				ability = pokemon.get_effective_ability()
+				
+				if "ice" in types:
+					continue
+				if ability in ["snow_cloak", "ice_body", "overcoat", "magic_guard"]:
+					continue
+				
+				damage = max(1, int(pokemon.stats["hp"] * BattleConstants.HAIL_DAMAGE_RATIO))
+				actual = pokemon.take_damage(damage, ignore_substitute=True)
+				self.lines.append(
+					f"❄️ {prefix} {pokemon.display_name} sofreu {actual} de dano do granizo!"
+				)
+				
+				# Ice Body cura ao invés de causar dano
+				if ability == "ice_body":
+					heal = max(1, pokemon.stats["hp"] // 16)
+					actual_heal = pokemon.heal(heal)
+					if actual_heal > 0:
+						self.lines.append(
+							f"   └─ Ice Body curou {actual_heal} HP!"
+						)
+	
+	async def _process_field_effects(self) -> None:
+		"""Processa efeitos de campo."""
+		
+		# Trick Room
+		if self.field.get("trick_room", 0) > 0:
+			self.field["trick_room"] -= 1
+			if self.field["trick_room"] <= 0:
+				self.field["trick_room"] = 0
+				self.lines.append("🔄 Trick Room acabou!")
+		
+		# Gravity
+		if self.field.get("gravity", 0) > 0:
+			self.field["gravity"] -= 1
+			if self.field["gravity"] <= 0:
+				self.field["gravity"] = 0
+				self.lines.append("⬇️ Gravity voltou ao normal!")
+		
+		# Mud Sport
+		if self.field.get("mud_sport", 0) > 0:
+			self.field["mud_sport"] -= 1
+		
+		# Water Sport
+		if self.field.get("water_sport", 0) > 0:
+			self.field["water_sport"] -= 1
 	
 	async def switch_active(self, new_index: int, consume_turn: bool = True) -> None:
 		async with self.lock:
@@ -563,14 +1175,38 @@ class WildBattle:
 			
 			self.lines = []
 			old_name = self.player_active.display_name
+			
+			# Baton Pass transfere efeitos
+			if self.player_active.volatile.get("baton_pass_active"):
+				effects_to_pass = self.player_active.volatile.get("baton_pass_effects", {})
+				self.player_active.volatile["baton_pass_active"] = False
+			else:
+				effects_to_pass = None
+			
 			self.active_player_idx = new_index
 			self.battle_participants.add(new_index)
 			self.must_redraw_image = True
 			
+			# Aplica efeitos do Baton Pass
+			if effects_to_pass:
+				self.player_active._apply_baton_pass_effects(effects_to_pass)
+				self.lines.append(f"🎯 {old_name} passou seus efeitos!")
+			
 			self.lines.extend([
-				f"🔄 {old_name} voltou!",
+				f"🔄 {old_name} voltou!" if not effects_to_pass else "",
 				f"Vamos lá, {self.player_active.display_name}!"
 			])
+			
+			# Entry hazards
+			entry_damage = self._process_entry_hazards(self.player_active, is_player=True)
+			if entry_damage:
+				self.lines.extend(entry_damage)
+			
+			# Intimidate ability
+			ability = self.player_active.get_effective_ability()
+			if ability == "intimidate":
+				self.wild.modify_stat_stage("atk", -1)
+				self.lines.append(f"😤 Intimidate baixou o ataque de {self.wild.display_name}!")
 			
 			if consume_turn:
 				self.lines.append("")
@@ -587,10 +1223,7 @@ class WildBattle:
 					await self._execute_turn_action(False, enemy_move_id, enemy_move_data)
 				)
 				
-				end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-				if end_turn_effects:
-					self.lines.append("")
-					self.lines.extend(end_turn_effects)
+				await self._process_end_of_turn()
 				
 				if self.player_active.fainted:
 					await self._handle_player_faint()
@@ -606,6 +1239,9 @@ class WildBattle:
 			self.wild.level
 		)
 		
+		# Exp. Share distribui XP para todos
+		# Lucky Egg aumenta XP em 50%
+		
 		participant_count = len(self.battle_participants)
 		if participant_count == 0:
 			return []
@@ -615,7 +1251,13 @@ class WildBattle:
 		distribution = []
 		for participant_index in self.battle_participants:
 			pokemon_data = self.player_party_raw[participant_index]
-			exp_result = pm.repo.tk.add_exp(self.user_id, pokemon_data["id"], experience_per_pokemon)
+			exp_to_give = experience_per_pokemon
+			
+			# Lucky Egg bonus
+			if self.player_team[participant_index].volatile.get("held_item") == "lucky_egg":
+				exp_to_give = int(exp_to_give * 1.5)
+			
+			exp_result = pm.repo.tk.add_exp(self.user_id, pokemon_data["id"], exp_to_give)
 
 			if exp_result.get("levels_gained"):
 				move_result = await pm.process_level_up(
@@ -631,7 +1273,8 @@ class WildBattle:
 				if move_result.get("pending_moves"):
 					for move_name in move_result["pending_moves"]:
 						self.lines.append(f"⚠️ {self.player_team[participant_index].display_name} quer aprender **{move_name}**, mas está sem espaço!")
-			distribution.append((participant_index, pokemon_data, experience_per_pokemon))
+			
+			distribution.append((participant_index, pokemon_data, exp_to_give))
 		
 		return distribution
 	
@@ -739,10 +1382,7 @@ class WildBattle:
 				await self._execute_turn_action(False, enemy_move_id, enemy_move_data)
 			)
 			
-			end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-			if end_turn_effects:
-				self.lines.append("")
-				self.lines.extend(end_turn_effects)
+			await self._process_end_of_turn()
 			
 			if self.player_active.fainted:
 				await self._handle_player_faint()
@@ -818,7 +1458,7 @@ class WildBattleView(discord.ui.View):
 			
 			if self.battle.message:
 				await self.battle.message.reply(
-					content="Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
+					content="⏰ Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
 					view=self
 				)
 	
@@ -855,5 +1495,3 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
-
-
