@@ -170,6 +170,7 @@ def calculate_accuracy_modifier(attacker_acc_stage: int, defender_eva_stage: int
 
 class MoveData:
 	__slots__ = (
+		'id',
 		'name', 'accuracy', 'power', 'priority', 'dmg_class', 'type_name',
 		'min_hits', 'max_hits', 'flinch', 'drain', 'recoil', 'healing',
 		'ailment', 'ailment_chance', 'stat_changes'
