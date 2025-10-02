@@ -2,7 +2,7 @@ from discord.ext import commands
 from utils.pokemon_emojis import get_app_emoji
 from utils.formatting import format_pokemon_display
 from pokemon_sdk.calculations import calculate_stats
-from helpers.checks import requires_account
+from helpers.checks import requires_account, not_in_battle
 from typing import Optional
 from __main__ import pm
 
@@ -32,6 +32,7 @@ class Party(commands.Cog):
 
 	@party_root.command(name="reorder", aliases=["order", "set"])
 	@requires_account()
+	@not_in_battle()
 	async def party_reorder(self, ctx: commands.Context, *ids: int):
 		uid = str(ctx.author.id)
 		if not ids:
@@ -49,6 +50,7 @@ class Party(commands.Cog):
 
 	@party_root.command(name="swap")
 	@requires_account()
+	@not_in_battle()
 	async def party_swap(self, ctx: commands.Context, a: Optional[int] = None, b: Optional[int] = None):
 		uid = str(ctx.author.id)
 		if a is None or b is None:
@@ -80,6 +82,7 @@ class Party(commands.Cog):
 
 	@party_root.command(name="add")
 	@requires_account()
+	@not_in_battle()
 	async def party_add(self, ctx: commands.Context, pokemon_id: Optional[int] = None):
 		uid = str(ctx.author.id)
 		if not pokemon_id:
@@ -96,6 +99,7 @@ class Party(commands.Cog):
 
 	@party_root.command(name="remove")
 	@requires_account()
+	@not_in_battle()
 	async def party_remove(self, ctx: commands.Context, position: Optional[int] = None):
 		uid = str(ctx.author.id)
 		if not position:
