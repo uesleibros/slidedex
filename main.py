@@ -1,6 +1,6 @@
 import os
 import discord
-from typing import Optional, List
+from typing import Optional
 from discord.ext import commands
 from dotenv import load_dotenv
 from utils.pokemon_emojis import load_application_emojis
@@ -17,7 +17,6 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=".", intents=intents)
 toolkit = Toolkit()
 pm: PokemonManager | None = None
-battling: List[str] = []
 
 @bot.event
 async def on_ready():
@@ -41,3 +40,4 @@ async def on_ready():
 
 
 bot.run(str(TOKEN))
+
