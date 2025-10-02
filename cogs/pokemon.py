@@ -6,7 +6,7 @@ from pokemon_sdk.calculations import iv_percent
 from utils.formatting import format_poke_id, format_pokemon_display
 from helpers.flags import flags
 from helpers.paginator import Paginator
-from helpers.checks import requires_account
+from helpers.checks import requires_account, not_in_battle
 from __main__ import toolkit
 
 async def generate_pokemon_embed(pokemons, start, end, total, current_page):
@@ -704,15 +704,16 @@ class Pokemon(commands.Cog):
 
 	@commands.command(name="heal")
 	@requires_account()
+	@not_in_battle()
 	async def heal_party_command(self, ctx: commands.Context) -> None:
 		user_id: str = str(ctx.author.id)
 		party = toolkit.get_user_party(user_id)
 		if not party:
 			return await ctx.send("Seu time está vazio.")
 
-		del party
 		toolkit.heal_party(user_id)
 		await ctx.send("Todos os pokémon do seu time estão curados (HP e PP).")
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
