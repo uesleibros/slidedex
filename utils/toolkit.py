@@ -307,14 +307,14 @@ class Toolkit:
 			
 			if levels_gained:
 				old_max_hp = calculate_max_hp(
-					p["stats"]["hp"],
+					p["base_stats"]["hp"],
 					p["ivs"]["hp"],
 					p["evs"]["hp"],
 					old_level
 				)
 				
 				new_max_hp = calculate_max_hp(
-					p["stats"]["hp"],
+					p["base_stats"]["hp"],
 					p["ivs"]["hp"],
 					p["evs"]["hp"],
 					lvl
@@ -806,3 +806,4 @@ class Toolkit:
 			
 
 			return results
+
