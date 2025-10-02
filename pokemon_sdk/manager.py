@@ -119,7 +119,76 @@ class PokemonManager:
 		)
 
 		return created
-
+		
+	async def process_level_up(
+		self,
+		owner_id: str,
+		pokemon_id: int,
+		levels_gained: List[int]
+	) -> Dict:
+		if not levels_gained:
+			return {
+				"learned": [],
+				"pending": [],
+				"levels_gained": []
+			}
+		
+		pokemon = self.repo.get(owner_id, pokemon_id)
+		poke: aiopoke.Pokemon = await self.service.get_pokemon(pokemon["species_id"])
+		
+		new_moves_data = {}
+		
+		for move_entry in poke.moves:
+			for version_detail in move_entry.version_group_details:
+				if version_detail.move_learn_method.name == "level-up":
+					learn_level = version_detail.level_learned_at
+					if learn_level in levels_gained:
+						move_id = move_entry.move.name
+						if move_id not in new_moves_data:
+							new_moves_data[move_id] = {
+								"level": learn_level,
+								"move_entry": move_entry
+							}
+		
+		learned = []
+		pending = []
+		
+		sorted_moves = sorted(new_moves_data.items(), key=lambda x: x[1]["level"])
+		
+		for move_id, move_data in sorted_moves:
+			if self.repo.has_move(owner_id, pokemon_id, move_id):
+				continue
+			
+			try:
+				move_detail = await self.service.get_move(move_id)
+				pp_max = move_detail.pp if move_detail.pp else 10
+			except:
+				pp_max = 10
+			
+			if self.repo.can_learn_move(owner_id, pokemon_id):
+				self.repo.learn_move(owner_id, pokemon_id, move_id, pp_max)
+				learned.append({
+					"id": move_id,
+					"name": move_id.replace("-", " ").title(),
+					"level": move_data["level"],
+					"pp_max": pp_max
+				})
+			else:
+				self.repo.add_pending_move(owner_id, pokemon_id, move_id)
+				pending.append({
+					"id": move_id,
+					"name": move_id.replace("-", " ").title(),
+					"level": move_data["level"]
+				})
+		
+		del poke
+		
+		return {
+			"learned": learned,
+			"pending": pending,
+			"levels_gained": levels_gained
+		}
+		
 	def get_party(self, user_id: str) -> List[Dict]:
 		return self.repo.list(user_id, on_party=True)
 
@@ -154,4 +223,5 @@ class PokemonManager:
 		return iv_percent(p["ivs"], decimals)
 
 	async def close(self):
+
 		await self.service.close()
