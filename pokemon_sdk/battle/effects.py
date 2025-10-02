@@ -6,7 +6,6 @@ from .messages import BattleMessages
 from .status import StatusHandler
 
 class EffectHandler:
-    
     def apply_effect(
         self, 
         user: BattlePokemon, 
@@ -129,14 +128,19 @@ class EffectHandler:
         if not stat or stages == 0:
             return None
         
+        was_protected_by_mist = target.volatile.get("mist", 0) > 0 and stages < 0
+        
         actual_change, old_value = target.modify_stat_stage(stat, stages)
         
         if actual_change == 0:
-            if old_value == BattleConstants.MAX_STAT_STAGE and stages > 0:
+            if was_protected_by_mist:
+                return [f"   └─ 🌫️ A névoa protegeu {target.display_name}!"]
+            elif old_value == BattleConstants.MAX_STAT_STAGE and stages > 0:
                 return [BattleMessages.stat_maxed(target.display_name, stat, True)]
             elif old_value == BattleConstants.MIN_STAT_STAGE and stages < 0:
                 return [BattleMessages.stat_maxed(target.display_name, stat, False)]
-            return None
+            else:
+                return [BattleMessages.failed()]
         
         return [BattleMessages.stat_change(target.display_name, stat, actual_change)]
     
