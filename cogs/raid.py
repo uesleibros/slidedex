@@ -113,7 +113,6 @@ class RaidJoinView(discord.ui.View):
         await battle.start()
 
 class PokemonSelectView(discord.ui.View):
-    
     def __init__(self, parent_view: RaidJoinView, user_id: str, party: list):
         super().__init__(timeout=30.0)
         self.parent_view = parent_view
@@ -125,7 +124,7 @@ class PokemonSelectView(discord.ui.View):
                 continue
             
             button = discord.ui.Button(
-                label=f"{format_pokemon_display(pokemon, show_poke=False, show_gender=False)} Lv{pokemon['level']}",
+                label=f"{format_pokemon_display(pokemon, show_poke=False, show_gender=False, show_hp=False)} Lv{pokemon['level']}",
                 style=discord.ButtonStyle.primary,
                 row=i // 3
             )
