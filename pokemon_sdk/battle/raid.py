@@ -124,22 +124,22 @@ class RaidBattle(BattleEngine):
             description.extend(self.lines[-15:])
         
         embed = discord.Embed(
-            title=f"⚔️ Raid Battle - Turno {self.turn}",
+            title=f"Raid Battle - Turno {self.turn}",
             description="\n".join(description),
             color=discord.Color.red()
         )
         
-        embed.set_footer(text="Effex Engine v2.0 — Raid System")
+        embed.set_footer(text="Effex Engine v1.6 — Raid System")
         embed.set_image(url="attachment://raid.png")
         return embed
     
     async def start(self) -> None:
         self.actions_view = RaidBattleView(self)
         self.lines = [
-            f"🔥 A raid contra {self.boss.display_name} começou!",
-            f"💪 {len(self.players)} jogadores participando!",
+            f"A raid contra {self.boss.display_name} começou!",
+            f"{len(self.players)} jogadores participando!",
             "",
-            "⚔️ Escolha sua ação!"
+            "Escolha sua ação!"
         ]
         
         for user_id in [uid for uid, _ in self.players]:
@@ -154,7 +154,7 @@ class RaidBattle(BattleEngine):
         
         mentions = " ".join([f"<@{uid}>" for uid, _ in self.players])
         await self.interaction.channel.send(
-            f"⚔️ **RAID INICIADA!** {mentions}\n"
+            f"**RAID INICIADA!** {mentions}\n"
             f"É seu turno! Clique em **⚔️ Escolher Ação** para atacar!"
         )
     
@@ -201,6 +201,11 @@ class RaidBattle(BattleEngine):
         
         return True
     
+    def _mark_fainted_as_ready(self) -> None:
+        for uid, pokemon in self.players:
+            if pokemon.fainted and not self.player_actions.get(uid):
+                self.player_actions[uid] = "__fainted__"
+    
     async def _notify_action_progress(self) -> None:
         alive_players = [(uid, p) for uid, p in self.players if not p.fainted]
         
@@ -217,8 +222,8 @@ class RaidBattle(BattleEngine):
         
         if len(waiting_for) == 1:
             await self.message.channel.send(
-                f"⏰ <@{waiting_for[0]}>\n"
-                f"**Todos estão aguardando você!** ⚔️"
+                f"<@{waiting_for[0]}>\n"
+                f"**Todos estão aguardando você!**"
             )
         elif len(waiting_for) < len(alive_players):
             ready_count = len(alive_players) - len(waiting_for)
@@ -236,6 +241,8 @@ class RaidBattle(BattleEngine):
                 return
             
             self.lines = []
+            self.lines.append(f"━━━━━━━ **TURNO {self.turn}** ━━━━━━━")
+            self.lines.append("")
             
             for _, pokemon in self.players:
                 pokemon.clear_turn_volatiles()
@@ -257,7 +264,7 @@ class RaidBattle(BattleEngine):
                     continue
                 
                 move_id = self.player_actions.get(user_id)
-                if not move_id:
+                if not move_id or move_id == "__fainted__":
                     continue
                 
                 move_data = await self._fetch_move(move_id)
@@ -284,7 +291,7 @@ class RaidBattle(BattleEngine):
                     target = alive_opponents[0]
                     
                     user_mention = f"<@{user_id}>"
-                    self.lines.append(f"🔵 {user_mention}")
+                    self.lines.append(f"**{pokemon.display_name}** ({user_mention})")
                     
                     result = await self._execute_turn_action(
                         True, move_id, move_data, pokemon, target
@@ -292,6 +299,7 @@ class RaidBattle(BattleEngine):
                     self.lines.extend(result)
                     
                     if self.boss.fainted:
+                        self.must_redraw_image = True
                         await self._handle_victory()
                         await self.refresh()
                         return
@@ -306,7 +314,7 @@ class RaidBattle(BattleEngine):
                     effect_data = self._get_effect_data(move_id)
                     is_multi_target = self._is_boss_multi_target(move_data, effect_data)
                     
-                    self.lines.append(f"🔴 BOSS")
+                    self.lines.append(f"**BOSS {self.boss.display_name}**")
                     
                     if is_multi_target:
                         for target_uid, target_pokemon in alive_players:
@@ -318,8 +326,12 @@ class RaidBattle(BattleEngine):
                             )
                             
                             target_mention = f"<@{target_uid}>"
-                            self.lines.append(f"→ Alvo: {target_mention}")
-                            self.lines.extend([f"  {line}" for line in result])
+                            self.lines.append(f"   → Alvo: **{target_pokemon.display_name}** ({target_mention})")
+                            self.lines.extend([f"      {line}" for line in result])
+                            
+                            if target_pokemon.fainted:
+                                self.must_redraw_image = True
+                                self._mark_fainted_as_ready()
                     else:
                         target_uid, target_pokemon = random.choice(alive_players)
                         target_mention = f"<@{target_uid}>"
@@ -328,21 +340,38 @@ class RaidBattle(BattleEngine):
                             False, move_id, move_data, self.boss, target_pokemon
                         )
                         
-                        self.lines.append(f"→ Alvo: {target_mention}")
-                        self.lines.extend(result)
+                        self.lines.append(f"   → Alvo: **{target_pokemon.display_name}** ({target_mention})")
+                        self.lines.extend([f"      {line}" for line in result])
+                        
+                        if target_pokemon.fainted:
+                            self.must_redraw_image = True
+                            self._mark_fainted_as_ready()
                     
                     self.lines.append("")
             
             all_participants = [p for _, p in self.players] + [self.boss]
             
-            for player_pokemon in [p for _, p in self.players]:
+            for user_id, player_pokemon in self.players:
+                if player_pokemon.fainted:
+                    continue
+                    
                 player_effects = StatusHandler.end_of_turn_effects(player_pokemon, self.boss)
                 if player_effects:
-                    self.lines.extend(player_effects)
+                    user_mention = f"<@{user_id}>"
+                    self.lines.append(f"**{player_pokemon.display_name}** ({user_mention})")
+                    self.lines.extend([f"   {line}" for line in player_effects])
+                    
+                    if player_pokemon.fainted:
+                        self.must_redraw_image = True
+                        self._mark_fainted_as_ready()
             
             boss_effects = StatusHandler.end_of_turn_effects(self.boss, self.players[0][1] if self.players else self.boss)
             if boss_effects:
-                self.lines.extend(boss_effects)
+                self.lines.append(f"**BOSS {self.boss.display_name}**")
+                self.lines.extend([f"   {line}" for line in boss_effects])
+                
+                if self.boss.fainted:
+                    self.must_redraw_image = True
             
             self.lines.append("")
             await self._process_end_of_turn(all_participants)
@@ -357,7 +386,11 @@ class RaidBattle(BattleEngine):
             if not self.ended:
                 self.turn += 1
                 self.player_actions = {uid: None for uid, _ in self.players}
-                self.lines.append("⚔️ Escolha sua próxima ação!")
+                
+                alive_count = sum(1 for _, p in self.players if not p.fainted)
+                
+                self.lines.append("━━━━━━━━━━━━━━━━━━━━━━")
+                self.lines.append(f"**Próximo turno!** ({alive_count} jogadores ativos)")
             
             await self.refresh()
             
@@ -366,14 +399,19 @@ class RaidBattle(BattleEngine):
                 
                 if len(alive_players) == 1:
                     await self.message.channel.send(
-                        f"⚔️ <@{alive_players[0]}>\n"
-                        f"**Turno {self.turn}** - É seu turno! Você é o único sobrevivente!"
+                        f"<@{alive_players[0]}>\n"
+                        f"**Turno {self.turn}** - É seu turno! Você é o último sobrevivente! 💪"
                     )
                 elif len(alive_players) > 1:
                     mentions = " ".join([f"<@{uid}>" for uid in alive_players])
+                    
+                    boss_hp_percent = (self.boss.current_hp / self.boss.stats["hp"] * 100) if self.boss.stats["hp"] > 0 else 0
+                    
                     await self.message.channel.send(
-                        f"⏳ **Turno {self.turn}** {mentions}\n"
-                        f"Aguardando ações de **{len(alive_players)}** jogadores!"
+                        f"**Turno {self.turn}** — {mentions}\n"
+                        f"HP do Boss: **{boss_hp_percent:.1f}%** | "
+                        f"Jogadores ativos: **{len(alive_players)}**\n"
+                        f"Escolham suas ações!"
                     )
     
     def _is_boss_multi_target(self, move_data: MoveData, effect_data: Dict[str, Any]) -> bool:
@@ -390,7 +428,7 @@ class RaidBattle(BattleEngine):
         
         self.lines.extend([
             "",
-            "🎉 **VITÓRIA NA RAID!**",
+            "🎉 **VITÓRIA NA RAID!** 🎉",
             f"✨ {self.boss.display_name} foi derrotado!",
             ""
         ])
@@ -403,15 +441,21 @@ class RaidBattle(BattleEngine):
         raid_bonus = 2.0
         exp_per_player = int(base_exp * raid_bonus)
         
+        survivors = sum(1 for _, p in self.players if not p.fainted)
+        
         self.lines.append(f"⭐ **RECOMPENSAS (Bônus Raid {raid_bonus}x):**")
+        self.lines.append(f"💪 Sobreviventes: {survivors}/{len(self.players)}")
+        self.lines.append("")
         
         for user_id, pokemon in self.players:
             user_mention = f"<@{user_id}>"
             
             if pokemon.fainted:
                 participation_exp = exp_per_player // 2
+                status_icon = "💀"
             else:
                 participation_exp = exp_per_player
+                status_icon = "✨"
             
             player_party = pm.repo.tk.get_user_party(user_id)
             if player_party:
@@ -426,11 +470,11 @@ class RaidBattle(BattleEngine):
                             exp_result["levels_gained"]
                         )
                         
-                        level_msg = f" (+{exp_result['levels_gained']} níveis!)"
+                        level_msg = f" ⬆️ +{exp_result['levels_gained']} {'nível' if exp_result['levels_gained'] == 1 else 'níveis'}!"
                     else:
                         level_msg = ""
                     
-                    self.lines.append(f"  • {user_mention}: +{participation_exp} XP{level_msg}")
+                    self.lines.append(f"{status_icon} {user_mention}: **+{participation_exp:,} XP**{level_msg}")
         
         if self.actions_view:
             self.actions_view.disable_all()
@@ -439,8 +483,11 @@ class RaidBattle(BattleEngine):
         
         mentions = " ".join([f"<@{uid}>" for uid, _ in self.players])
         await self.message.channel.send(
-            f"🎉 **VITÓRIA!** {mentions}\n"
-            f"Parabéns! O **{self.boss.display_name}** foi derrotado!"
+            f"🎉 **RAID CONCLUÍDA COM SUCESSO!** 🎉\n\n"
+            f"{mentions}\n\n"
+            f"✨ O **{self.boss.display_name}** foi derrotado!\n"
+            f"💪 **{survivors}** de **{len(self.players)}** jogadores sobreviveram!\n"
+            f"🎁 Recompensas distribuídas!"
         )
         
         await self.cleanup()
@@ -450,23 +497,18 @@ class RaidBattle(BattleEngine):
         
         self.lines.extend([
             "",
-            "😔 **DERROTA**",
-            f"💀 Todos os jogadores foram derrotados!",
-            f"O {self.boss.display_name} ainda tem {self.boss.current_hp:,}/{self.boss.stats['hp']:,} HP.",
-            "Melhor sorte na próxima vez!"
+            "━━━━━━━━━━━━━━━━━━━━━━",
+            "💀 **DERROTA** 💀",
+            f"Todos os jogadores foram derrotados!",
+            f"🔥 {self.boss.display_name} permanece com **{self.boss.current_hp:,}/{self.boss.stats['hp']:,} HP** ({(self.boss.current_hp / self.boss.stats['hp'] * 100):.1f}%).",
+            "",
+            "💪 Melhor sorte na próxima vez!"
         ])
         
         if self.actions_view:
             self.actions_view.disable_all()
         
         await self.refresh()
-        
-        mentions = " ".join([f"<@{uid}>" for uid, _ in self.players])
-        await self.message.channel.send(
-            f"💀 **DERROTA** {mentions}\n"
-            f"O **{self.boss.display_name}** venceu a batalha!"
-        )
-        
         await self.cleanup()
     
     async def cleanup(self) -> None:
@@ -520,13 +562,13 @@ class RaidBattleView(discord.ui.View):
         
         if pokemon.fainted:
             return await interaction.response.send_message(
-                "Seu Pokémon está desmaiado!",
+                "Seu Pokémon está desmaiado! Aguarde o fim da raid.",
                 ephemeral=True
             )
         
         if self.battle.player_actions.get(user_id):
             return await interaction.response.send_message(
-                "Você já escolheu sua ação este turno!",
+                "Você já escolheu sua ação este turno! Aguardando outros jogadores...",
                 ephemeral=True
             )
         
@@ -566,14 +608,20 @@ class RaidMovesView(discord.ui.View):
             if str(i.user.id) != self.user_id:
                 return await i.response.send_message("Não é sua vez!", ephemeral=True)
             
+            move_key = _slug(move_id)
+            move_data = self.battle.move_cache.get(move_key)
+            move_name = move_data.name if move_data else move_id.replace("-", " ").title()
+            
             self.battle.player_actions[self.user_id] = move_id
             
             await i.response.send_message(
-                f"Ação escolhida! Aguardando outros jogadores...",
+                f"**{move_name}** selecionado! Aguardando outros jogadores...",
                 ephemeral=True
             )
             
             await i.message.edit(view=RaidBattleView(self.battle))
+            
+            await self.battle.refresh()
             
             await self.battle._notify_action_progress()
             
@@ -584,6 +632,6 @@ class RaidMovesView(discord.ui.View):
     
     async def _back_cb(self, i: discord.Interaction):
         if str(i.user.id) != self.user_id:
-            return await i.response.send_message("Não é sua vez!", ephemeral=True)
+            return await i.response.send_message("❌ Não é sua vez!", ephemeral=True)
         
         await i.response.edit_message(view=RaidBattleView(self.battle))
