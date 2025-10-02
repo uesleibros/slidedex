@@ -160,7 +160,7 @@ class DamageCalculator:
             
             # Defesa física
             if is_crit:
-                defense = defender.eff_stat("def") if defender.stages.get("def", 0) <= 0 else defender.stats["def"]
+                defense = defender.eff_stat("def") if defender.stages.get("def", 0) <= 0 else defender.stats.get("defense", defender.stats.get("def"))
             else:
                 defense = defender.eff_stat("def")
             
