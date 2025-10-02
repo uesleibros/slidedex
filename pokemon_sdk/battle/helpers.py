@@ -193,6 +193,7 @@ class MoveData:
 		ailment_chance: int,
 		stat_changes: List[Tuple[str, int, bool]]
 	):
+		self.id = name
 		self.name = name
 		self.accuracy = accuracy
 		self.power = power
