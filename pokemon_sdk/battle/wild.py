@@ -1458,8 +1458,7 @@ class WildBattleView(discord.ui.View):
 			
 			if self.battle.message:
 				await self.battle.message.reply(
-					content="⏰ Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
-					view=self
+					content="Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
 				)
 	
 	def disable_all(self) -> None:
@@ -1495,3 +1494,4 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
+
