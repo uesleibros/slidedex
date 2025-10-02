@@ -26,7 +26,7 @@ class RaidJoinView(discord.ui.View):
         self.countdown_task = None
     
     def _build_embed(self, status: str = "waiting") -> discord.Embed:
-        title = "⚡ RAID SHINY LENDÁRIA ⚡" if self.is_shiny else "🔥 RAID LENDÁRIA 🔥"
+        title = "⚡ RAID SHINY ⚡" if self.is_shiny else "🔥 RAID 🔥"
         
         desc_parts = [
             f"**{format_pokemon_display(self.boss_data, bold_name=True)}** `Lv{self.boss_data['level']}`",
