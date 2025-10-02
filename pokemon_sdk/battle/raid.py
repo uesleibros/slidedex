@@ -460,7 +460,7 @@ class RaidMovesView(discord.ui.View):
             pp_max = move.get("pp_max", pp)
             
             button = discord.ui.Button(
-                label=f"{move_name} ({pp}/{pp_max})",
+                label=f"{move_name.replace('-', ' ').title()} ({pp}/{pp_max})",
                 style=discord.ButtonStyle.primary,
                 disabled=(pp <= 0)
             )
