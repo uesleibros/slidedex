@@ -1,7 +1,7 @@
 import discord
 import random
 import asyncio
-from __main__ import pm
+from __main__ import pm, battle_tracker
 from typing import List, Dict, Any, Optional, Set, Tuple
 from utils.canvas import compose_battle_async
 from utils.preloaded import preloaded_textures
@@ -192,7 +192,8 @@ class WildBattle:
 		self.battle_participants.add(self.active_player_idx)
 		self.actions_view = WildBattleView(self)
 		self.lines = [f"A batalha começou! Vamos lá, {self.player_active.display_name}!"]
-		
+
+		battle_tracker.add(self.user_ix)
 		self.message = await self.interaction.channel.send(
 			embed=self._build_embed(),
 			file=await self._compose_image(),
@@ -716,6 +717,8 @@ class WildBattle:
 			await self.interaction.channel.send(
 				f"🎉 **Capturou {self.wild.display_name}!** ⭐ +{total_experience} XP distribuído!"
 			)
+			
+			await self.cleanup()
 			return True
 		else:
 			self.lines = []
@@ -766,6 +769,7 @@ class WildBattle:
 		await self.interaction.channel.send(
 			f"🏆 **Vitória!** ⭐ +{total_experience} XP distribuído!"
 		)
+		await self.cleanup()
 	
 	async def _handle_player_faint(self) -> None:
 		remaining_pokemon = [p for p in self.player_team if not p.fainted]
@@ -781,6 +785,7 @@ class WildBattle:
 				self.actions_view.disable_all()
 			await self.refresh()
 			await self.interaction.channel.send("💀 **Derrota!**")
+			await self.cleanup()
 			return
 		
 		self.lines.extend(["", "Escolha outro Pokémon!"])
@@ -788,12 +793,12 @@ class WildBattle:
 			self.actions_view.force_switch_mode = True
 	
 	async def cleanup(self) -> None:
+		battle_tracker.remove(self.user_id)
 		self.move_cache.clear()
 		self.effect_cache.clear()
 		self.battle_participants.clear()
 		if self.actions_view:
 			self.actions_view.stop()
-
 
 class WildBattleView(discord.ui.View):
 	__slots__ = ('battle', 'user_id', 'force_switch_mode')
@@ -803,6 +808,19 @@ class WildBattleView(discord.ui.View):
 		self.battle = battle
 		self.user_id = battle.user_id
 		self.force_switch_mode = False
+		
+	async def on_timeout(self) -> None:
+		if not self.battle.ended:
+			self.battle.ended = True
+			self.disable_all()
+			
+			await self.battle.cleanup()
+			
+			if self.battle.message:
+				await self.battle.message.edit(
+					content="Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
+					view=self
+				)
 	
 	def disable_all(self) -> None:
 		for item in self.children:
@@ -835,4 +853,5 @@ class WildBattleView(discord.ui.View):
 		if self.force_switch_mode or self.battle.player_active.fainted:
 			return await interaction.response.send_message("Troque de Pokémon!", ephemeral=True)
 		await interaction.response.defer()
+
 		await self.battle.attempt_capture()
