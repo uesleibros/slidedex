@@ -1,7 +1,7 @@
 import random
 import discord
 from discord.ext import commands
-from __main__ import pm
+from __main__ import pm, battle_tracker
 from utils.preloaded import preloaded_backgrounds
 from utils.spawn_text import get_spawn_text
 from utils.canvas import compose_pokemon_async
@@ -22,9 +22,14 @@ class BattleView(discord.ui.View):
 				"Você não pode iniciar essa batalha!",
 				ephemeral=True
 			)
-		
+
+		if battle_tracker.is_battling(str(self.author.id)):
+			return await interaction.response.send_message(
+				"Você não pode ir para uma batalha enquanto já está em outra.", 
+				ephemeral=True
+			)
 		try:
-			player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
+			player_party = pm.repo.tk.get_user_party(str(self.author.id))
 		except ValueError:
 			player_party = None
 			
@@ -33,7 +38,7 @@ class BattleView(discord.ui.View):
 		
 		await interaction.response.defer()
 		
-		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
+		battle = WildBattle(player_party, self.wild_data, str(self.author.id), interaction)
 		
 		if not await battle.setup():
 			return
@@ -113,6 +118,7 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
 
 
