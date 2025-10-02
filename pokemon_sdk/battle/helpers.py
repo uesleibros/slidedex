@@ -155,6 +155,19 @@ def _slug(move_id: Any) -> str:
 	return s.replace(" ", "-")
 
 
+def calculate_accuracy_modifier(attacker_acc_stage: int, defender_eva_stage: int) -> float:
+	def stage_multiplier(stage: int) -> float:
+		if stage >= 0:
+			return (3 + stage) / 3
+		else:
+			return 3 / (3 - stage)
+	
+	acc_mult = stage_multiplier(attacker_acc_stage)
+	eva_mult = stage_multiplier(defender_eva_stage)
+	
+	return acc_mult / eva_mult
+
+
 class MoveData:
 	__slots__ = (
 		'name', 'accuracy', 'power', 'priority', 'dmg_class', 'type_name',
@@ -203,7 +216,9 @@ def _canon_stat(s: str) -> Optional[str]:
 		"defense": "def",
 		"special-attack": "sp_atk",
 		"special-defense": "sp_def",
-		"speed": "speed"
+		"speed": "speed",
+		"accuracy": "accuracy",
+		"evasion": "evasion"
 	}
 	return mapping.get(s)
 
