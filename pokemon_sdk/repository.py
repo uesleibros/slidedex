@@ -60,8 +60,12 @@ class PokemonRepository:
         self.tk.restore_pp(owner_id, pokemon_id)
         return self.tk.get_pokemon(owner_id, pokemon_id)
 
+    def has_move(self, owner_id: str, pokemon_id: int, move_id: int) -> bool:
+        return self.tk.has_move(owner_id, pokemon_id, move_id)
+        
     def transfer(self, owner_id: str, pokemon_id: int, new_owner_id: str) -> Dict:
         return self.tk.transfer_pokemon(owner_id, pokemon_id, new_owner_id)
 
     def release(self, owner_id: str, pokemon_id: int) -> bool:
+
         return self.tk.release_pokemon(owner_id, pokemon_id)
