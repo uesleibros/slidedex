@@ -35,9 +35,9 @@ class RaidJoinView(discord.ui.View):
             mentions = " ".join([f"<@{uid}>" for uid in self.participants.keys()])
             
             await self.message.channel.send(
-                f"⚠️ **ATENÇÃO** {mentions}\n"
-                f"🔥 A raid começará em **10 SEGUNDOS**!\n"
-                f"⏰ Prepare-se para a batalha!"
+                f"**ATENÇÃO** {mentions}\n"
+                f"A raid começará em **10 SEGUNDOS**!\n"
+                f"Prepare-se para a batalha!"
             )
     
     @discord.ui.button(style=discord.ButtonStyle.success, label="Participar", emoji="⚔️")
@@ -46,25 +46,25 @@ class RaidJoinView(discord.ui.View):
         
         if self.raid_started:
             return await interaction.response.send_message(
-                "❌ A raid já começou!",
+                "A raid já começou!",
                 ephemeral=True
             )
         
         if len(self.participants) >= self.max_participants:
             return await interaction.response.send_message(
-                "❌ Raid cheia! (Máximo 4 jogadores)",
+                "Raid cheia! (Máximo 4 jogadores)",
                 ephemeral=True
             )
         
         if user_id in self.participants:
             return await interaction.response.send_message(
-                "⚠️ Você já está participando desta raid!",
+                "Você já está participando desta raid!",
                 ephemeral=True
             )
         
         if battle_tracker.is_battling(user_id):
             return await interaction.response.send_message(
-                "⚠️ Você já está em uma batalha!",
+                "Você já está em uma batalha!",
                 ephemeral=True
             )
         
@@ -75,7 +75,7 @@ class RaidJoinView(discord.ui.View):
         
         if not player_party:
             return await interaction.response.send_message(
-                "❌ Você não possui Pokémon na sua party!",
+                "Você não possui Pokémon na sua party!",
                 ephemeral=True
             )
         
@@ -102,9 +102,9 @@ class RaidJoinView(discord.ui.View):
         )
         
         if len(self.participants) == self.max_participants:
-            embed.set_footer(text="✅ Raid cheia! Aguarde o início...")
+            embed.set_footer(text="Raid cheia! Aguarde o início...")
         else:
-            embed.set_footer(text=f"⏳ {self.max_participants - len(self.participants)} vagas restantes • Clique em ⚔️ para participar")
+            embed.set_footer(text=f"{self.max_participants - len(self.participants)} vagas restantes • Clique em ⚔️ para participar")
         
         await interaction.message.edit(embed=embed, view=self)
     
@@ -134,7 +134,7 @@ class RaidJoinView(discord.ui.View):
             item.disabled = True
         
         embed = self.message.embeds[0]
-        embed.set_footer(text="⚔️ Raid em andamento...")
+        embed.set_footer(text="Raid em andamento...")
         
         await self.message.edit(embed=embed, view=self)
         
@@ -147,8 +147,8 @@ class RaidJoinView(discord.ui.View):
         
         mentions = " ".join([f"<@{uid}>" for uid in self.participants.keys()])
         await self.message.channel.send(
-            f"⚔️ **RAID INICIADA!** {mentions}\n"
-            f"🔥 A batalha contra **{format_pokemon_display(self.boss_data, bold_name=True)}** começou!"
+            f"**RAID INICIADA!** {mentions}\n"
+            f"A batalha contra **{format_pokemon_display(self.boss_data, bold_name=True)}** começou!"
         )
         
         await battle.start()
@@ -259,10 +259,10 @@ class Raid(commands.Cog):
         desc = (
             f"**{format_pokemon_display(boss, bold_name=True)}** `Lv{level}`\n"
             "\n\n"
-            f"⏱️ **Tempo de Entrada:** `30 segundos`\n"
-            f"👥 **Participantes:** `0/{4}`\n"
-            f"💪 **HP do Boss:** `{boss['base_stats']['hp']:,}`\n"
-            f"✨ **Recompensa:** `XP Bônus 2x`"
+            f"**Tempo de Entrada:** `30 segundos`\n"
+            f"**Participantes:** `0/{4}`\n"
+            f"**HP do Boss:** `{boss['base_stats']['hp']:,}`\n"
+            f"**Recompensa:** `XP Bônus 2x`"
         )
         
         embed = discord.Embed(
