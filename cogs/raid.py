@@ -256,9 +256,8 @@ class Raid(commands.Cog):
         title = "⚡ RAID SHINY LENDÁRIA ⚡" if is_shiny else "🔥 RAID LENDÁRIA 🔥"
         
         desc = (
-            f"╔═══════════════════════════╗\n"
-            f"    **{format_pokemon_display(boss, bold_name=True)}** `Lv{level}`\n"
-            f"╚═══════════════════════════╝\n\n"
+            f"**{format_pokemon_display(boss, bold_name=True)}** `Lv{level}`\n"
+            "\n\n"
             f"⏱️ **Tempo de Entrada:** `30 segundos`\n"
             f"👥 **Participantes:** `0/{4}`\n"
             f"💪 **HP do Boss:** `{boss['base_stats']['hp']:,}`\n"
