@@ -1,6 +1,7 @@
 import random
 import discord
 import asyncio
+from typing import Optional
 from discord.ext import commands
 from __main__ import pm, battle_tracker
 from utils.preloaded import preloaded_backgrounds
@@ -218,7 +219,7 @@ class Raid(commands.Cog):
     
     @commands.command(name="raid", aliases=["rd"])
     @requires_account()
-    async def raid_command(self, ctx: commands.Context) -> None:
+    async def raid_command(self, ctx: commands.Context, level_start: Optional[int] = 50, level_end: Optional[int] = 70) -> None:
         is_shiny = random.randint(1, SHINY_ROLL // 2) == 1
         
         raid_pool = list(range(144, 152)) + list(range(243, 252)) + [382, 383, 384]
@@ -237,7 +238,7 @@ class Raid(commands.Cog):
         sprite = poke.sprites.front_shiny if is_shiny and poke.sprites.front_shiny else poke.sprites.front_default
         sprite_bytes = await sprite.read() if sprite else None
         
-        level = random.randint(50, 70)
+        level = random.randint(level_start, level_end)
         
         boss = await pm.generate_temp_pokemon(
             owner_id="raid_boss",
