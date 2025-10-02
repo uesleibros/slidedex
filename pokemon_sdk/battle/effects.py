@@ -4,6 +4,7 @@ from .pokemon import BattlePokemon
 from .constants import BattleConstants
 from .messages import BattleMessages
 from .status import StatusHandler
+from .helpers import MoveData
 
 class EffectHandler:
     def apply_effect(
@@ -11,7 +12,8 @@ class EffectHandler:
         user: BattlePokemon, 
         target: BattlePokemon, 
         effect: Dict[str, Any], 
-        damage_dealt: int
+        damage_dealt: int,
+        move_data: Optional[MoveData] = None
     ) -> List[str]:
         lines = []
         eff_type = effect.get("type")
@@ -25,12 +27,12 @@ class EffectHandler:
         
         handler_map = {
             "stat_change": self._handle_stat_change,
-            "burn": lambda u, t, e, d: self._handle_status(t, "burn"),
-            "poison": lambda u, t, e, d: self._handle_status(t, "poison"),
-            "paralysis": lambda u, t, e, d: self._handle_status(t, "paralysis"),
-            "sleep": lambda u, t, e, d: self._handle_status(t, "sleep"),
-            "freeze": lambda u, t, e, d: self._handle_status(t, "freeze"),
-            "toxic": lambda u, t, e, d: self._handle_status(t, "toxic"),
+            "burn": lambda u, t, e, d, m: self._handle_status(t, "burn"),
+            "poison": lambda u, t, e, d, m: self._handle_status(t, "poison"),
+            "paralysis": lambda u, t, e, d, m: self._handle_status(t, "paralysis"),
+            "sleep": lambda u, t, e, d, m: self._handle_status(t, "sleep"),
+            "freeze": lambda u, t, e, d, m: self._handle_status(t, "freeze"),
+            "toxic": lambda u, t, e, d, m: self._handle_status(t, "toxic"),
             "confusion": self._handle_confusion,
             "flinch": self._handle_flinch,
             "heal": self._handle_heal,
@@ -115,13 +117,13 @@ class EffectHandler:
         
         handler = handler_map.get(eff_type)
         if handler:
-            result = handler(user, actual_target, effect, damage_dealt)
+            result = handler(user, actual_target, effect, damage_dealt, move_data)
             if result:
                 lines.extend(result if isinstance(result, list) else [result])
         
         return lines
     
-    def _handle_stat_change(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> Optional[List[str]]:
+    def _handle_stat_change(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> Optional[List[str]]:
         stat = effect.get("stat")
         stages = effect.get("stages", 0)
         
@@ -147,7 +149,7 @@ class EffectHandler:
     def _handle_status(self, target: BattlePokemon, status: str) -> Optional[str]:
         return StatusHandler.apply_status_effect(target, status)
     
-    def _handle_confusion(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> Optional[str]:
+    def _handle_confusion(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> Optional[str]:
         if target.volatile.get("confuse", 0) > 0:
             return None
         
@@ -157,10 +159,10 @@ class EffectHandler:
         )
         return BattleMessages.confused(target.display_name)
     
-    def _handle_flinch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> None:
+    def _handle_flinch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> None:
         target.volatile["flinch"] = True
     
-    def _handle_heal(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> Optional[str]:
+    def _handle_heal(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> Optional[str]:
         if user.current_hp >= user.stats["hp"]:
             return BattleMessages.failed()
         
@@ -172,7 +174,7 @@ class EffectHandler:
             return BattleMessages.healing(user.display_name, actual)
         return None
     
-    def _handle_leech_seed(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_leech_seed(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("leech_seed"):
             return BattleMessages.failed()
         
@@ -183,14 +185,14 @@ class EffectHandler:
         target.volatile["leech_seed_by"] = user
         return BattleMessages.seeded(target.display_name)
     
-    def _handle_ingrain(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_ingrain(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("ingrain"):
             return BattleMessages.failed()
         
         user.volatile["ingrain"] = True
         return "   └─ 🌿 " + user.display_name + " criou raízes!"
     
-    def _handle_substitute(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_substitute(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("substitute", 0) > 0:
             return BattleMessages.failed()
         
@@ -203,7 +205,7 @@ class EffectHandler:
         user.volatile["substitute"] = hp_cost
         return BattleMessages.substitute_made(user.display_name, hp_cost)
     
-    def _handle_rest(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_rest(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.current_hp >= user.stats["hp"]:
             return BattleMessages.failed()
         
@@ -212,22 +214,22 @@ class EffectHandler:
         user.status = {"name": "sleep", "counter": 2}
         return f"   └─ 💤 {user.display_name} dormiu e recuperou {heal} HP!"
     
-    def _handle_protect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_protect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["protect"] = True
         return f"   └─ 🛡️ {user.display_name} se protegeu!"
     
-    def _handle_endure(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_endure(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["endure"] = True
         return f"   └─ 💪 {user.display_name} vai aguentar!"
     
-    def _handle_focus_energy(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_focus_energy(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("focus_energy"):
             return BattleMessages.failed()
         
         user.volatile["focus_energy"] = True
         return BattleMessages.focus_energy(user.display_name)
     
-    def _handle_mist(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_mist(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("mist", 0) > 0:
             return BattleMessages.failed()
         
@@ -235,7 +237,7 @@ class EffectHandler:
         user.volatile["mist"] = turns
         return BattleMessages.mist_set(turns)
     
-    def _handle_light_screen(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_light_screen(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("light_screen", 0) > 0:
             return BattleMessages.failed()
         
@@ -243,7 +245,7 @@ class EffectHandler:
         user.volatile["light_screen"] = turns
         return BattleMessages.light_screen_set(turns)
     
-    def _handle_reflect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_reflect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("reflect", 0) > 0:
             return BattleMessages.failed()
         
@@ -251,7 +253,7 @@ class EffectHandler:
         user.volatile["reflect"] = turns
         return BattleMessages.reflect_set(turns)
     
-    def _handle_safeguard(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_safeguard(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("safeguard", 0) > 0:
             return BattleMessages.failed()
         
@@ -259,19 +261,19 @@ class EffectHandler:
         user.volatile["safeguard"] = turns
         return BattleMessages.safeguard_set(turns)
     
-    def _handle_haze(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_haze(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.reset_stats()
         target.reset_stats()
         return BattleMessages.stats_reset(all_pokemon=True)
     
-    def _handle_weather(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_weather(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         weather = effect.get("weather")
         turns = effect.get("turns", 5)
         user.volatile["weather"] = weather
         user.volatile["weather_turns"] = turns
         return BattleMessages.weather_started(weather, turns)
     
-    def _handle_spikes(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> Optional[str]:
+    def _handle_spikes(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> Optional[str]:
         spikes_count = target.volatile.get("spikes_layers", 0)
         
         if spikes_count >= 3:
@@ -280,7 +282,7 @@ class EffectHandler:
         target.volatile["spikes_layers"] = spikes_count + 1
         return BattleMessages.spikes_set(spikes_count + 1)
     
-    def _handle_spite(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> Optional[str]:
+    def _handle_spite(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> Optional[str]:
         last_move = target.volatile.get("last_move_used")
         
         if not last_move:
@@ -293,7 +295,7 @@ class EffectHandler:
         
         return BattleMessages.failed()
     
-    def _handle_belly_drum(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_belly_drum(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.stages["atk"] >= BattleConstants.MAX_STAT_STAGE:
             return BattleMessages.failed()
         
@@ -306,13 +308,13 @@ class EffectHandler:
         user.stages["atk"] = BattleConstants.MAX_STAT_STAGE
         return f"   └─ 🥁 {user.display_name} maximizou seu Ataque! (-{hp_cost} HP)"
     
-    def _handle_pain_split(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_pain_split(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         avg = (user.current_hp + target.current_hp) // 2
         user.current_hp = min(avg, user.stats["hp"])
         target.current_hp = min(avg, target.stats["hp"])
         return f"   └─ 💔 HP foi dividido igualmente! ({avg} HP cada)"
     
-    def _handle_endeavor(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> Optional[str]:
+    def _handle_endeavor(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> Optional[str]:
         if target.current_hp <= user.current_hp:
             return BattleMessages.failed()
         
@@ -320,14 +322,14 @@ class EffectHandler:
         target.take_damage(dmg)
         return f"   └─ 💢 HP do oponente igualado! ({dmg} de dano)"
     
-    def _handle_yawn(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_yawn(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.status["name"] or target.volatile.get("yawn", 0) > 0:
             return BattleMessages.failed()
         
         target.volatile["yawn"] = 1
         return BattleMessages.yawning(target.display_name)
     
-    def _handle_wish(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_wish(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("wish", 0) > 0:
             return BattleMessages.failed()
         
@@ -335,7 +337,7 @@ class EffectHandler:
         user.volatile["wish_hp"] = user.stats["hp"] // 2
         return f"   └─ ⭐ {user.display_name} fez um desejo!"
     
-    def _handle_stockpile(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_stockpile(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         stockpile = user.volatile.get("stockpile", 0)
         
         if stockpile >= 3:
@@ -347,32 +349,32 @@ class EffectHandler:
         
         return BattleMessages.stockpile(user.display_name, stockpile + 1)
     
-    def _handle_destiny_bond(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_destiny_bond(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["destiny_bond"] = True
         return BattleMessages.destiny_bond_set(user.display_name)
     
-    def _handle_perish_song(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_perish_song(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["perish_count"] = 3
         target.volatile["perish_count"] = 3
         return BattleMessages.perish_song(3)
     
-    def _handle_self_destruct(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_self_destruct(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.current_hp = 0
         return f"   └─ 💥 {user.display_name} se sacrificou!"
     
-    def _handle_pay_day(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_pay_day(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         money = effect.get("money_multiplier", 5) * user.level
         user.volatile["pay_day_money"] = user.volatile.get("pay_day_money", 0) + money
         return BattleMessages.pay_day(money)
     
-    def _handle_force_switch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_force_switch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("ingrain") or target.volatile.get("trapped"):
             return BattleMessages.failed()
         
         target.volatile["force_switch"] = True
         return BattleMessages.whirlwind(target.display_name)
     
-    def _handle_bind(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_bind(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("bind", 0) > 0:
             return BattleMessages.failed()
         
@@ -380,19 +382,25 @@ class EffectHandler:
         max_turns = effect.get("max_turns", 5)
         turns = random.randint(min_turns, max_turns)
         
+        if move_data and move_data.name:
+            move_name = move_data.name
+        else:
+            move_name = "Bind"
+        
         target.volatile["bind"] = turns
         target.volatile["bind_by"] = user
         target.volatile["bind_damage"] = max(1, user.stats["hp"] // 16)
+        target.volatile["bind_type"] = move_name
         
-        return BattleMessages.bound(target.display_name, turns, "Bind")
+        return BattleMessages.bound(target.display_name, turns, move_name)
     
-    def _handle_crash_damage(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_crash_damage(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         crash_percent = effect.get("crash_percent", 0.5)
         crash_dmg = max(1, int(user.stats["hp"] * crash_percent))
         user.take_damage(crash_dmg)
         return f"   └─ 💥 {user.display_name} errou e se machucou! ({crash_dmg} de dano)"
     
-    def _handle_disable(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_disable(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         last_move = target.volatile.get("last_move_used")
         
         if not last_move or target.volatile.get("disable", 0) > 0:
@@ -405,11 +413,10 @@ class EffectHandler:
         target.volatile["disable"] = turns
         target.volatile["disable_move"] = last_move
         
-        # Pega o nome do movimento se possível
         move_name = last_move.replace("_", " ").title()
         return BattleMessages.move_disabled(target.display_name, move_name, turns)
     
-    def _handle_trap(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_trap(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("trapped"):
             return BattleMessages.failed()
         
@@ -417,12 +424,12 @@ class EffectHandler:
         target.volatile["trapped_by"] = user
         return BattleMessages.trapped(target.display_name)
     
-    def _handle_mind_reader(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_mind_reader(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["mind_reader_target"] = target
         user.volatile["mind_reader_turns"] = 1
         return f"   └─ 👁️ {user.display_name} mirou em {target.display_name}!"
     
-    def _handle_nightmare(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_nightmare(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.status.get("name") != "sleep":
             return BattleMessages.failed()
         
@@ -432,17 +439,17 @@ class EffectHandler:
         target.volatile["nightmare"] = True
         return BattleMessages.nightmare_set(target.display_name)
     
-    def _handle_rage(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_rage(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["rage"] = True
         user.volatile["rage_active"] = True
         return f"   └─ 😡 {user.display_name} entrou em fúria!"
     
-    def _handle_teleport(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_teleport(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["teleport"] = True
         user.volatile["fled"] = True
         return BattleMessages.teleported(user.display_name)
     
-    def _handle_mimic(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_mimic(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         last_move = target.volatile.get("last_move_used")
         
         if not last_move:
@@ -457,11 +464,11 @@ class EffectHandler:
         move_name = last_move.replace("_", " ").title()
         return BattleMessages.move_copied(user.display_name, move_name)
     
-    def _handle_metronome(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_metronome(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["metronome_active"] = True
         return f"   └─ 🎲 Metronome selecionou um movimento aleatório!"
     
-    def _handle_mirror_move(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_mirror_move(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         last_move = target.volatile.get("last_move_used")
         
         if not last_move:
@@ -471,7 +478,7 @@ class EffectHandler:
         move_name = last_move.replace("_", " ").title()
         return BattleMessages.move_copied(user.display_name, move_name)
     
-    def _handle_sketch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_sketch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         last_move = target.volatile.get("last_move_used")
         
         if not last_move:
@@ -486,7 +493,7 @@ class EffectHandler:
         move_name = last_move.replace("_", " ").title()
         return f"   └─ ✏️ {user.display_name} esboçou {move_name} permanentemente!"
     
-    def _handle_steal_item(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_steal_item(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         target_item = target.volatile.get("held_item")
         
         if not target_item or user.volatile.get("held_item"):
@@ -498,7 +505,7 @@ class EffectHandler:
         
         return BattleMessages.item_stolen(user.display_name, target_item, target.display_name)
     
-    def _handle_transform(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_transform(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("transformed"):
             return BattleMessages.failed()
         
@@ -518,7 +525,7 @@ class EffectHandler:
         
         return BattleMessages.transformed(user.display_name, target.display_name)
     
-    def _handle_conversion(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_conversion(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if not hasattr(user, 'moves') or not user.moves:
             return BattleMessages.failed()
         
@@ -534,13 +541,13 @@ class EffectHandler:
         
         return BattleMessages.type_changed(user.display_name, move_type)
     
-    def _handle_tri_attack(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> Optional[str]:
+    def _handle_tri_attack(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> Optional[str]:
         statuses = ["burn", "freeze", "paralysis"]
         chosen = random.choice(statuses)
         result = StatusHandler.apply_status_effect(target, chosen)
         return result
     
-    def _handle_ancient_power(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_ancient_power(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         stats = ["atk", "def", "sp_atk", "sp_def", "speed"]
         changes = []
         
@@ -554,7 +561,7 @@ class EffectHandler:
         
         return BattleMessages.failed()
     
-    def _handle_attract(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_attract(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("attract"):
             return BattleMessages.failed()
         
@@ -567,7 +574,7 @@ class EffectHandler:
         
         return BattleMessages.attracted(target.display_name, user.display_name)
     
-    def _handle_sleep_talk(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_sleep_talk(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.status.get("name") != "sleep":
             return BattleMessages.failed()
         
@@ -584,7 +591,7 @@ class EffectHandler:
         
         return f"   └─ 💤 {user.display_name} usou {selected_move.get('name', 'um movimento')} dormindo!"
     
-    def _handle_heal_bell(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_heal_bell(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         cured = False
         
         if user.status.get("name"):
@@ -598,7 +605,7 @@ class EffectHandler:
         
         return f"   └─ 🔔 Sino de cura tocou!"
     
-    def _handle_baton_pass(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_baton_pass(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         effects_to_pass = {}
         
         passable_effects = [
@@ -618,7 +625,7 @@ class EffectHandler:
         
         return BattleMessages.baton_pass(user.display_name)
     
-    def _handle_encore(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_encore(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         last_move = target.volatile.get("last_move_used")
         
         if not last_move or target.volatile.get("encore", 0) > 0:
@@ -634,7 +641,7 @@ class EffectHandler:
         move_name = last_move.replace("_", " ").title()
         return BattleMessages.move_encored(target.display_name, move_name, turns)
     
-    def _handle_rapid_spin(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_rapid_spin(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         removed_effects = []
         
         if user.volatile.get("leech_seed"):
@@ -654,7 +661,7 @@ class EffectHandler:
         
         return f"   └─ 🌀 {user.display_name} girou rapidamente!"
     
-    def _handle_whirlpool(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_whirlpool(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("bind", 0) > 0:
             return BattleMessages.failed()
         
@@ -662,14 +669,19 @@ class EffectHandler:
         max_turns = effect.get("max_turns", 5)
         turns = random.randint(min_turns, max_turns)
         
+        if move_data and move_data.name:
+            move_name = move_data.name
+        else:
+            move_name = "Whirlpool"
+        
         target.volatile["bind"] = turns
         target.volatile["bind_by"] = user
         target.volatile["bind_damage"] = max(1, target.stats["hp"] // 16)
-        target.volatile["bind_type"] = "whirlpool"
+        target.volatile["bind_type"] = move_name
         
-        return BattleMessages.bound(target.display_name, turns, "Whirlpool")
+        return BattleMessages.bound(target.display_name, turns, move_name)
     
-    def _handle_uproar_effect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_uproar_effect(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("uproar", 0) > 0:
             return BattleMessages.failed()
         
@@ -679,7 +691,7 @@ class EffectHandler:
         
         return f"   └─ 📢 {user.display_name} causou alvoroço por {turns} turnos!"
     
-    def _handle_swallow(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_swallow(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         stockpile = user.volatile.get("stockpile", 0)
         
         if stockpile == 0:
@@ -698,7 +710,7 @@ class EffectHandler:
         
         return BattleMessages.healing(user.display_name, actual)
     
-    def _handle_spit_up(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_spit_up(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         stockpile = user.volatile.get("stockpile", 0)
         
         if stockpile == 0:
@@ -712,14 +724,14 @@ class EffectHandler:
         
         return f"   └─ 💥 Liberou {stockpile} níveis de energia!"
     
-    def _handle_torment(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_torment(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("torment"):
             return BattleMessages.failed()
         
         target.volatile["torment"] = True
         return BattleMessages.tormented(target.display_name)
     
-    def _handle_charge(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_charge(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("charge"):
             return BattleMessages.failed()
         
@@ -729,7 +741,7 @@ class EffectHandler:
         
         return f"   └─ ⚡ {user.display_name} está carregando poder elétrico!"
     
-    def _handle_taunt(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_taunt(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("taunt", 0) > 0:
             return BattleMessages.failed()
         
@@ -738,13 +750,13 @@ class EffectHandler:
         
         return BattleMessages.taunted(target.display_name, turns)
     
-    def _handle_helping_hand(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_helping_hand(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["helping_hand"] = True
         user.volatile["helping_hand_target"] = target
         
         return f"   └─ 🤝 {user.display_name} está ajudando {target.display_name}!"
     
-    def _handle_trick(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_trick(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user_item = user.volatile.get("held_item")
         target_item = target.volatile.get("held_item")
         
@@ -756,7 +768,7 @@ class EffectHandler:
         
         return BattleMessages.items_swapped(user_item, target_item)
     
-    def _handle_role_play(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_role_play(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         target_ability = getattr(target, 'ability', None)
         
         if not target_ability:
@@ -773,18 +785,18 @@ class EffectHandler:
         
         return BattleMessages.ability_copied(user.display_name, target_ability, target.display_name)
     
-    def _handle_assist(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_assist(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["assist_active"] = True
         
         return f"   └─ 🆘 {user.display_name} usou um movimento aliado!"
     
-    def _handle_magic_coat(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_magic_coat(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["magic_coat"] = True
         user.volatile["magic_coat_turns"] = 1
         
         return f"   └─ ✨ {user.display_name} refletirá movimentos de status!"
     
-    def _handle_recycle(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_recycle(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         used_item = user.volatile.get("used_item") or user.volatile.get("stolen_item")
         
         if not used_item or user.volatile.get("held_item"):
@@ -795,7 +807,7 @@ class EffectHandler:
         
         return f"   └─ ♻️ {user.display_name} recuperou {used_item}!"
     
-    def _handle_brick_break(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_brick_break(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         removed = []
         
         if target.volatile.get("light_screen", 0) > 0:
@@ -811,7 +823,7 @@ class EffectHandler:
         
         return None
     
-    def _handle_knock_off(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_knock_off(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         target_item = target.volatile.get("held_item")
         
         if not target_item:
@@ -822,7 +834,7 @@ class EffectHandler:
         
         return BattleMessages.item_knocked_off(target.display_name, target_item)
     
-    def _handle_skill_swap(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_skill_swap(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user_ability = getattr(user, 'ability', None)
         target_ability = getattr(target, 'ability', None)
         
@@ -842,7 +854,7 @@ class EffectHandler:
         
         return BattleMessages.ability_swapped(user.display_name, user_ability, target.display_name, target_ability)
     
-    def _handle_imprison(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_imprison(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("imprison"):
             return BattleMessages.failed()
         
@@ -853,7 +865,7 @@ class EffectHandler:
         
         return BattleMessages.imprisoned(target.display_name)
     
-    def _handle_refresh(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_refresh(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         status_name = user.status.get("name")
         
         if not status_name or status_name not in ["burn", "paralysis", "poison", "toxic"]:
@@ -865,19 +877,19 @@ class EffectHandler:
         
         return BattleMessages.status_cured(user.display_name, cured_status)
     
-    def _handle_grudge(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_grudge(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["grudge"] = True
         user.volatile["grudge_active"] = True
         
         return BattleMessages.grudge_set(user.display_name)
     
-    def _handle_snatch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_snatch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         user.volatile["snatch"] = True
         user.volatile["snatch_turns"] = 1
         
         return f"   └─ 🎯 {user.display_name} está esperando para roubar movimentos!"
     
-    def _handle_camouflage(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_camouflage(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         terrain = effect.get("terrain", "normal")
         
         terrain_types = {
@@ -902,7 +914,7 @@ class EffectHandler:
         
         return BattleMessages.type_changed(user.display_name, new_type)
     
-    def _handle_mud_sport(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_mud_sport(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("mud_sport"):
             return BattleMessages.failed()
         
@@ -911,7 +923,7 @@ class EffectHandler:
         
         return f"   └─ ⚡ Dano elétrico foi reduzido no campo!"
     
-    def _handle_water_sport(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_water_sport(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("water_sport"):
             return BattleMessages.failed()
         
@@ -920,7 +932,7 @@ class EffectHandler:
         
         return f"   └─ 🔥 Dano de fogo foi reduzido no campo!"
     
-    def _handle_trick_room(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_trick_room(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         current_state = user.volatile.get("trick_room", False)
         turns = effect.get("turns", 5)
         
@@ -932,7 +944,7 @@ class EffectHandler:
         else:
             return BattleMessages.trick_room_ended()
     
-    def _handle_gravity(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_gravity(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if user.volatile.get("gravity", 0) > 0:
             return BattleMessages.failed()
         
@@ -945,7 +957,7 @@ class EffectHandler:
         
         return BattleMessages.gravity_set(turns)
     
-    def _handle_conversion2(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_conversion2(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         last_move_type = target.volatile.get("last_move_type")
         
         if not last_move_type:
@@ -980,7 +992,7 @@ class EffectHandler:
         
         return BattleMessages.type_changed(user.display_name, new_type)
     
-    def _handle_psych_up(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_psych_up(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         has_changes = False
         
         for stat in ["atk", "def", "sp_atk", "sp_def", "speed", "accuracy", "evasion"]:
@@ -995,7 +1007,7 @@ class EffectHandler:
         
         return f"   └─ 🧠 {user.display_name} copiou as mudanças de stats de {target.display_name}!"
     
-    def _handle_foresight(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int) -> str:
+    def _handle_foresight(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
         if target.volatile.get("foresight"):
             return BattleMessages.failed()
         
