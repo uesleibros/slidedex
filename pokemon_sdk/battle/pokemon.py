@@ -89,7 +89,63 @@ class BattlePokemon:
             "magic_coat": False,
             "snatch": False,
             "last_damage_taken": 0,
-            "last_damage_type": None
+            "last_damage_type": None,
+            "attracted": False,
+            "attracted_to": None,
+            "imprison": False,
+            "imprisoned_moves": [],
+            "helping_hand": False,
+            "transformed": False,
+            "transformed_into": None,
+            "original_types": None,
+            "original_ability": None,
+            "copied_ability": None,
+            "mud_sport_active": False,
+            "water_sport_active": False,
+            "minimized": False,
+            "defense_curl": False,
+            "flash_fire": False,
+            "identified": False,
+            "last_item_used": None,
+            "received_item": None,
+            "given_item": None,
+            "used_item": None,
+            "embargo": 0,
+            "heal_block": 0,
+            "aqua_ring": False,
+            "magnet_rise": 0,
+            "telekinesis": 0,
+            "miracle_eye": False,
+            "follow_me": False,
+            "powder": False,
+            "electrify": False,
+            "charging": False,
+            "semi_invulnerable": False,
+            "two_turn_move": None,
+            "locked_move": None,
+            "locked_turns": 0,
+            "must_recharge": False,
+            "focus_punch_setup": False,
+            "beak_blast_setup": False,
+            "shell_trap_setup": False,
+            "fury_cutter_count": 0,
+            "rollout_count": 0,
+            "ice_ball_count": 0,
+            "defense_curl_used": False,
+            "minimize_used": False,
+            "roost_used": False,
+            "metronome_count": 0,
+            "last_move_hit": False,
+            "last_move_failed": False,
+            "stall_counter": 0,
+            "protect_count": 0,
+            "baneful_bunker": False,
+            "kings_shield": False,
+            "spiky_shield": False,
+            "crafty_shield": False,
+            "mat_block": False,
+            "quick_guard": False,
+            "wide_guard": False
         }
     
     def _init_sprites(self) -> Dict[str, Optional[str]]:
@@ -164,6 +220,12 @@ class BattlePokemon:
             tags.append("SEED")
         if self.volatile.get("substitute", 0) > 0:
             tags.append("SUB")
+        if self.volatile.get("attracted"):
+            tags.append("❤️")
+        if self.volatile.get("trapped"):
+            tags.append("TRAP")
+        if self.volatile.get("transformed"):
+            tags.append("COPY")
         return f" [{'/'.join(tags)}]" if tags else ""
     
     def take_damage(self, damage: int, ignore_substitute: bool = False) -> int:
@@ -187,9 +249,14 @@ class BattlePokemon:
         if self.volatile.get("bide", 0) > 0:
             self.volatile["bide_damage"] += actual
         
+        self.volatile["last_damage_taken"] = actual
+        
         return actual
     
     def heal(self, amount: int) -> int:
+        if self.volatile.get("heal_block", 0) > 0:
+            return 0
+        
         actual = min(amount, self.stats["hp"] - self.current_hp)
         self.current_hp = min(self.stats["hp"], self.current_hp + amount)
         return actual
@@ -200,6 +267,8 @@ class BattlePokemon:
         if self.volatile.get("trapped"):
             return False
         if self.volatile.get("ingrain"):
+            return False
+        if self.volatile.get("encore", 0) > 0:
             return False
         return True
     
@@ -214,7 +283,16 @@ class BattlePokemon:
             "endure": False,
             "destiny_bond": False,
             "magic_coat": False,
-            "snatch": False
+            "snatch": False,
+            "helping_hand": False,
+            "follow_me": False,
+            "focus_punch_setup": False,
+            "beak_blast_setup": False,
+            "shell_trap_setup": False,
+            "baneful_bunker": False,
+            "kings_shield": False,
+            "spiky_shield": False,
+            "mat_block": False
         })
     
     def modify_stat_stage(self, stat: str, stages: int) -> tuple[int, int]:
@@ -237,5 +315,63 @@ class BattlePokemon:
     def get_battle_state(self) -> Dict[str, Any]:
         return {
             "current_hp": self.current_hp,
-            "moves": [dict(m) for m in self.moves]
+            "moves": [dict(m) for m in self.moves],
+            "status": dict(self.status),
+            "stages": dict(self.stages),
+            "volatile_keys": {k: v for k, v in self.volatile.items() if v and k not in ["leech_seed_by", "bind_by", "attracted_to", "mind_reader_target", "transformed_into"]}
         }
+    
+    def is_move_disabled(self, move_id: str) -> bool:
+        from .helpers import _slug
+        slug = _slug(move_id)
+        
+        if self.volatile.get("disable", 0) > 0:
+            disabled_move = self.volatile.get("disable_move")
+            if disabled_move and _slug(disabled_move) == slug:
+                return True
+        
+        if self.volatile.get("encore", 0) > 0:
+            encore_move = self.volatile.get("encore_move")
+            if encore_move and _slug(encore_move) != slug:
+                return True
+        
+        if self.volatile.get("taunt", 0) > 0:
+            return True
+        
+        if self.volatile.get("imprison"):
+            imprisoned = self.volatile.get("imprisoned_moves", [])
+            if slug in imprisoned:
+                return True
+        
+        if self.volatile.get("torment"):
+            last = self.volatile.get("torment_last_move")
+            if last and _slug(last) == slug:
+                return True
+        
+        return False
+    
+    def can_use_item(self) -> bool:
+        if self.volatile.get("embargo", 0) > 0:
+            return False
+        return True
+    
+    def is_semi_invulnerable(self) -> bool:
+        return self.volatile.get("semi_invulnerable", False)
+    
+    def get_effective_types(self) -> List[str]:
+        if self.volatile.get("transformed") and self.volatile.get("transformed_into"):
+            target = self.volatile["transformed_into"]
+            return target.types.copy() if hasattr(target, 'types') else self.types.copy()
+        
+        original_types = self.volatile.get("original_types")
+        if original_types:
+            return original_types.copy()
+        
+        return self.types.copy()
+    
+    def reset_volatiles(self) -> None:
+        self.volatile = self._init_volatile()
+    
+    def copy_stat_changes(self, other: 'BattlePokemon') -> None:
+        for stat in self.stages:
+            self.stages[stat] = other.stages[stat]
