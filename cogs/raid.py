@@ -4,7 +4,6 @@ import asyncio
 from discord.ext import commands
 from __main__ import pm, battle_tracker
 from utils.preloaded import preloaded_backgrounds
-from utils.spawn_text import get_spawn_text
 from utils.canvas import compose_pokemon_async
 from utils.formatting import format_pokemon_display
 from pokemon_sdk.battle.raid import RaidBattle
@@ -13,13 +12,32 @@ from helpers.checks import requires_account
 
 class RaidJoinView(discord.ui.View):
     
-    def __init__(self, author: discord.Member, boss_data: dict, timeout: float = 30.0):
+    def __init__(self, author: discord.Member, boss_data: dict, message: discord.Message, timeout: float = 30.0):
         super().__init__(timeout=timeout)
         self.author = author
         self.boss_data = boss_data
+        self.message = message
         self.participants: dict[str, dict] = {}
         self.max_participants = 4
         self.raid_started = False
+        self.warning_sent = False
+        self.countdown_task = None
+    
+    async def start_countdown(self):
+        self.countdown_task = asyncio.create_task(self._countdown())
+    
+    async def _countdown(self):
+        await asyncio.sleep(20)
+        
+        if not self.raid_started and self.participants and not self.warning_sent:
+            self.warning_sent = True
+            mentions = " ".join([f"<@{uid}>" for uid in self.participants.keys()])
+            
+            await self.message.channel.send(
+                f"⚠️ **ATENÇÃO** {mentions}\n"
+                f"🔥 A raid começará em **10 SEGUNDOS**!\n"
+                f"⏰ Prepare-se para a batalha!"
+            )
     
     @discord.ui.button(style=discord.ButtonStyle.success, label="Participar", emoji="⚔️")
     async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -27,25 +45,25 @@ class RaidJoinView(discord.ui.View):
         
         if self.raid_started:
             return await interaction.response.send_message(
-                "A raid já começou!",
+                "❌ A raid já começou!",
                 ephemeral=True
             )
         
         if len(self.participants) >= self.max_participants:
             return await interaction.response.send_message(
-                "Raid cheia! (Máximo 4 jogadores)",
+                "❌ Raid cheia! (Máximo 4 jogadores)",
                 ephemeral=True
             )
         
         if user_id in self.participants:
             return await interaction.response.send_message(
-                "Você já está participando!",
+                "⚠️ Você já está participando desta raid!",
                 ephemeral=True
             )
         
         if battle_tracker.is_battling(user_id):
             return await interaction.response.send_message(
-                "Você já está em uma batalha!",
+                "⚠️ Você já está em uma batalha!",
                 ephemeral=True
             )
         
@@ -56,7 +74,7 @@ class RaidJoinView(discord.ui.View):
         
         if not player_party:
             return await interaction.response.send_message(
-                "Você não tem Pokémon!",
+                "❌ Você não possui Pokémon na sua party!",
                 ephemeral=True
             )
         
@@ -70,18 +88,40 @@ class RaidJoinView(discord.ui.View):
         embed = interaction.message.embeds[0]
         
         participant_list = "\n".join([
-            f"{i+1}. <@{uid}>: **{format_pokemon_display(pkmn, bold_name=True)}**"
+            f"`{i+1}.` <@{uid}> — **{format_pokemon_display(pkmn, bold_name=True)}** `Lv{pkmn['level']}`"
             for i, (uid, pkmn) in enumerate(self.participants.items())
         ])
         
-        embed.description = embed.description.split("\n\n")[0]
-        embed.description += f"\n\n**👥 Participantes ({len(self.participants)}/{self.max_participants}):**\n{participant_list}"
+        base_description = embed.description.split("\n\n**👥")[0]
+        
+        embed.description = (
+            f"{base_description}\n\n"
+            f"**👥 Participantes ({len(self.participants)}/{self.max_participants}):**\n"
+            f"{participant_list}"
+        )
+        
+        if len(self.participants) == self.max_participants:
+            embed.set_footer(text="✅ Raid cheia! Aguarde o início...")
+        else:
+            embed.set_footer(text=f"⏳ {self.max_participants - len(self.participants)} vagas restantes • Clique em ⚔️ para participar")
         
         await interaction.message.edit(embed=embed, view=self)
     
     async def on_timeout(self):
+        if self.countdown_task and not self.countdown_task.done():
+            self.countdown_task.cancel()
+        
         if not self.raid_started and self.participants:
             await self._start_raid()
+        elif not self.participants:
+            for item in self.children:
+                item.disabled = True
+            
+            embed = self.message.embeds[0]
+            embed.color = discord.Color.dark_gray()
+            embed.set_footer(text="Raid cancelada - Nenhum participante")
+            
+            await self.message.edit(embed=embed, view=self)
     
     async def _start_raid(self):
         if self.raid_started or not self.participants:
@@ -92,37 +132,40 @@ class RaidJoinView(discord.ui.View):
         for item in self.children:
             item.disabled = True
         
-        message = None
-        for child in self.children:
-            if hasattr(child, 'view') and hasattr(child.view, 'message'):
-                message = child.view.message
-                break
+        embed = self.message.embeds[0]
+        embed.set_footer(text="⚔️ Raid em andamento...")
         
-        if not message:
-            return
-        
-        await message.edit(view=self)
+        await self.message.edit(embed=embed, view=self)
         
         players = [(uid, pkmn) for uid, pkmn in self.participants.items()]
         
-        battle = RaidBattle(self.boss_data, players, message)
+        battle = RaidBattle(self.boss_data, players, self.message)
         
         if not await battle.setup():
             return
         
+        mentions = " ".join([f"<@{uid}>" for uid in self.participants.keys()])
+        await self.message.channel.send(
+            f"⚔️ **RAID INICIADA!** {mentions}\n"
+            f"🔥 A batalha contra **{format_pokemon_display(self.boss_data, bold_name=True)}** começou!"
+        )
+        
         await battle.start()
 
 class PokemonSelectView(discord.ui.View):
+    
     def __init__(self, parent_view: RaidJoinView, user_id: str, party: list):
         super().__init__(timeout=30.0)
         self.parent_view = parent_view
         self.user_id = user_id
         self.party = party
         
-        for i, pokemon in enumerate(party[:6]):
-            if pokemon.get("current_hp", 0) <= 0:
-                continue
-            
+        available_pokemon = [p for p in party[:6] if p.get("current_hp", 0) > 0]
+        
+        if not available_pokemon:
+            return
+        
+        for i, pokemon in enumerate(available_pokemon):
             button = discord.ui.Button(
                 label=f"{format_pokemon_display(pokemon, show_poke=False, show_gender=False, show_hp=False)} Lv{pokemon['level']}",
                 style=discord.ButtonStyle.primary,
@@ -144,29 +187,29 @@ class PokemonSelectView(discord.ui.View):
         async def callback(interaction: discord.Interaction):
             if str(interaction.user.id) != self.user_id:
                 return await interaction.response.send_message(
-                    "Não é sua escolha!",
+                    "Esta não é sua seleção!",
                     ephemeral=True
                 )
             
             await self.parent_view.add_participant(self.user_id, pokemon, interaction)
             
             await interaction.response.send_message(
-                f"✅ Você entrou na raid com {format_pokemon_display(pokemon, bold_name=True)}!",
+                f"Você entrou na raid com **{format_pokemon_display(pokemon, bold_name=True)}**!",
                 ephemeral=True
             )
             
-            await interaction.message.edit(view=self.parent_view)
+            await interaction.message.edit(embed=interaction.message.embeds[0], view=self.parent_view)
         
         return callback
     
     async def _back_callback(self, interaction: discord.Interaction):
         if str(interaction.user.id) != self.user_id:
             return await interaction.response.send_message(
-                "Não é sua escolha!",
+                "Esta não é sua seleção!",
                 ephemeral=True
             )
         
-        await interaction.response.edit_message(view=self.parent_view)
+        await interaction.response.edit_message(embed=interaction.message.embeds[0], view=self.parent_view)
 
 class Raid(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -210,10 +253,17 @@ class Raid(commands.Cog):
         buffer = await compose_pokemon_async(sprite_bytes, self.preloaded_backgrounds[habitat_name])
         file = discord.File(fp=buffer, filename="raid.png")
         
-        title = "⚡ RAID SHINY ⚡" if is_shiny else "🔥 RAID BATTLE 🔥"
-        desc = f"Um poderoso **{format_pokemon_display(boss, bold_name=True)}** Lv{level} apareceu!\n"
-        desc += "Você tem **30 segundos** para participar!\n"
-        desc += f"**Máximo:** 4 jogadores"
+        title = "⚡ RAID SHINY LENDÁRIA ⚡" if is_shiny else "🔥 RAID LENDÁRIA 🔥"
+        
+        desc = (
+            f"╔═══════════════════════════╗\n"
+            f"    **{format_pokemon_display(boss, bold_name=True)}** `Lv{level}`\n"
+            f"╚═══════════════════════════╝\n\n"
+            f"⏱️ **Tempo de Entrada:** `30 segundos`\n"
+            f"👥 **Participantes:** `0/{4}`\n"
+            f"💪 **HP do Boss:** `{boss['base_stats']['hp']:,}`\n"
+            f"✨ **Recompensa:** `XP Bônus 2x`"
+        )
         
         embed = discord.Embed(
             title=title,
@@ -221,14 +271,17 @@ class Raid(commands.Cog):
             color=discord.Color.gold() if is_shiny else discord.Color.red()
         )
         embed.set_image(url="attachment://raid.png")
-        embed.set_footer(text="Clique em ⚔️ para participar!")
+        embed.set_footer(text="⚔️ Clique no botão abaixo para participar da raid!")
         
         del poke
         del species
         
-        view = RaidJoinView(ctx.author, boss)
-        message = await ctx.send(embed=embed, file=file, view=view)
-        view.message = message
+        message = await ctx.send(embed=embed, file=file)
+        
+        view = RaidJoinView(ctx.author, boss, message)
+        await message.edit(view=view)
+        
+        await view.start_countdown()
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Raid(bot))
