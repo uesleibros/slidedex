@@ -4,6 +4,7 @@ import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
 from pokemon_sdk.constants import NATURES, STAT_KEYS
+from pokemon_sdk.calculations import calculate_max_hp
 import copy
 
 PARTY_LIMIT = 6
@@ -639,7 +640,7 @@ class Toolkit:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
 			p = self.db["pokemon"][idx]
 			
-			p["current_hp"] = None
+			p["current_hp"] = calculate_max_hp(p["base_stats"]["hp"], p["ivs"]["hp"], p["evs"]["hp"], p["level"])
 			
 			for move in p.get("moves", []):
 				move["pp"] = move["pp_max"]
@@ -654,7 +655,7 @@ class Toolkit:
 			
 			for p in self.db["pokemon"]:
 				if p["owner_id"] == owner_id and p.get("on_party", False):
-					p["current_hp"] = None
+					p["current_hp"] = calculate_max_hp(p["base_stats"]["hp"], p["ivs"]["hp"], p["evs"]["hp"], p["level"])
 					
 					for move in p.get("moves", []):
 						move["pp"] = move["pp_max"]
@@ -803,4 +804,5 @@ class Toolkit:
 					results.append(self._deepcopy(p))
 					continue
 			
+
 			return results
