@@ -32,58 +32,58 @@ class PokeBallSystem:
     BALL_DATA = {
         BallType.POKE_BALL: {
             "name": "Poké Ball",
-            "emoji": ":pokeball_pixel:",
+            "emoji": "<:pokeball_pixel:1423036002855026719>",
             "base_modifier": 1.0,
             "description": "Bola padrão para capturar Pokémon"
         },
         BallType.GREAT_BALL: {
             "name": "Great Ball",
-            "emoji": "🔵",
+            "emoji": "<:greatball_pixel:1423036220161659023>",
             "base_modifier": 1.5,
             "description": "Melhor que a Poké Ball padrão"
         },
         BallType.ULTRA_BALL: {
             "name": "Ultra Ball",
-            "emoji": "🟡",
+            "emoji": "<:ultraball_pixel:1423036299949903904>",
             "base_modifier": 2.0,
             "description": "Taxa de captura muito alta"
         },
         BallType.MASTER_BALL: {
             "name": "Master Ball",
-            "emoji": "🟣",
+            "emoji": "<:masterball_pixel:1423036370875715607>",
             "base_modifier": 255.0,
             "description": "Captura garantida"
         },
         BallType.SAFARI_BALL: {
             "name": "Safari Ball",
-            "emoji": "🟢",
+            "emoji": "<:safariball_pixel:1423036598211055769>",
             "base_modifier": 1.5,
             "description": "Usada no Safari Zone"
         },
         BallType.NET_BALL: {
             "name": "Net Ball",
-            "emoji": "🕸️",
+            "emoji": "<:netball_pixel:1423036752687403018>",
             "base_modifier": 1.0,
             "special": "bug_water",
             "description": "3x efetiva contra Bug e Water"
         },
         BallType.NEST_BALL: {
             "name": "Nest Ball",
-            "emoji": "🪺",
+            "emoji": "<:nestball_pixel:1423036884992659537>",
             "base_modifier": 1.0,
             "special": "low_level",
             "description": "Melhor contra Pokémon de nível baixo"
         },
         BallType.REPEAT_BALL: {
             "name": "Repeat Ball",
-            "emoji": "🔁",
+            "emoji": "<:repeatball_pixel:1423036444896919665>",
             "base_modifier": 1.0,
             "special": "caught_before",
             "description": "3x se já capturou essa espécie"
         },
         BallType.TIMER_BALL: {
             "name": "Timer Ball",
-            "emoji": "⏱️",
+            "emoji": "<:timerball_pixel:1423036514769829991>",
             "base_modifier": 1.0,
             "special": "turn_based",
             "description": "Melhor quanto mais turnos passarem"
@@ -111,13 +111,13 @@ class PokeBallSystem:
         },
         BallType.LUXURY_BALL: {
             "name": "Luxury Ball",
-            "emoji": "💎",
+            "emoji": "<:luxuryball_pixel:1423037034809004105>",
             "base_modifier": 1.0,
             "description": "Taxa normal, mas aumenta amizade"
         },
         BallType.PREMIER_BALL: {
             "name": "Premier Ball",
-            "emoji": "⚪",
+            "emoji": "<:premierball_pixel:1423036684391415880>",
             "base_modifier": 1.0,
             "description": "Taxa igual à Poké Ball"
         },
