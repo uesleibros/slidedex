@@ -79,7 +79,7 @@ class RaidJoinView(discord.ui.View):
     
     async def _countdown(self):
         try:
-            await asyncio.sleep(20)
+            await asyncio.sleep(30)
             
             if not self.raid_started and self.participants and not self.warning_sent:
                 self.warning_sent = True
