@@ -8,6 +8,7 @@ from utils.canvas import compose_pokemon_async
 from utils.formatting import format_pokemon_display
 from pokemon_sdk.battle.wild import WildBattle
 from pokemon_sdk.constants import SHINY_ROLL
+from helpers.checks import requires_account
 
 class BattleView(discord.ui.View):
 	def __init__(self, author: discord.Member, wild_data: dict, timeout: float = 60.0):
@@ -57,6 +58,7 @@ class Spawn(commands.Cog):
 		self.preloaded_backgrounds = preloaded_backgrounds
 
 	@commands.command(name="spawn", aliases=["sp"])
+	@requires_account()
 	async def spawn_command(self, ctx: commands.Context) -> None:
 		is_shiny = False
 		
@@ -118,14 +120,3 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
-
-
-
-
-
-
-
-
-
-
-
