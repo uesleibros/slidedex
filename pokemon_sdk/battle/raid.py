@@ -9,7 +9,7 @@ from utils.formatting import format_pokemon_display
 from .pokemon import BattlePokemon
 from .messages import BattleMessages
 from .status import StatusHandler
-from .helpers import MoveData, _hp_bar
+from .helpers import MoveData, _hp_bar, _slug
 from .engine import BattleEngine
 
 class RaidBattle(BattleEngine):
@@ -55,8 +55,6 @@ class RaidBattle(BattleEngine):
         return True
     
     async def _preload_move_data(self) -> None:
-        from .helpers import _slug
-        
         move_ids: Set[str] = set()
         for mv in self.boss.moves:
             move_ids.add(_slug(mv["id"]))
@@ -83,49 +81,55 @@ class RaidBattle(BattleEngine):
         )
         return discord.File(buf, filename="raid.png")
     
-    def _generate_hp_display(self, pokemon: BattlePokemon, prefix: str = "") -> str:
-        bar = _hp_bar(pokemon.current_hp, pokemon.stats["hp"])
-        hp_percent = (pokemon.current_hp / pokemon.stats["hp"] * 100) if pokemon.stats["hp"] > 0 else 0
-        
-        display = f"{prefix}{format_pokemon_display(pokemon.raw, bold_name=True)} {pokemon.status_tag()} Lv{pokemon.level}\n"
-        display += f"{bar} {max(0, pokemon.current_hp)}/{pokemon.stats['hp']} ({hp_percent:.1f}%)"
-        
-        return display
-    
     def _build_embed(self) -> discord.Embed:
+        boss_bar = _hp_bar(self.boss.current_hp, self.boss.stats["hp"])
+        boss_hp_percent = (self.boss.current_hp / self.boss.stats["hp"] * 100) if self.boss.stats["hp"] > 0 else 0
+        
         description = [
             f"**🔥 RAID BOSS 🔥**",
-            self._generate_hp_display(self.boss),
+            f"{format_pokemon_display(self.boss.raw, bold_name=True)} {self.boss.status_tag()} Lv{self.boss.level}",
+            f"{boss_bar} {max(0, self.boss.current_hp):,}/{self.boss.stats['hp']:,} ({boss_hp_percent:.1f}%)",
             "",
-            "**👥 JOGADORES:**"
+            "**👥 PARTICIPANTES:**"
         ]
         
         for user_id, pokemon in self.players:
             user_mention = f"<@{user_id}>"
-            prefix = "🔵 " if not pokemon.fainted else "💀 "
+            
+            if pokemon.fainted:
+                prefix = "💀"
+                hp_info = "`DESMAIADO`"
+            else:
+                prefix = "🔵"
+                hp_bar = _hp_bar(pokemon.current_hp, pokemon.stats["hp"])
+                hp_percent = (pokemon.current_hp / pokemon.stats["hp"] * 100)
+                hp_info = f"{hp_bar} `{pokemon.current_hp}/{pokemon.stats['hp']}` ({hp_percent:.0f}%)"
             
             action_status = ""
-            if self.player_actions.get(user_id):
+            if pokemon.fainted:
+                action_status = ""
+            elif self.player_actions.get(user_id):
                 action_status = " ✅"
-            elif not pokemon.fainted:
+            else:
                 action_status = " ⏳"
             
             description.append(
-                f"{prefix}{user_mention}: {pokemon.display_name}{action_status}"
+                f"{prefix} {user_mention}: **{pokemon.display_name}**{action_status}"
             )
+            description.append(f"   {hp_info}")
         
         description.append("")
         
         if self.lines:
-            description.extend(self.lines[-20:])
+            description.extend(self.lines[-15:])
         
         embed = discord.Embed(
-            title=f"Raid Battle - Turno {self.turn}",
+            title=f"⚔️ Raid Battle - Turno {self.turn}",
             description="\n".join(description),
             color=discord.Color.red()
         )
         
-        embed.set_footer(text="Effex Engine v1.6 — Multi Battle")
+        embed.set_footer(text="Effex Engine v2.0 — Raid System")
         embed.set_image(url="attachment://raid.png")
         return embed
     
@@ -133,7 +137,9 @@ class RaidBattle(BattleEngine):
         self.actions_view = RaidBattleView(self)
         self.lines = [
             f"🔥 A raid contra {self.boss.display_name} começou!",
-            f"💪 {len(self.players)} jogadores estão participando!"
+            f"💪 {len(self.players)} jogadores participando!",
+            "",
+            "⚔️ Escolha sua ação!"
         ]
         
         for user_id in [uid for uid, _ in self.players]:
@@ -145,6 +151,12 @@ class RaidBattle(BattleEngine):
             view=self.actions_view
         )
         self.must_redraw_image = False
+        
+        mentions = " ".join([f"<@{uid}>" for uid, _ in self.players])
+        await self.interaction.channel.send(
+            f"⚔️ **RAID INICIADA!** {mentions}\n"
+            f"É seu turno! Clique em **⚔️ Escolher Ação** para atacar!"
+        )
     
     async def refresh(self) -> None:
         if not self.message:
@@ -160,8 +172,6 @@ class RaidBattle(BattleEngine):
             await self.message.edit(embed=embed, view=self.actions_view)
     
     def _select_boss_move(self) -> str:
-        from .helpers import _slug
-        
         available_moves = []
         
         for m in self.boss.moves:
@@ -180,6 +190,45 @@ class RaidBattle(BattleEngine):
             return "__struggle__"
         
         return str(random.choice(available_moves)["id"])
+    
+    def _all_actions_ready(self) -> bool:
+        for uid, pokemon in self.players:
+            if pokemon.fainted:
+                continue
+            
+            if not self.player_actions.get(uid):
+                return False
+        
+        return True
+    
+    async def _notify_action_progress(self) -> None:
+        alive_players = [(uid, p) for uid, p in self.players if not p.fainted]
+        
+        if not alive_players:
+            return
+        
+        waiting_for = [
+            uid for uid, pokemon in alive_players 
+            if not self.player_actions.get(uid)
+        ]
+        
+        if len(waiting_for) == 0:
+            return
+        
+        if len(waiting_for) == 1:
+            await self.message.channel.send(
+                f"⏰ <@{waiting_for[0]}>\n"
+                f"**Todos estão aguardando você!** ⚔️"
+            )
+        elif len(waiting_for) < len(alive_players):
+            ready_count = len(alive_players) - len(waiting_for)
+            total_count = len(alive_players)
+            
+            progress_bar = "▰" * ready_count + "▱" * len(waiting_for)
+            
+            await self.message.channel.send(
+                f"⏳ **Progresso:** {progress_bar} `{ready_count}/{total_count}` jogadores prontos!"
+            )
     
     async def process_turn(self) -> None:
         async with self.lock:
@@ -235,7 +284,7 @@ class RaidBattle(BattleEngine):
                     target = alive_opponents[0]
                     
                     user_mention = f"<@{user_id}>"
-                    self.lines.append(f"🔵 **{user_mention}**")
+                    self.lines.append(f"🔵 {user_mention}")
                     
                     result = await self._execute_turn_action(
                         True, move_id, move_data, pokemon, target
@@ -257,7 +306,7 @@ class RaidBattle(BattleEngine):
                     effect_data = self._get_effect_data(move_id)
                     is_multi_target = self._is_boss_multi_target(move_data, effect_data)
                     
-                    self.lines.append(f"🔴 **BOSS**")
+                    self.lines.append(f"🔴 BOSS")
                     
                     if is_multi_target:
                         for target_uid, target_pokemon in alive_players:
@@ -269,8 +318,8 @@ class RaidBattle(BattleEngine):
                             )
                             
                             target_mention = f"<@{target_uid}>"
-                            self.lines.append(f"   → Alvo: {target_mention}")
-                            self.lines.extend(result)
+                            self.lines.append(f"→ Alvo: {target_mention}")
+                            self.lines.extend([f"  {line}" for line in result])
                     else:
                         target_uid, target_pokemon = random.choice(alive_players)
                         target_mention = f"<@{target_uid}>"
@@ -279,16 +328,21 @@ class RaidBattle(BattleEngine):
                             False, move_id, move_data, self.boss, target_pokemon
                         )
                         
-                        self.lines.append(f"   → Alvo: {target_mention}")
+                        self.lines.append(f"→ Alvo: {target_mention}")
                         self.lines.extend(result)
                     
                     self.lines.append("")
             
             all_participants = [p for _, p in self.players] + [self.boss]
             
-            end_turn_effects = StatusHandler.end_of_turn_effects(self.boss, *[p for _, p in self.players])
-            if end_turn_effects:
-                self.lines.extend(end_turn_effects)
+            for player_pokemon in [p for _, p in self.players]:
+                player_effects = StatusHandler.end_of_turn_effects(player_pokemon, self.boss)
+                if player_effects:
+                    self.lines.extend(player_effects)
+            
+            boss_effects = StatusHandler.end_of_turn_effects(self.boss, self.players[0][1] if self.players else self.boss)
+            if boss_effects:
+                self.lines.extend(boss_effects)
             
             self.lines.append("")
             await self._process_end_of_turn(all_participants)
@@ -303,8 +357,24 @@ class RaidBattle(BattleEngine):
             if not self.ended:
                 self.turn += 1
                 self.player_actions = {uid: None for uid, _ in self.players}
+                self.lines.append("⚔️ Escolha sua próxima ação!")
             
             await self.refresh()
+            
+            if not self.ended:
+                alive_players = [uid for uid, p in self.players if not p.fainted]
+                
+                if len(alive_players) == 1:
+                    await self.message.channel.send(
+                        f"⚔️ <@{alive_players[0]}>\n"
+                        f"**Turno {self.turn}** - É seu turno! Você é o único sobrevivente!"
+                    )
+                elif len(alive_players) > 1:
+                    mentions = " ".join([f"<@{uid}>" for uid in alive_players])
+                    await self.message.channel.send(
+                        f"⏳ **Turno {self.turn}** {mentions}\n"
+                        f"Aguardando ações de **{len(alive_players)}** jogadores!"
+                    )
     
     def _is_boss_multi_target(self, move_data: MoveData, effect_data: Dict[str, Any]) -> bool:
         from .targeting import TargetingSystem
@@ -367,6 +437,12 @@ class RaidBattle(BattleEngine):
         
         await self.refresh()
         
+        mentions = " ".join([f"<@{uid}>" for uid, _ in self.players])
+        await self.message.channel.send(
+            f"🎉 **VITÓRIA!** {mentions}\n"
+            f"Parabéns! O **{self.boss.display_name}** foi derrotado!"
+        )
+        
         await self.cleanup()
     
     async def _handle_defeat(self) -> None:
@@ -375,7 +451,8 @@ class RaidBattle(BattleEngine):
         self.lines.extend([
             "",
             "😔 **DERROTA**",
-            f"💀 Todos os jogadores foram derrotados por {self.boss.display_name}!",
+            f"💀 Todos os jogadores foram derrotados!",
+            f"O {self.boss.display_name} ainda tem {self.boss.current_hp:,}/{self.boss.stats['hp']:,} HP.",
             "Melhor sorte na próxima vez!"
         ])
         
@@ -383,6 +460,12 @@ class RaidBattle(BattleEngine):
             self.actions_view.disable_all()
         
         await self.refresh()
+        
+        mentions = " ".join([f"<@{uid}>" for uid, _ in self.players])
+        await self.message.channel.send(
+            f"💀 **DERROTA** {mentions}\n"
+            f"O **{self.boss.display_name}** venceu a batalha!"
+        )
         
         await self.cleanup()
     
@@ -397,6 +480,7 @@ class RaidBattle(BattleEngine):
             self.actions_view.stop()
 
 class RaidBattleView(discord.ui.View):
+    __slots__ = ('battle',)
     
     def __init__(self, battle: RaidBattle, timeout: float = 300.0) -> None:
         super().__init__(timeout=timeout)
@@ -410,8 +494,10 @@ class RaidBattleView(discord.ui.View):
             await self.battle.cleanup()
             
             if self.battle.message:
+                mentions = " ".join([f"<@{uid}>" for uid, _ in self.battle.players])
                 await self.battle.message.reply(
-                    content="Raid Expirada!\nA raid foi encerrada por inatividade."
+                    content=f"**Raid expirada!** {mentions}\n"
+                    f"A raid foi encerrada por inatividade (5 minutos)."
                 )
     
     def disable_all(self) -> None:
@@ -422,14 +508,15 @@ class RaidBattleView(discord.ui.View):
     async def choose_action(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         user_id = str(interaction.user.id)
         
-        player_data = next((p for uid, p in self.battle.players if uid == user_id), None)
+        player_data = next(((uid, p) for uid, p in self.battle.players if uid == user_id), None)
+        
         if not player_data:
             return await interaction.response.send_message(
                 "Você não está participando desta raid!",
                 ephemeral=True
             )
         
-        _, pokemon = next((uid, p) for uid, p in self.battle.players if uid == user_id)
+        uid, pokemon = player_data
         
         if pokemon.fainted:
             return await interaction.response.send_message(
@@ -443,65 +530,60 @@ class RaidBattleView(discord.ui.View):
                 ephemeral=True
             )
         
-        await interaction.response.edit_message(view=RaidMovesView(self.battle, user_id, pokemon))
+        await interaction.response.edit_message(
+            view=RaidMovesView(self.battle, user_id, pokemon)
+        )
 
 class RaidMovesView(discord.ui.View):
+    __slots__ = ('battle', 'user_id', 'pokemon')
     
-    def __init__(self, battle: RaidBattle, user_id: str, pokemon: BattlePokemon):
-        super().__init__(timeout=60.0)
+    def __init__(self, battle: RaidBattle, user_id: str, pokemon: BattlePokemon, timeout: float = 60.0):
+        super().__init__(timeout=timeout)
         self.battle = battle
         self.user_id = user_id
         self.pokemon = pokemon
         
-        for move in pokemon.moves[:4]:
-            move_id = move.get("id")
-            move_name = move.get("name", move_id)
-            pp = move.get("pp", 0)
-            pp_max = move.get("pp_max", pp)
+        for mv in pokemon.moves[:4]:
+            key = _slug(mv["id"])
+            md = battle.move_cache.get(key)
+            label_text = (md.name if md else key.replace("-", " ").title())
+            pp, pp_max = int(mv.get("pp", 0)), int(mv.get("pp_max", 35))
             
-            button = discord.ui.Button(
-                label=f"{move_name.replace('-', ' ').title()} ({pp}/{pp_max})",
-                style=discord.ButtonStyle.primary,
+            btn = discord.ui.Button(
+                style=discord.ButtonStyle.primary if pp > 0 else discord.ButtonStyle.secondary,
+                label=f"{label_text} ({pp}/{pp_max})",
                 disabled=(pp <= 0)
             )
-            button.callback = self._create_callback(move_id)
-            self.add_item(button)
+            btn.callback = self._cb(mv["id"])
+            self.add_item(btn)
         
-        back_button = discord.ui.Button(
-            label="Voltar",
-            style=discord.ButtonStyle.secondary,
-            emoji="↩️"
-        )
-        back_button.callback = self._back_callback
-        self.add_item(back_button)
+        back = discord.ui.Button(style=discord.ButtonStyle.secondary, label="Voltar", emoji="↩️")
+        back.callback = self._back_cb
+        self.add_item(back)
     
-    def _create_callback(self, move_id: str):
-        async def callback(interaction: discord.Interaction):
-            if str(interaction.user.id) != self.user_id:
-                return await interaction.response.send_message(
-                    "Não é sua vez!",
-                    ephemeral=True
-                )
+    def _cb(self, move_id: str):
+        async def callback(i: discord.Interaction):
+            if str(i.user.id) != self.user_id:
+                return await i.response.send_message("Não é sua vez!", ephemeral=True)
             
             self.battle.player_actions[self.user_id] = move_id
             
-            await interaction.response.send_message(
+            await i.response.send_message(
                 f"Ação escolhida! Aguardando outros jogadores...",
                 ephemeral=True
             )
             
-            await interaction.message.edit(view=RaidBattleView(self.battle))
+            await i.message.edit(view=RaidBattleView(self.battle))
             
-            if all(self.battle.player_actions.get(uid) for uid, p in self.battle.players if not p.fainted):
+            await self.battle._notify_action_progress()
+            
+            if self.battle._all_actions_ready():
                 await self.battle.process_turn()
         
         return callback
     
-    async def _back_callback(self, interaction: discord.Interaction):
-        if str(interaction.user.id) != self.user_id:
-            return await interaction.response.send_message(
-                "Não é sua vez!",
-                ephemeral=True
-            )
+    async def _back_cb(self, i: discord.Interaction):
+        if str(i.user.id) != self.user_id:
+            return await i.response.send_message("Não é sua vez!", ephemeral=True)
         
-        await interaction.response.edit_message(view=RaidBattleView(self.battle))
+        await i.response.edit_message(view=RaidBattleView(self.battle))
