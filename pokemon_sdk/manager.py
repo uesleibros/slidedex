@@ -69,7 +69,7 @@ class PokemonManager:
 			"is_legendary": is_legendary,
 			"is_mythical": is_mythical,
 			"moves": final_moves,
-			"stats": gen["stats"],
+			"base_stats": gen["stats"],
 			"current_hp": gen["current_hp"],
 			"on_party": on_party,
 			"nickname": nickname,
@@ -113,7 +113,7 @@ class PokemonManager:
 			current_hp=pkmn["current_hp"],
 			held_item=pkmn["held_item"],
 			nickname=pkmn["nickname"],
-			stats=pkmn["stats"],
+			base_stats=pkmn["base_stats"],
 			name=pkmn["name"],
 			exp=pkmn["exp"]
 		)

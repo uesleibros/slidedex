@@ -7,14 +7,19 @@ def fmt_name(s: str) -> str:
 def format_poke_id(pid: int) -> str:
 	return str(pid).zfill(3)
 
-def format_pokemon_display(pokemon: dict, bold_name: Optional[bool] = False, show_nick: Optional[bool] = True, show_gender: Optional[bool] = True) -> str:
+def format_pokemon_display(
+	pokemon: dict, bold_name: Optional[bool] = False, show_nick: Optional[bool] = True, 
+	show_gender: Optional[bool] = True, show_poke: Optional[bool] = True, show_fav: Optional[bool] = False,
+	show_hp: Optional[bool] = True
+) -> str:
 	parts: list = []
 
 	if pokemon.get("is_shiny", False):
 		parts.append("<:shinystar:1422797880036429855>")
 
-	emoji = get_app_emoji(f"p_{pokemon['species_id']}")
-	parts.append(emoji)
+	if show_poke:
+		emoji = get_app_emoji(f"p_{pokemon['species_id']}")
+		parts.append(emoji)
 
 	name = pokemon.get("name", f"#{pokemon['species_id']}").title()
 	gender = ""
@@ -34,6 +39,12 @@ def format_pokemon_display(pokemon: dict, bold_name: Optional[bool] = False, sho
 			gender = ":grey_question:"
 		parts.append(gender)
 
+	if show_hp:
+		current_hp = pokemon.get("current_hp")
+		if current_hp == 0:
+			parts.append(":wilted_rose:")
+
+	if show_fav and pokemon["is_favorite"]:
+		parts.append("❤️")
 
 	return " ".join(parts)
-

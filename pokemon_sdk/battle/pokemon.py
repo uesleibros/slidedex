@@ -1,32 +1,46 @@
 import random
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import aiopoke
 from pokemon_sdk.calculations import calculate_stats
 from .constants import BattleConstants, STAT_MAP
 from .helpers import _apply_stage, _get_stat, _types_of
 
 class BattlePokemon:
+    __slots__ = (
+        'raw', 'species_id', 'name', 'level', 'stats', 'current_hp', 
+        'moves', 'pokeapi_data', 'species_data', 'is_shiny', 'stages',
+        'status', 'volatile', 'sprites', 'types'
+    )
+    
     def __init__(self, raw: Dict[str, Any], pokeapi_data: aiopoke.Pokemon, species_data: aiopoke.PokemonSpecies):
         self.raw = raw
         self.species_id = raw["species_id"]
         self.name = raw.get("name")
         self.level = raw["level"]
-        base_stats = self._get_base_stats(pokeapi_data)
+        
+        base_stats = raw["base_stats"]
         self.stats = calculate_stats(base_stats, raw["ivs"], raw["evs"], raw["level"], raw["nature"])
-        self.current_hp = raw.get("current_hp") or self.stats["hp"]
-        self.moves = raw.get("moves") or [{"id":"tackle","pp":35,"pp_max":35}]
+        
+        current_hp = raw.get("current_hp")
+        if current_hp is None:
+            self.current_hp = self.stats["hp"]
+        else:
+            self.current_hp = max(0, min(int(current_hp), self.stats["hp"]))
+        
+        moves = raw.get("moves")
+        if not moves:
+            self.moves = [{"id": "tackle", "pp": 35, "pp_max": 35}]
+        else:
+            self.moves = [dict(m) for m in moves]
+        
         self.pokeapi_data = pokeapi_data
         self.species_data = species_data
         self.is_shiny = raw.get("is_shiny", False)
-        self.stages = {key: 0 for key in ["atk","def","sp_atk","sp_def","speed","accuracy","evasion"]}
+        self.stages = {key: 0 for key in ["atk", "def", "sp_atk", "sp_def", "speed", "accuracy", "evasion"]}
         self.status = {"name": None, "counter": 0}
         self.volatile = self._init_volatile()
         self.sprites = self._init_sprites()
         self.types = _types_of(self)
-    
-    def _get_base_stats(self, pokeapi_data: aiopoke.Pokemon) -> Dict[str, int]:
-        from __main__ import pm
-        return pm.service.get_base_stats(pokeapi_data)
     
     def _init_volatile(self) -> Dict[str, Any]:
         return {
@@ -90,6 +104,9 @@ class BattlePokemon:
     
     @property
     def display_name(self) -> str:
+        nickname = self.raw.get("nickname")
+        if nickname:
+            return nickname
         return self.name.title() if self.name else "Pokémon"
     
     @property
@@ -186,11 +203,11 @@ class BattlePokemon:
             return False
         return True
     
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         for key in self.stages:
             self.stages[key] = 0
     
-    def clear_turn_volatiles(self):
+    def clear_turn_volatiles(self) -> None:
         self.volatile.update({
             "flinch": False,
             "protect": False,
@@ -216,3 +233,9 @@ class BattlePokemon:
         
         actual_change = self.stages[mapped_stat] - old
         return actual_change, old
+    
+    def get_battle_state(self) -> Dict[str, Any]:
+        return {
+            "current_hp": self.current_hp,
+            "moves": [dict(m) for m in self.moves]
+        }

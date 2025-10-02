@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 from utils.pokemon_emojis import get_app_emoji
 from utils.formatting import format_pokemon_display
@@ -10,15 +9,10 @@ from __main__ import pm
 async def _fmt_party(party):
 	results = []
 	for i, p in enumerate(party, start=1):
-		name = p.get("nickname") or p.get("name") or f"#{p['species_id']}"
-		emoji = get_app_emoji(f"p_{p['species_id']}")
-		shiny = "✨ " if p.get("is_shiny") else ""
-		poke_api = await pm.service.get_pokemon(p["species_id"])
-		base_stats = pm.service.get_base_stats(poke_api)
-		stats = calculate_stats(base_stats, p["ivs"], p["evs"], p["level"], p["nature"])
+		stats = calculate_stats(p.get("base_stats"), p["ivs"], p["evs"], p["level"], p["nature"])
 		cur_hp = p.get("current_hp", stats["hp"])
 		results.append(
-			f"{i}. {emoji} {shiny}{name.title()}\n"
+			f"{i}. {format_pokemon_display(p, show_fav=True)}\n"
 			f"-# `id: {p['id']}` `Lv: {p['level']}` `HP: {cur_hp}/{stats['hp']}`"
 		)
 	return "\n\n".join(results) if results else "Seu time está vazio."

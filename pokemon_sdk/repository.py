@@ -6,7 +6,7 @@ class PokemonRepository:
 
     def add(self, owner_id: str, species_id: int, ivs: Dict, nature: str,
             ability: str, gender: str, shiny: bool, level: int,
-            moves: List[Dict], stats: Dict, on_party: bool, current_hp: int,
+            moves: List[Dict], base_stats: Dict, on_party: bool, current_hp: int,
             types: List[str], region: str, is_legendary: bool, is_mythical: bool,
             held_item: Optional[str] = None, nickname: Optional[str] = None,
             name: Optional[str] = None,
@@ -21,7 +21,7 @@ class PokemonRepository:
             shiny=shiny,
             level=level,
             moves=moves,
-            stats=stats,
+            base_stats=base_stats,
             is_legendary=is_legendary,
             is_mythical=is_mythical,
             types=types,

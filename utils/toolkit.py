@@ -2,7 +2,7 @@ import json
 import os
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 from pokemon_sdk.constants import NATURES, STAT_KEYS
 import copy
 
@@ -12,15 +12,21 @@ EV_PER_STAT_MAX = 255
 EV_TOTAL_MAX = 510
 
 class Toolkit:
+	__slots__ = ('path', '_lock', 'db', '_pk_index', 'NATURES', '_move_service')
+	
 	def __init__(self, path: str = "database.json"):
 		self.path = path
 		self._lock = threading.RLock()
 		self.db: Dict = {}
 		self._pk_index: Dict[Tuple[str, int], int] = {}
 		self.NATURES = NATURES
+		self._move_service = None
 		self._load()
 
-	def _load(self):
+	def set_move_service(self, service):
+		self._move_service = service
+
+	def _load(self) -> None:
 		with self._lock:
 			if not os.path.exists(self.path):
 				self.db = {"users": {}, "pokemon": []}
@@ -33,16 +39,16 @@ class Toolkit:
 					self._save()
 			self._reindex()
 
-	def clear(self):
+	def clear(self) -> None:
 		self.db = {"users": {}, "pokemon": []}
 		self._save()
 
-	def _reindex(self):
+	def _reindex(self) -> None:
 		self._pk_index = {}
 		for i, p in enumerate(self.db["pokemon"]):
 			self._pk_index[(p["owner_id"], int(p["id"]))] = i
 
-	def _save(self):
+	def _save(self) -> None:
 		with self._lock:
 			tmp = self.path + ".tmp"
 			with open(tmp, "w", encoding="utf-8") as f:
@@ -52,7 +58,7 @@ class Toolkit:
 	def _deepcopy(self, obj):
 		return copy.deepcopy(obj)
 
-	def _ensure_user(self, user_id: str):
+	def _ensure_user(self, user_id: str) -> None:
 		if user_id not in self.db["users"]:
 			raise ValueError("User not found")
 
@@ -62,14 +68,14 @@ class Toolkit:
 			raise ValueError("Pokemon not found")
 		return idx
 
-	def _validate_ivs(self, ivs: Dict[str, int]):
+	def _validate_ivs(self, ivs: Dict[str, int]) -> None:
 		if set(ivs.keys()) != set(STAT_KEYS):
 			raise ValueError("Invalid IV keys")
 		for k, v in ivs.items():
 			if not isinstance(v, int) or v < 0 or v > 31:
 				raise ValueError("Invalid IV value")
 
-	def _validate_evs(self, evs: Dict[str, int]):
+	def _validate_evs(self, evs: Dict[str, int]) -> None:
 		if set(evs.keys()) != set(STAT_KEYS):
 			raise ValueError("Invalid EV keys")
 		total = 0
@@ -212,7 +218,7 @@ class Toolkit:
 			self._save()
 			return self._deepcopy(self.db["pokemon"][idx])
 
-	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, types: List[str], region: str, is_legendary: bool, is_mythical: bool, stats: Dict, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
+	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, types: List[str], region: str, is_legendary: bool, is_mythical: bool, base_stats: Dict, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
 		with self._lock:
 			self._ensure_user(owner_id)
 			self._validate_ivs(ivs)
@@ -237,7 +243,7 @@ class Toolkit:
 				"types": types,
 				"is_legendary": is_legendary,
 				"is_mythical": is_mythical,
-				"stats": stats,
+				"base_stats": base_stats,
 				"region": region,
 				"gender": gender,
 				"is_shiny": bool(shiny),
@@ -284,6 +290,8 @@ class Toolkit:
 
 	def add_exp(self, owner_id: str, pokemon_id: int, exp_gain: int) -> Dict:
 		with self._lock:
+			from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
+			
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
 			p = self.db["pokemon"][idx]
 			old_level = p["level"]
@@ -296,10 +304,29 @@ class Toolkit:
 				lvl += 1
 				levels_gained.append(lvl)
 			
-			p["level"] = lvl
-			
 			if levels_gained:
-				p["current_hp"] = None
+				old_max_hp = calculate_max_hp(
+					p["stats"]["hp"],
+					p["ivs"]["hp"],
+					p["evs"]["hp"],
+					old_level
+				)
+				
+				new_max_hp = calculate_max_hp(
+					p["stats"]["hp"],
+					p["ivs"]["hp"],
+					p["evs"]["hp"],
+					lvl
+				)
+				
+				current_hp = p.get("current_hp")
+				if current_hp is None:
+					current_hp = old_max_hp
+				
+				p["current_hp"] = adjust_hp_on_level_up(old_max_hp, new_max_hp, current_hp)
+				p["level"] = lvl
+			else:
+				p["level"] = lvl
 			
 			self._save()
 			
@@ -776,5 +803,4 @@ class Toolkit:
 					results.append(self._deepcopy(p))
 					continue
 			
-
 			return results

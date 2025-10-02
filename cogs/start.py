@@ -3,7 +3,7 @@ import random
 from __main__ import toolkit, pm
 from discord.ext import commands
 from pokemon_sdk.constants import NATURES, STAT_KEYS
-from pokemon_sdk.calculations import generate_pokemon_data
+from pokemon_sdk.calculations import generate_pokemon_data, calculate_stats
 
 STARTERS = {"bulbasaur": 1, "charmander": 4, "squirtle": 7, "pikachu": 25}
 
@@ -47,8 +47,11 @@ class StarterButton(discord.ui.Button):
 		base_stats = pm.service.get_base_stats(poke)
 
 		ivs = {k: random.randint(0, 31) for k in base_stats.keys()}
+		evs = {k: 0 for k in base_stats.keys()}
 		nature = random.choice(list(NATURES.keys()))
-		gen = generate_pokemon_data(base_stats, level=5, nature=nature, ivs=ivs)
+		
+		calculated_stats = calculate_stats(base_stats, ivs, evs, 5, nature)
+		
 		ability = pm.service.choose_ability(poke)
 		moves = pm.service.select_level_up_moves(poke, 5)
 
@@ -71,7 +74,7 @@ class StarterButton(discord.ui.Button):
 				f"Você escolheu **{poke.name.capitalize()}** como seu inicial!\n"
 				f"Natureza: **{nature}**\n"
 				f"Gênero: **{trainer_gender}**\n"
-				f"HP: **{gen['current_hp']} / {gen['stats']['hp']}**"
+				f"HP: **{calculated_stats['hp']} / {calculated_stats['hp']}**"
 			),
 			view=None
 		)
@@ -94,6 +97,3 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
-
-
-

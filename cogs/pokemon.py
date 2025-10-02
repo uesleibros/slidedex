@@ -13,10 +13,9 @@ async def generate_pokemon_embed(pokemons, start, end, total, current_page):
 	desc_lines = []
 	for p in pokemons:
 		poke_id = p["id"]
-		fav = f" ❤️" if p["is_favorite"] else ''
 		ivp = iv_percent(p["ivs"])
 		desc_lines.append(
-			f"`{format_poke_id(poke_id)}`　{format_pokemon_display(p)} {fav}　•　Lv. {p['level']}　•　{ivp}%"
+			f"`{format_poke_id(poke_id)}`　{format_pokemon_display(p, show_fav=True)}　•　Lv. {p['level']}　•　{ivp}%"
 		)
 	embed = discord.Embed(
 		title="Seus Pokémon",

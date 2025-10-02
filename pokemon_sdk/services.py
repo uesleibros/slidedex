@@ -49,7 +49,7 @@ class PokeAPIService:
 		sorted_moves = sorted(candidates.items(), key=lambda x: (x[1], x[0]))
 		return [{"id": mv, "pp": 35, "pp_max": 35} for mv, _ in sorted_moves[-4:]]
 
-	def roll_gender(self, species, forced: str = None) -> str:
+	def roll_gender(self, species, forced: Optional[str] = None) -> str:
 		if forced in ("Male", "Female", "Genderless"):
 			return forced
 		gr = getattr(species, "gender_rate", -1)

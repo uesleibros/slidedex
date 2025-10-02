@@ -1,10 +1,8 @@
 import random
 import discord
 from discord.ext import commands
-from typing import Optional
 from __main__ import pm
 from utils.preloaded import preloaded_backgrounds
-from utils.pokemon_emojis import get_app_emoji
 from utils.spawn_text import get_spawn_text
 from utils.canvas import compose_pokemon_async
 from utils.formatting import format_pokemon_display
@@ -19,27 +17,34 @@ class BattleView(discord.ui.View):
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⚔️")
 	async def battle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+		if interaction.user.id != self.author.id:
+			return await interaction.response.send_message(
+				"Você não pode iniciar essa batalha!",
+				ephemeral=True
+			)
+		
 		try:
 			player_party = pm.repo.tk.get_user_party(str(interaction.user.id))
 		except ValueError:
 			player_party = None
 			
 		if not player_party:
-			return await interaction.response.send_message("Você não tem nenhum Pokémon na sua party!", ephemeral=True)
-			
-		await interaction.response.send_message(
-			f"{interaction.user.mention} iniciou uma batalha contra **{self.wild_data['name'].capitalize()}**!", 
-			ephemeral=False
-		)
+			return
+		
+		await interaction.response.defer()
+		
+		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
+		
+		if not await battle.setup():
+			return
+		
 		for item in self.children:
 			item.disabled = True
-
-		battle = WildBattle(player_party, self.wild_data, str(interaction.user.id), interaction)
-		await battle.setup()
-		await battle.start()
-
+		
 		await interaction.message.edit(view=self)
 		self.stop()
+		
+		await battle.start()
 
 class Spawn(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:

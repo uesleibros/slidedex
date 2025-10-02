@@ -6,6 +6,7 @@ from __main__ import toolkit, pm
 from pokemon_sdk.calculations import calculate_stats
 from pokemon_sdk.constants import STAT_KEYS
 from datetime import datetime
+from utils.formatting import format_pokemon_display
 from utils.canvas import compose_pokemon_async
 from utils.preloaded import preloaded_info_backgrounds
 from typing import Optional
@@ -73,9 +74,7 @@ class Info(commands.Cog):
 		iv_total = sum(user_pokemon["ivs"].values())
 		iv_percent = round((iv_total / 186) * 100, 2)
 
-		name_display =  user_pokemon.get("name").title()
-		nick_display = f" ({user_pokemon.get('nickname')})" if user_pokemon.get("nickname") else ""
-		title = f"Level {user_pokemon['level']} {name_display}{nick_display} {'<:shinystar:1422797880036429855>' if user_pokemon['is_shiny'] else ''}"
+		title = f"Level {user_pokemon['level']} {format_pokemon_display(user_pokemon, show_fav=True, show_poke=False)}"
 		
 		sprite_to_use = pokemon.sprites.front_shiny if user_pokemon['is_shiny'] else pokemon.sprites.front_default
 		sprite_bytes = await sprite_to_use.read() if sprite_to_use else None

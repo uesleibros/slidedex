@@ -1,5 +1,5 @@
 import discord
-from typing import List, Callable, Optional, Awaitable
+from typing import List, Callable, Awaitable
 
 class Paginator(discord.ui.View):
 	def __init__(
