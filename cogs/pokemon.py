@@ -702,7 +702,17 @@ class Pokemon(commands.Cog):
 		
 		await message.edit(content=result_text, view=None)
 
+	@commands.command(name="heal")
+	@requires_account()
+	async def heal_party_command(self, ctx: commands.Context) -> None:
+		user_id: str = str(ctx.author.id)
+		party = toolkit.get_user_party(user_id)
+		if not party:
+			return await ctx.send("Seu time está vazio.")
+
+		del party
+		toolkit.heal_party(user_id)
+		await ctx.send("Todos os pokémon do seu time estão curados (HP e PP).")
+
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
-
-
