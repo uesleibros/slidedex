@@ -124,14 +124,14 @@ class DamageCalculator:
             # Ataque especial
             if is_crit:
                 # Crítico ignora reduções de ataque
-                attack = attacker.eff_stat("sp_atk") if attacker.stages.get("sp_atk", 0) >= 0 else attacker.stats["sp_atk"]
+                attack = attacker.eff_stat("sp_atk") if attacker.stages.get("sp_atk", 0) >= 0 else attacker.stats["special-attack"]
             else:
                 attack = attacker.eff_stat("sp_atk")
             
             # Defesa especial
             if is_crit:
                 # Crítico ignora aumentos de defesa
-                defense = defender.eff_stat("sp_def") if defender.stages.get("sp_def", 0) <= 0 else defender.stats["sp_def"]
+                defense = defender.eff_stat("sp_def") if defender.stages.get("sp_def", 0) <= 0 else defender.stats["special-defense"]
             else:
                 defense = defender.eff_stat("sp_def")
             
@@ -147,7 +147,7 @@ class DamageCalculator:
         else:
             # Ataque físico
             if is_crit:
-                attack = attacker.eff_stat("atk") if attacker.stages.get("atk", 0) >= 0 else attacker.stats["atk"]
+                attack = attacker.eff_stat("atk") if attacker.stages.get("atk", 0) >= 0 else attacker.stats["attack"]
             else:
                 attack = attacker.eff_stat("atk")
             
