@@ -125,7 +125,7 @@ class PokemonSelectView(discord.ui.View):
                 continue
             
             button = discord.ui.Button(
-                label=f"{format_pokemon_display(pokemon)} Lv{pokemon['level']}",
+                label=f"{format_pokemon_display(pokemon, show_poke=False, show_gender=False)} Lv{pokemon['level']}",
                 style=discord.ButtonStyle.primary,
                 row=i // 3
             )
