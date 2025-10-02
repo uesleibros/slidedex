@@ -193,7 +193,7 @@ class WildBattle:
 		self.actions_view = WildBattleView(self)
 		self.lines = [f"A batalha começou! Vamos lá, {self.player_active.display_name}!"]
 
-		battle_tracker.add(self.user_ix)
+		battle_tracker.add(self.user_id)
 		self.message = await self.interaction.channel.send(
 			embed=self._build_embed(),
 			file=await self._compose_image(),
@@ -855,3 +855,4 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
+
