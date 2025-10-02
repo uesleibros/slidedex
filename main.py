@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from utils.pokemon_emojis import load_application_emojis
 from utils.preloaded import preload_backgrounds, preload_info_backgrounds, preload_textures
 from utils.toolkit import Toolkit
+from utils.battling import BattleTracker
 from pokemon_sdk import PokemonManager
 
 load_dotenv()
@@ -17,6 +18,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=".", intents=intents)
 toolkit = Toolkit()
 pm: PokemonManager | None = None
+battle_tracker: BattleTracker = BattleTracker()
 
 @bot.event
 async def on_ready():
@@ -40,4 +42,5 @@ async def on_ready():
 
 
 bot.run(str(TOKEN))
+
 
