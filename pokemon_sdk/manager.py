@@ -165,8 +165,8 @@ class PokemonManager:
 			except:
 				pp_max = 10
 			
-			if self.repo.can_learn_move(owner_id, pokemon_id):
-				self.repo.learn_move(owner_id, pokemon_id, move_id, pp_max)
+			if self.repo.tk.can_learn_move(owner_id, pokemon_id):
+				self.repo.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
 				learned.append({
 					"id": move_id,
 					"name": move_id.replace("-", " ").title(),
@@ -174,7 +174,7 @@ class PokemonManager:
 					"pp_max": pp_max
 				})
 			else:
-				self.repo.add_pending_move(owner_id, pokemon_id, move_id)
+				self.repo.tk.add_pending_move(owner_id, pokemon_id, move_id)
 				pending.append({
 					"id": move_id,
 					"name": move_id.replace("-", " ").title(),
@@ -225,3 +225,4 @@ class PokemonManager:
 	async def close(self):
 
 		await self.service.close()
+
