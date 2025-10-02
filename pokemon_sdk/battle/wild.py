@@ -1,4 +1,5 @@
 import discord
+import random
 import asyncio
 from typing import List, Dict, Any, Optional, Set, Tuple
 from __main__ import pm, battle_tracker
@@ -692,3 +693,4 @@ class WildBattleView(discord.ui.View):
         await interaction.response.defer()
 
         await self.battle.attempt_capture()
+
