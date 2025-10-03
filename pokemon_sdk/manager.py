@@ -428,80 +428,54 @@ class PokemonManager:
 		return None
 	
 	async def evolve_pokemon(self, owner_id: str, pokemon_id: int, new_species_id: int) -> Dict:
-		old_pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-		
-		new_poke = await self.service.get_pokemon(new_species_id)
-		new_species = await self.service.get_species(new_species_id)
-		new_base_stats = self.service.get_base_stats(new_poke)
-		
-		new_types = [t.type.name for t in new_poke.types]
-		is_legendary = new_species.is_legendary
-		is_mythical = new_species.is_mythical
-		growth_type = new_species.growth_rate.name
-		region = REGIONS_GENERATION.get(new_species.generation.name, "generation-i")
-		
-		new_ability = self.service.choose_ability(new_poke)
-		
-		existing_move_ids = [m["id"] for m in old_pokemon["moves"]]
-		level_up_moves = self.service.get_level_up_moves(new_poke)
-		
-		available_moves = []
-		for move_id, learn_level in level_up_moves:
-			if learn_level <= old_pokemon["level"] and move_id not in existing_move_ids:
-				available_moves.append((move_id, learn_level))
-		
-		available_moves.sort(key=lambda x: x[1], reverse=True)
-		
-		final_moves = old_pokemon["moves"].copy()
-		
-		for move_id, _ in available_moves:
-			if len(final_moves) >= 4:
-				break
-			
-			try:
-				move_detail = await self.service.get_move(move_id)
-				pp_max = move_detail.pp if move_detail.pp else 10
-			except:
-				pp_max = 10
-			
-			final_moves.append({
-				"id": move_id,
-				"pp": pp_max,
-				"pp_max": pp_max
-			})
-		
-		old_max_hp = old_pokemon["base_stats"]["hp"]
-		old_current_hp = old_pokemon.get("current_hp", old_max_hp)
-		hp_percent = old_current_hp / old_max_hp if old_max_hp > 0 else 1.0
-		
-		new_max_hp = new_base_stats["hp"]
-		new_current_hp = int(new_max_hp * hp_percent)
-		
-		self.tk.set_level(owner_id, pokemon_id, old_pokemon["level"])
-		
-		updated_pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-		updated_pokemon["species_id"] = new_species_id
-		updated_pokemon["name"] = new_poke.name
-		updated_pokemon["types"] = new_types
-		updated_pokemon["base_stats"] = new_base_stats
-		updated_pokemon["ability"] = new_ability
-		updated_pokemon["is_legendary"] = is_legendary
-		updated_pokemon["is_mythical"] = is_mythical
-		updated_pokemon["growth_type"] = growth_type
-		updated_pokemon["region"] = region
-		updated_pokemon["current_hp"] = new_current_hp
-		
-		idx = self.tk._get_pokemon_index(owner_id, pokemon_id)
-		self.tk.db["pokemon"][idx] = updated_pokemon
-		self.tk._save()
-		
-		self.tk.set_moves(owner_id, pokemon_id, final_moves)
-		
-		del new_poke
-		del new_species
-		del new_base_stats
-		
-		return self.tk.get_pokemon(owner_id, pokemon_id)
+	    old_pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+	    
+	    new_poke = await self.service.get_pokemon(new_species_id)
+	    new_species = await self.service.get_species(new_species_id)
+	    new_base_stats = self.service.get_base_stats(new_poke)
+	    
+	    new_types = [t.type.name for t in new_poke.types]
+	    is_legendary = new_species.is_legendary
+	    is_mythical = new_species.is_mythical
+	    growth_type = new_species.growth_rate.name
+	    region = REGIONS_GENERATION.get(new_species.generation.name, "generation-i")
+	    
+	    new_ability = self.service.choose_ability(new_poke)
+	    
+	    final_moves = old_pokemon["moves"].copy()
+	    
+	    old_max_hp = old_pokemon["base_stats"]["hp"]
+	    old_current_hp = old_pokemon.get("current_hp", old_max_hp)
+	    hp_percent = old_current_hp / old_max_hp if old_max_hp > 0 else 1.0
+	    
+	    new_max_hp = new_base_stats["hp"]
+	    new_current_hp = int(new_max_hp * hp_percent)
+	    
+	    self.tk.set_level(owner_id, pokemon_id, old_pokemon["level"])
+	    
+	    updated_pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+	    updated_pokemon["species_id"] = new_species_id
+	    updated_pokemon["name"] = new_poke.name
+	    updated_pokemon["types"] = new_types
+	    updated_pokemon["base_stats"] = new_base_stats
+	    updated_pokemon["ability"] = new_ability
+	    updated_pokemon["is_legendary"] = is_legendary
+	    updated_pokemon["is_mythical"] = is_mythical
+	    updated_pokemon["growth_type"] = growth_type
+	    updated_pokemon["region"] = region
+	    updated_pokemon["current_hp"] = new_current_hp
+	    
+	    idx = self.tk._get_pokemon_index(owner_id, pokemon_id)
+	    self.tk.db["pokemon"][idx] = updated_pokemon
+	    self.tk._save()
+	    
+	    self.tk.set_moves(owner_id, pokemon_id, final_moves)
+	    
+	    del new_poke
+	    del new_species
+	    del new_base_stats
+	    
+	    return self.tk.get_pokemon(owner_id, pokemon_id)
 	
 	async def process_evolution(
 		self,
@@ -731,3 +705,4 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
