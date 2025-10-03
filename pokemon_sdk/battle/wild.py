@@ -136,22 +136,22 @@ class WildBattle(BattleEngine):
 			await asyncio.gather(*[self._fetch_move(mid) for mid in move_ids if mid])
 	
 	async def _compose_image(self) -> discord.File:
-	    player_sprite = self.player_active.sprites["back"]
-	    wild_sprite = self.wild.sprites["front"]
-	    
-	    if self.player_active.volatile.get("transformed"):
-	        if self.wild.sprites.get("back"):
-	            player_sprite = self.wild.sprites["back"]
-	    
-	    if self.wild.volatile.get("transformed"):
-	        if self.player_active.sprites.get("front"):
-	            wild_sprite = self.player_active.sprites["front"]
-	    
-	    pb = await player_sprite.read() if player_sprite else None
-	    ef = await wild_sprite.read() if wild_sprite else None
-	    
-	    buf = await compose_battle_async(pb, ef, preloaded_textures["battle"])
-	    return discord.File(buf, filename="battle.png")
+		player_sprite = self.player_active.sprites["back"]
+		wild_sprite = self.wild.sprites["front"]
+		
+		if self.player_active.volatile.get("transformed"):
+			if self.wild.sprites.get("back"):
+				player_sprite = self.wild.sprites["back"]
+		
+		if self.wild.volatile.get("transformed"):
+			if self.player_active.sprites.get("front"):
+				wild_sprite = self.player_active.sprites["front"]
+		
+		pb = await player_sprite.read() if player_sprite else None
+		ef = await wild_sprite.read() if wild_sprite else None
+		
+		buf = await compose_battle_async(pb, ef, preloaded_textures["battle"])
+		return discord.File(buf, filename="battle.png")
 	
 	def _build_embed(self) -> discord.Embed:
 		description_components = [
@@ -195,7 +195,7 @@ class WildBattle(BattleEngine):
 			color=discord.Color.green()
 		)
 		
-		embed.set_footer(text="Effex Engine v1.6 — alpha")
+		embed.set_footer(text="Effex Engine v1.7 — Complete Edition")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 	
@@ -217,19 +217,19 @@ class WildBattle(BattleEngine):
 		self.must_redraw_image = False
 
 	async def _save_battle_state(self) -> None:
-	    for idx, pokemon in enumerate(self.player_team):
-	        pokemon_id = self.player_party_raw[idx]["id"]
-	        
-	        pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
-	        
-	        current_pokemon = pm.tk.get_pokemon(self.user_id, pokemon_id)
-	        
-	        for battle_move in pokemon.moves:
-	            for db_move in current_pokemon["moves"]:
-	                if db_move["id"] == battle_move["id"]:
-	                    db_move["pp"] = battle_move["pp"]
-	        
-	        pm.tk.set_moves(self.user_id, pokemon_id, current_pokemon["moves"])
+		for idx, pokemon in enumerate(self.player_team):
+			pokemon_id = self.player_party_raw[idx]["id"]
+			
+			pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
+			
+			current_pokemon = pm.tk.get_pokemon(self.user_id, pokemon_id)
+			
+			for battle_move in pokemon.moves:
+				for db_move in current_pokemon["moves"]:
+					if db_move["id"] == battle_move["id"]:
+						db_move["pp"] = battle_move["pp"]
+			
+			pm.tk.set_moves(self.user_id, pokemon_id, current_pokemon["moves"])
 	
 	async def refresh(self) -> None:
 		if not self.message:
@@ -424,38 +424,6 @@ class WildBattle(BattleEngine):
 			
 			await self.refresh()
 	
-	def _calculate_ev_yield(self) -> Dict[str, int]:
-		base_stats = self.wild.raw.get("base_stats", {})
-		ev_yield = {}
-		
-		stats_map = {
-			"hp": "hp",
-			"attack": "attack",
-			"defense": "defense",
-			"special-attack": "special-attack",
-			"special-defense": "special-defense",
-			"speed": "speed"
-		}
-		
-		for stat_key, stat_name in stats_map.items():
-			base_value = base_stats.get(stat_key, 0)
-			
-			if base_value >= 120:
-				ev_yield[stat_name] = 3
-			elif base_value >= 100:
-				ev_yield[stat_name] = 2
-			elif base_value >= 70:
-				ev_yield[stat_name] = 1
-			else:
-				ev_yield[stat_name] = 0
-		
-		total_evs = sum(ev_yield.values())
-		if total_evs == 0:
-			highest_stat = max(stats_map.keys(), key=lambda k: base_stats.get(k, 0))
-			ev_yield[stats_map[highest_stat]] = 1
-		
-		return ev_yield
-	
 	async def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
 		ev_yield = BattleRewards.calculate_ev_yield(self.wild)
 		
@@ -481,8 +449,6 @@ class WildBattle(BattleEngine):
 		return distribution
 	
 	async def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
-		from __main__ import pm
-		
 		base_exp = BattleRewards.calculate_base_experience(
 			self.wild,
 			is_trainer_battle=False
@@ -523,36 +489,6 @@ class WildBattle(BattleEngine):
 		self._max_level_skipped = max_level_skipped
 		
 		return distribution
-	
-	def _format_experience_gains(self, distribution: List[Tuple[int, Dict[str, Any], int]]) -> List[str]:
-		lines = []
-		
-		if len(distribution) > 1:
-			lines.append(f"⭐ **XP Distribuído** ({len(distribution)} participantes):")
-		else:
-			lines.append("⭐ **XP Ganho:**")
-		
-		for index, _, experience in distribution:
-			pokemon_name = self.player_team[index].display_name
-			lines.append(f"  • {pokemon_name} +{experience} XP")
-		
-		return lines
-	
-	def _format_ev_gains(self, distribution: List[Tuple[int, Dict[str, Any], Dict[str, int]]]) -> List[str]:
-		lines = []
-		
-		if not distribution:
-			return lines
-		
-		lines.append("💪 **EVs Ganhos:**")
-		
-		for index, _, evs in distribution:
-			pokemon_name = self.player_team[index].display_name
-			ev_parts = [f"{stat.upper()}: +{value}" for stat, value in evs.items() if value > 0]
-			if ev_parts:
-				lines.append(f"  • {pokemon_name} [{', '.join(ev_parts)}]")
-		
-		return lines
 	
 	async def attempt_capture(self, ball_type: str = BallType.POKE_BALL) -> bool:
 		async with self.lock:
@@ -762,7 +698,7 @@ class WildBattleView(discord.ui.View):
 			
 			if self.battle.message:
 				await self.battle.message.reply(
-					content="Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
+					content="⏰ Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
 				)
 	
 	def disable_all(self) -> None:
@@ -772,9 +708,9 @@ class WildBattleView(discord.ui.View):
 	@discord.ui.button(style=discord.ButtonStyle.primary, label="Lutar", emoji="⚔️")
 	async def fight(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
-			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
+			return await interaction.response.send_message("❌ Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
+			return await interaction.response.send_message("❌ Batalha encerrada.", ephemeral=True)
 		if self.force_switch_mode:
 			return await interaction.response.edit_message(view=SwitchView(self.battle, force_only=True))
 		await interaction.response.edit_message(view=MovesView(self.battle))
@@ -782,26 +718,19 @@ class WildBattleView(discord.ui.View):
 	@discord.ui.button(style=discord.ButtonStyle.primary, label="Trocar", emoji="🔄")
 	async def switch(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
-			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
+			return await interaction.response.send_message("❌ Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
+			return await interaction.response.send_message("❌ Batalha encerrada.", ephemeral=True)
 		await interaction.response.edit_message(view=SwitchView(self.battle))
 	
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:PokeBall:1345558169090265151>", label="Capturar")
 	async def capture(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-	    if str(interaction.user.id) != self.user_id:
-	        return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
-	    if self.battle.ended:
-	        return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
-	    if self.force_switch_mode or self.battle.player_active.fainted:
-	        return await interaction.response.send_message("Troque de Pokémon!", ephemeral=True)
-	    
-	    from .helpers import PokeballsView
-	    await interaction.response.edit_message(view=PokeballsView(self.battle))
-
-
-
-
-
-
-
+		if str(interaction.user.id) != self.user_id:
+			return await interaction.response.send_message("❌ Não é sua batalha!", ephemeral=True)
+		if self.battle.ended:
+			return await interaction.response.send_message("❌ Batalha encerrada.", ephemeral=True)
+		if self.force_switch_mode or self.battle.player_active.fainted:
+			return await interaction.response.send_message("⚠️ Troque de Pokémon primeiro!", ephemeral=True)
+		
+		from .helpers import PokeballsView
+		await interaction.response.edit_message(view=PokeballsView(self.battle))
