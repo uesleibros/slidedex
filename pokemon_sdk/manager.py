@@ -262,7 +262,7 @@ class PokemonManager:
 		for move_id, level in sorted_moves:
 			pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 			
-			if self.repo.tk.has_move(owner_id, pokemon_id, move_id):
+			if self.tk.has_move(owner_id, pokemon_id, move_id):
 				continue
 			
 			try:
@@ -415,4 +415,5 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
