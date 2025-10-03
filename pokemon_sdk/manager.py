@@ -64,28 +64,20 @@ class MoveChoiceView(discord.ui.View):
             
             self.answered = True
             
-            pokemon_before = self.manager.tk.get_pokemon(self.owner_id, self.pokemon_id)
+            self.manager.tk.learn_move(
+                self.owner_id,
+                self.pokemon_id,
+                self.new_move_id,
+                self.pp_max,
+                replace_move_id=move_to_forget
+            )
             
-            try:
-                updated_moves = self.manager.tk.learn_move(
-                    self.owner_id,
-                    self.pokemon_id,
-                    self.new_move_id,
-                    self.pp_max,
-                    replace_move_id=move_to_forget
-                )
-                
-                move_forgotten_name = move_to_forget.replace("-", " ").title()
-                
-                await interaction.response.edit_message(
-                    content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Esqueceu **{move_forgotten_name}** e Aprendeu **{self.new_move_name}**!",
-                    view=None
-                )
-            except Exception as e:
-                await interaction.response.edit_message(
-                    content=f"<@{self.owner_id}> ❌ Erro ao aprender move: {str(e)}",
-                    view=None
-                )
+            move_forgotten_name = move_to_forget.replace("-", " ").title()
+            
+            await interaction.response.edit_message(
+                content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Esqueceu **{move_forgotten_name}** e Aprendeu **{self.new_move_name}**!",
+                view=None
+            )
             
             self.stop()
         
@@ -269,28 +261,24 @@ class PokemonManager:
 	    
 	    for move_id, level in sorted_moves:
 	        pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-	        current_move_ids = [m["id"] for m in pokemon.get("moves", [])]
 	        
-	        if move_id in current_move_ids:
+	        if self.tk.has_move(owner_id, pokemon_id, move_id):
 	            continue
 	        
 	        try:
 	            move_detail = await self.service.get_move(move_id)
 	            pp_max = move_detail.pp if move_detail.pp else 10
-	        except Exception as e:
+	        except:
 	            pp_max = 10
 	        
 	        if self.tk.can_learn_move(owner_id, pokemon_id):
-	            try:
-	                self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
-	                learned.append({
-	                    "id": move_id,
-	                    "name": move_id.replace("-", " ").title(),
-	                    "level": level,
-	                    "pp_max": pp_max
-	                })
-	            except Exception:
-	                pass
+	            self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
+	            learned.append({
+	                "id": move_id,
+	                "name": move_id.replace("-", " ").title(),
+	                "level": level,
+	                "pp_max": pp_max
+	            })
 	        else:
 	            needs_choice.append({
 	                "id": move_id,
@@ -427,6 +415,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
