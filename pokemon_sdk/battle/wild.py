@@ -569,8 +569,7 @@ class WildBattle(BattleEngine):
 		return distribution
 	
 	async def _calculate_experience_distribution(self) -> List[Tuple[int, Dict[str, Any], int]]:
-		wild_species = await pm.service.get_species(self.wild_data["species_id"])
-		base_experience = wild_species.base_experience if wild_species.base_experience else 50
+		base_experience = self.wild.pokeapi_data.base_experience if self.wild.pokeapi_data.base_experience else 50
 		
 		enemy_level = self.wild.level
 		is_trainer_battle = False
@@ -602,8 +601,6 @@ class WildBattle(BattleEngine):
 			)
 			
 			distribution.append((participant_index, pokemon_data, exp_to_give))
-		
-		del wild_species
 		
 		return distribution
 	
@@ -877,4 +874,5 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
+
 
