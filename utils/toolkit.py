@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
 from pokemon_sdk.constants import NATURES, STAT_KEYS
 from pokemon_sdk.calculations import calculate_max_hp
-from helpers.growth import GrowthRate, GROWTH_RATE_INFO
+from helpers.growth import GrowthRate
 import copy
 
 PARTY_LIMIT = 6
@@ -813,3 +813,4 @@ class Toolkit:
 					continue
 			
 			return results
+
