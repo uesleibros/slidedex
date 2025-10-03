@@ -321,7 +321,7 @@ class PokemonManager:
 			manager=self
 		)
 		
-		content = f"{format_pokemon_display(pokemon, bold_name=True)} Quer aprender **{new_move_name}**, mas já conhece 4 movimentos.\nEscolha um movimento para esquecer ou cancele para não aprender {new_move_name}."
+		content = f"{format_pokemon_display(pokemon, bold_name=True)} Quer aprender **{new_move_name}**, mas já conhece 4 movimentos.\nEscolha um movimento para esquecer ou cancele para não aprender **{new_move_name}**.\n-# Você tem até 1 minuto para fazer sua escolha."
 		
 		sent_message = await message.channel.send(content=content, view=view)
 		view.message = sent_message
@@ -413,6 +413,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
