@@ -8,6 +8,142 @@ from .calculations import generate_pokemon_data, calculate_stats, iv_percent
 from .constants import NATURES, REGIONS_GENERATION
 from helpers.growth import GrowthRate
 
+class EvolutionChoiceView(discord.ui.View):
+    def __init__(
+        self,
+        owner_id: str,
+        pokemon_id: int,
+        current_pokemon: dict,
+        evolution_species_id: int,
+        evolution_name: str,
+        manager
+    ):
+        super().__init__(timeout=60.0)
+        self.owner_id = owner_id
+        self.pokemon_id = pokemon_id
+        self.current_pokemon = current_pokemon
+        self.evolution_species_id = evolution_species_id
+        self.evolution_name = evolution_name
+        self.manager = manager
+        self.answered = False
+        self.message = None
+        
+        evolve_button = discord.ui.Button(
+            label=f"Evoluir para {evolution_name}",
+            style=discord.ButtonStyle.success,
+            emoji="✨",
+            custom_id="evolve"
+        )
+        evolve_button.callback = self._evolve_callback
+        self.add_item(evolve_button)
+        
+        cancel_button = discord.ui.Button(
+            label="Agora Não",
+            style=discord.ButtonStyle.secondary,
+            emoji="⏭️",
+            custom_id="cancel"
+        )
+        cancel_button.callback = self._cancel_callback
+        self.add_item(cancel_button)
+        
+        block_button = discord.ui.Button(
+            label="Nunca Evoluir",
+            style=discord.ButtonStyle.danger,
+            emoji="🚫",
+            custom_id="block"
+        )
+        block_button.callback = self._block_callback
+        self.add_item(block_button)
+    
+    async def _evolve_callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("Essa escolha não é sua!", ephemeral=True)
+            return
+        
+        if self.answered:
+            await interaction.response.send_message("Já foi respondido!", ephemeral=True)
+            return
+        
+        self.answered = True
+        
+        await interaction.response.edit_message(
+            content=f"<@{self.owner_id}> ✨ Evoluindo...",
+            view=None
+        )
+        
+        try:
+            result = await self.manager.evolve_pokemon(
+                self.owner_id,
+                self.pokemon_id,
+                self.evolution_species_id
+            )
+            
+            old_name = self.current_pokemon.get("name", "").title()
+            
+            await interaction.edit_original_response(
+                content=f"<@{self.owner_id}> 🎉 **{old_name}** evoluiu para **{self.evolution_name}**!"
+            )
+        except Exception as e:
+            await interaction.edit_original_response(
+                content=f"<@{self.owner_id}> ❌ Erro ao evoluir: {e}"
+            )
+        
+        self.stop()
+    
+    async def _cancel_callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("Essa escolha não é sua!", ephemeral=True)
+            return
+        
+        if self.answered:
+            await interaction.response.send_message("Já foi respondido!", ephemeral=True)
+            return
+        
+        self.answered = True
+        
+        current_name = self.current_pokemon.get("name", "").title()
+        
+        await interaction.response.edit_message(
+            content=f"<@{self.owner_id}> ⏭️ {current_name} não evoluiu. (Tentará novamente no próximo nível)",
+            view=None
+        )
+        
+        self.stop()
+    
+    async def _block_callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("Essa escolha não é sua!", ephemeral=True)
+            return
+        
+        if self.answered:
+            await interaction.response.send_message("Já foi respondido!", ephemeral=True)
+            return
+        
+        self.answered = True
+        
+        self.manager.tk.block_evolution(self.owner_id, self.pokemon_id, True)
+        
+        current_name = self.current_pokemon.get("name", "").title()
+        
+        await interaction.response.edit_message(
+            content=f"<@{self.owner_id}> 🚫 {current_name} nunca evoluirá. (Use `/desbloquear` para reverter)",
+            view=None
+        )
+        
+        self.stop()
+    
+    async def on_timeout(self):
+        if not self.answered and self.message:
+            for item in self.children:
+                item.disabled = True
+            
+            current_name = self.current_pokemon.get("name", "").title()
+            
+            await self.message.edit(
+                content=f"<@{self.owner_id}> Tempo esgotado! {current_name} não evoluiu. (Tentará novamente no próximo nível)",
+                view=None
+            )
+
 class MoveChoiceView(discord.ui.View):
     def __init__(
         self,
@@ -229,7 +365,180 @@ class PokemonManager:
 		)
 
 		return created
+	
+	async def check_evolution(self, owner_id: str, pokemon_id: int, trigger: str = "level-up") -> Optional[Dict]:
+		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 		
+		if self.tk.is_evolution_blocked(owner_id, pokemon_id):
+			return None
+		
+		species = await self.service.get_species(pokemon["species_id"])
+		
+		if not species.evolves_from_species:
+			chain = await self.service.client.get_evolution_chain(species.evolution_chain.id)
+		else:
+			chain = await self.service.client.get_evolution_chain(species.evolution_chain.id)
+		
+		def find_current_in_chain(chain_link, current_species_id):
+			if chain_link.species.name == current_species_id or chain_link.species.url.split('/')[-2] == str(current_species_id):
+				return chain_link
+			
+			for evo in chain_link.evolves_to:
+				result = find_current_in_chain(evo, current_species_id)
+				if result:
+					return result
+			return None
+		
+		current_link = find_current_in_chain(chain.chain, pokemon["species_id"])
+		
+		if not current_link or not current_link.evolves_to:
+			return None
+		
+		for evolution in current_link.evolves_to:
+			for detail in evolution.evolution_details:
+				if detail.trigger.name != trigger:
+					continue
+				
+				if detail.min_level and pokemon["level"] < detail.min_level:
+					continue
+				
+				if detail.item and not pokemon.get("held_item"):
+					continue
+				
+				if detail.item and pokemon.get("held_item") != detail.item.name:
+					continue
+				
+				if detail.min_happiness and detail.min_happiness > 0:
+					continue
+				
+				if detail.time_of_day and detail.time_of_day not in ["", None]:
+					continue
+				
+				evolution_species_id = int(evolution.species.url.split('/')[-2])
+				evolution_name = evolution.species.name.title()
+				
+				return {
+					"species_id": evolution_species_id,
+					"name": evolution_name,
+					"trigger": detail.trigger.name,
+					"min_level": detail.min_level,
+					"item": detail.item.name if detail.item else None
+				}
+		
+		return None
+	
+	async def evolve_pokemon(self, owner_id: str, pokemon_id: int, new_species_id: int) -> Dict:
+		old_pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+		
+		new_poke = await self.service.get_pokemon(new_species_id)
+		new_species = await self.service.get_species(new_species_id)
+		new_base_stats = self.service.get_base_stats(new_poke)
+		
+		new_types = [t.type.name for t in new_poke.types]
+		is_legendary = new_species.is_legendary
+		is_mythical = new_species.is_mythical
+		growth_type = new_species.growth_rate.name
+		region = REGIONS_GENERATION.get(new_species.generation.name, "generation-i")
+		
+		new_ability = self.service.choose_ability(new_poke)
+		
+		existing_move_ids = [m["id"] for m in old_pokemon["moves"]]
+		level_up_moves = self.service.get_level_up_moves(new_poke)
+		
+		available_moves = []
+		for move_id, learn_level in level_up_moves:
+			if learn_level <= old_pokemon["level"] and move_id not in existing_move_ids:
+				available_moves.append((move_id, learn_level))
+		
+		available_moves.sort(key=lambda x: x[1], reverse=True)
+		
+		final_moves = old_pokemon["moves"].copy()
+		
+		for move_id, _ in available_moves:
+			if len(final_moves) >= 4:
+				break
+			
+			try:
+				move_detail = await self.service.get_move(move_id)
+				pp_max = move_detail.pp if move_detail.pp else 10
+			except:
+				pp_max = 10
+			
+			final_moves.append({
+				"id": move_id,
+				"pp": pp_max,
+				"pp_max": pp_max
+			})
+		
+		old_max_hp = old_pokemon["base_stats"]["hp"]
+		old_current_hp = old_pokemon.get("current_hp", old_max_hp)
+		hp_percent = old_current_hp / old_max_hp if old_max_hp > 0 else 1.0
+		
+		new_max_hp = new_base_stats["hp"]
+		new_current_hp = int(new_max_hp * hp_percent)
+		
+		self.tk.set_level(owner_id, pokemon_id, old_pokemon["level"])
+		
+		updated_pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+		updated_pokemon["species_id"] = new_species_id
+		updated_pokemon["name"] = new_poke.name
+		updated_pokemon["types"] = new_types
+		updated_pokemon["base_stats"] = new_base_stats
+		updated_pokemon["ability"] = new_ability
+		updated_pokemon["is_legendary"] = is_legendary
+		updated_pokemon["is_mythical"] = is_mythical
+		updated_pokemon["growth_type"] = growth_type
+		updated_pokemon["region"] = region
+		updated_pokemon["current_hp"] = new_current_hp
+		
+		idx = self.tk._get_pokemon_index(owner_id, pokemon_id)
+		self.tk.db["pokemon"][idx] = updated_pokemon
+		self.tk._save()
+		
+		self.tk.set_moves(owner_id, pokemon_id, final_moves)
+		
+		del new_poke
+		del new_species
+		del new_base_stats
+		
+		return self.tk.get_pokemon(owner_id, pokemon_id)
+	
+	async def process_evolution(
+		self,
+		owner_id: str,
+		pokemon_id: int,
+		message: Optional[discord.Message] = None
+	) -> Optional[Dict]:
+		evolution_data = await self.check_evolution(owner_id, pokemon_id, trigger="level-up")
+		
+		if not evolution_data:
+			return None
+		
+		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+		
+		if message:
+			view = EvolutionChoiceView(
+				owner_id=owner_id,
+				pokemon_id=pokemon_id,
+				current_pokemon=pokemon,
+				evolution_species_id=evolution_data["species_id"],
+				evolution_name=evolution_data["name"],
+				manager=self
+			)
+			
+			content = (
+				f"<@{owner_id}> ✨ {format_pokemon_display(pokemon, bold_name=True)} pode evoluir para **{evolution_data['name']}**!\n"
+				f"Você quer evoluir?\n"
+				f"-# Você tem até 1 minuto para decidir."
+			)
+			
+			sent_message = await message.channel.send(content=content, view=view)
+			view.message = sent_message
+			
+			return evolution_data
+		
+		return evolution_data
+	
 	async def process_level_up(
 	    self,
 	    owner_id: str,
@@ -241,7 +550,8 @@ class PokemonManager:
 	        return {
 	            "learned": [],
 	            "needs_choice": [],
-	            "levels_gained": []
+	            "levels_gained": [],
+	            "evolution": None
 	        }
 	    
 	    pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
@@ -253,9 +563,6 @@ class PokemonManager:
 	    for move_id, level in all_moves:
 	        if level in levels_gained:
 	            new_moves[move_id] = level
-	    
-	    if not new_moves and message:
-	        await message.channel.send(f"DEBUG: Nenhum move disponível para os níveis {levels_gained}")
 	    
 	    learned = []
 	    needs_choice = []
@@ -271,30 +578,17 @@ class PokemonManager:
 	        try:
 	            move_detail = await self.service.get_move(move_id)
 	            pp_max = move_detail.pp if move_detail.pp else 10
-	        except Exception as e:
+	        except:
 	            pp_max = 10
-	            if message:
-	                await message.channel.send(f"DEBUG: Erro ao buscar move {move_id}: {e}")
 	        
-	        can_learn = self.tk.can_learn_move(owner_id, pokemon_id)
-	        
-	        if can_learn:
-	            try:
-	                result = self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
-	                
-	                learned.append({
-	                    "id": move_id,
-	                    "name": move_id.replace("-", " ").title(),
-	                    "level": level,
-	                    "pp_max": pp_max
-	                })
-	                
-	                if message:
-	                    await message.channel.send(f"DEBUG: Move {move_id} aprendido! Total moves agora: {len(result)}")
-	                
-	            except Exception as e:
-	                if message:
-	                    await message.channel.send(f"DEBUG: ERRO ao aprender {move_id}: {type(e).__name__}: {e}")
+	        if self.tk.can_learn_move(owner_id, pokemon_id):
+	            self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
+	            learned.append({
+	                "id": move_id,
+	                "name": move_id.replace("-", " ").title(),
+	                "level": level,
+	                "pp_max": pp_max
+	            })
 	        else:
 	            needs_choice.append({
 	                "id": move_id,
@@ -309,10 +603,15 @@ class PokemonManager:
 	    
 	    del poke
 	    
+	    evolution_data = None
+	    if message:
+	        evolution_data = await self.process_evolution(owner_id, pokemon_id, message)
+	    
 	    return {
 	        "learned": learned,
 	        "needs_choice": needs_choice,
-	        "levels_gained": levels_gained
+	        "levels_gained": levels_gained,
+	        "evolution": evolution_data
 	    }
 
 	async def _handle_move_choice(
@@ -369,7 +668,8 @@ class PokemonManager:
 			result["move_learning"] = {
 				"learned": [],
 				"needs_choice": [],
-				"levels_gained": []
+				"levels_gained": [],
+				"evolution": None
 			}
 		
 		return result
@@ -431,11 +731,3 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
-
-
-
-
-
-
-
-
