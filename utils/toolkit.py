@@ -818,6 +818,14 @@ class Toolkit:
 			
 			return results
 
-
-
-
+	def block_evolution(self, owner_id: str, pokemon_id: int, block: bool = True) -> bool:
+	    with self._lock:
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        self.db["pokemon"][idx]["evolution_blocked"] = bool(block)
+	        self._save()
+	        return self.db["pokemon"][idx]["evolution_blocked"]
+	
+	def is_evolution_blocked(self, owner_id: str, pokemon_id: int) -> bool:
+	    with self._lock:
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        return self.db["pokemon"][idx].get("evolution_blocked", False)
