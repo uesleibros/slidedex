@@ -108,7 +108,7 @@ class Info(commands.Cog):
 			f"**ID do Pokemon:** {pokemon_id}",
 			f"**ID da Espécie:** #{user_pokemon.get('species_id')} - {user_pokemon.get('name', 'Desconhecido').title()}",
 			f"**Nível:** {current_level}",
-			f"**Experiência:** {exp_progress}/{exp_needed} ({exp_progress_percent}%)",
+			f"**Experiência:** {current_exp}/{exp_next_level} | Próximo: {exp_needed} XP ({exp_progress_percent}%)",
 			f"**Natureza:** {user_pokemon['nature'].title()}",
 			f"**Tipo de Crescimento:** {user_pokemon['growth_type'].replace('-', ' ').title()}",
 			f"**Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
@@ -209,3 +209,4 @@ class Info(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
 	await bot.add_cog(Info(bot))
+
