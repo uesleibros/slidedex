@@ -8,6 +8,7 @@ class PokemonRepository:
             ability: str, gender: str, shiny: bool, level: int,
             moves: List[Dict], base_stats: Dict, on_party: bool, current_hp: int,
             types: List[str], region: str, is_legendary: bool, is_mythical: bool,
+            growth_type: str,
             held_item: Optional[str] = None, nickname: Optional[str] = None,
             name: Optional[str] = None,
             exp: int = 0) -> Dict:
@@ -27,6 +28,7 @@ class PokemonRepository:
             types=types,
             region=region,
             on_party=on_party,
+            growth_type=growth_type,
             current_hp=current_hp,
             held_item=held_item,
             nickname=nickname,
@@ -66,3 +68,4 @@ class PokemonRepository:
     def release(self, owner_id: str, pokemon_id: int) -> bool:
 
         return self.tk.release_pokemon(owner_id, pokemon_id)
+
