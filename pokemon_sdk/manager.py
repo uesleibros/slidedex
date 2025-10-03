@@ -9,105 +9,115 @@ from .constants import NATURES, REGIONS_GENERATION
 from helpers.growth import GrowthRate
 
 class MoveChoiceView(discord.ui.View):
-	def __init__(
-		self,
-		owner_id: str,
-		pokemon_id: int,
-		new_move_id: str,
-		new_move_name: str,
-		pp_max: int,
-		current_moves: List[Dict],
-		pokemon: dict,
-		manager
-	):
-		super().__init__(timeout=60.0)
-		self.owner_id = owner_id
-		self.pokemon_id = pokemon_id
-		self.new_move_id = new_move_id
-		self.new_move_name = new_move_name
-		self.pp_max = pp_max
-		self.current_moves = current_moves
-		self.pokemon = pokemon
-		self.manager = manager
-		self.answered = False
-		self.message = None
-		
-		for idx, move in enumerate(current_moves):
-			move_name = move["id"].replace("-", " ").title()
-			button = discord.ui.Button(
-				label=f"Esquecer {move_name}",
-				style=discord.ButtonStyle.primary,
-				custom_id=f"forget_{idx}"
-			)
-			button.callback = self._create_callback(move["id"])
-			self.add_item(button)
-		
-		cancel_button = discord.ui.Button(
-			label="Cancelar",
-			style=discord.ButtonStyle.secondary,
-			custom_id="cancel"
-		)
-		cancel_button.callback = self._cancel_callback
-		self.add_item(cancel_button)
-	
-	def _create_callback(self, move_to_forget: str):
-		async def callback(interaction: discord.Interaction):
-			if str(interaction.user.id) != self.owner_id:
-				await interaction.response.send_message("Essa escolha não é sua!", ephemeral=True)
-				return
-			
-			if self.answered:
-				await interaction.response.send_message("Já foi respondido!", ephemeral=True)
-				return
-			
-			self.answered = True
-			
-			self.manager.tk.learn_move(
-				self.owner_id,
-				self.pokemon_id,
-				self.new_move_id,
-				self.pp_max,
-				replace_move_id=move_to_forget
-			)
-			
-			move_forgotten_name = move_to_forget.replace("-", " ").title()
-			
-			await interaction.response.edit_message(
-				content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Esqueceu **{move_forgotten_name}** e Aprendeu **{self.new_move_name}**!",
-				view=None
-			)
-			
-			self.stop()
-		
-		return callback
-	
-	async def _cancel_callback(self, interaction: discord.Interaction):
-		if str(interaction.user.id) != self.owner_id:
-			await interaction.response.send_message("Essa escolha não é sua!", ephemeral=True)
-			return
-		
-		if self.answered:
-			await interaction.response.send_message("Já foi respondido!", ephemeral=True)
-			return
-		
-		self.answered = True
-		
-		await interaction.response.edit_message(
-			content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Não aprendeu **{self.new_move_name}**.",
-			view=None
-		)
-		
-		self.stop()
-	
-	async def on_timeout(self):
-		if not self.answered and self.message:
-			for item in self.children:
-				item.disabled = True
-			
-			await self.message.edit(
-				content=f"<@{self.owner_id}> Tempo esgotado! {format_pokemon_display(self.pokemon, bold_name=True)} não aprendeu **{self.new_move_name}**.",
-				view=None
-			)
+    def __init__(
+        self,
+        owner_id: str,
+        pokemon_id: int,
+        new_move_id: str,
+        new_move_name: str,
+        pp_max: int,
+        current_moves: List[Dict],
+        pokemon: dict,
+        manager
+    ):
+        super().__init__(timeout=60.0)
+        self.owner_id = owner_id
+        self.pokemon_id = pokemon_id
+        self.new_move_id = new_move_id
+        self.new_move_name = new_move_name
+        self.pp_max = pp_max
+        self.current_moves = current_moves
+        self.pokemon = pokemon
+        self.manager = manager
+        self.answered = False
+        self.message = None
+        
+        for idx, move in enumerate(current_moves):
+            move_id = move["id"]
+            move_name = move_id.replace("-", " ").title()
+            
+            button = discord.ui.Button(
+                label=f"Esquecer {move_name}",
+                style=discord.ButtonStyle.primary,
+                custom_id=f"forget_{idx}"
+            )
+            button.callback = self._create_callback(move_id)
+            self.add_item(button)
+        
+        cancel_button = discord.ui.Button(
+            label="Cancelar",
+            style=discord.ButtonStyle.secondary,
+            custom_id="cancel"
+        )
+        cancel_button.callback = self._cancel_callback
+        self.add_item(cancel_button)
+    
+    def _create_callback(self, move_to_forget: str):
+        async def callback(interaction: discord.Interaction):
+            if str(interaction.user.id) != self.owner_id:
+                await interaction.response.send_message("Essa escolha não é sua!", ephemeral=True)
+                return
+            
+            if self.answered:
+                await interaction.response.send_message("Já foi respondido!", ephemeral=True)
+                return
+            
+            self.answered = True
+            
+            pokemon_before = self.manager.tk.get_pokemon(self.owner_id, self.pokemon_id)
+            
+            try:
+                updated_moves = self.manager.tk.learn_move(
+                    self.owner_id,
+                    self.pokemon_id,
+                    self.new_move_id,
+                    self.pp_max,
+                    replace_move_id=move_to_forget
+                )
+                
+                move_forgotten_name = move_to_forget.replace("-", " ").title()
+                
+                await interaction.response.edit_message(
+                    content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Esqueceu **{move_forgotten_name}** e Aprendeu **{self.new_move_name}**!",
+                    view=None
+                )
+            except Exception as e:
+                await interaction.response.edit_message(
+                    content=f"<@{self.owner_id}> ❌ Erro ao aprender move: {str(e)}",
+                    view=None
+                )
+            
+            self.stop()
+        
+        return callback
+    
+    async def _cancel_callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("Essa escolha não é sua!", ephemeral=True)
+            return
+        
+        if self.answered:
+            await interaction.response.send_message("Já foi respondido!", ephemeral=True)
+            return
+        
+        self.answered = True
+        
+        await interaction.response.edit_message(
+            content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Não aprendeu **{self.new_move_name}**.",
+            view=None
+        )
+        
+        self.stop()
+    
+    async def on_timeout(self):
+        if not self.answered and self.message:
+            for item in self.children:
+                item.disabled = True
+            
+            await self.message.edit(
+                content=f"<@{self.owner_id}> Tempo esgotado! {format_pokemon_display(self.pokemon, bold_name=True)} não aprendeu **{self.new_move_name}**.",
+                view=None
+            )
 
 class PokemonManager:
 	def __init__(self, toolkit):
@@ -229,73 +239,77 @@ class PokemonManager:
 		return created
 		
 	async def process_level_up(
-		self,
-		owner_id: str,
-		pokemon_id: int,
-		levels_gained: List[int],
-		message: Optional[discord.Message] = None
+	    self,
+	    owner_id: str,
+	    pokemon_id: int,
+	    levels_gained: List[int],
+	    message: Optional[discord.Message] = None
 	) -> Dict:
-		if not levels_gained:
-			return {
-				"learned": [],
-				"needs_choice": [],
-				"levels_gained": []
-			}
-		
-		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-		poke = await self.service.get_pokemon(pokemon["species_id"])
-		
-		all_moves = self.service.get_level_up_moves(poke)
-		
-		new_moves = {}
-		for move_id, level in all_moves:
-			if level in levels_gained:
-				new_moves[move_id] = level
-		
-		learned = []
-		needs_choice = []
-		
-		sorted_moves = sorted(new_moves.items(), key=lambda x: x[1])
-		
-		for move_id, level in sorted_moves:
-			pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-			
-			if self.tk.has_move(owner_id, pokemon_id, move_id):
-				continue
-			
-			try:
-				move_detail = await self.service.get_move(move_id)
-				pp_max = move_detail.pp if move_detail.pp else 10
-			except:
-				pp_max = 10
-			
-			if self.tk.can_learn_move(owner_id, pokemon_id):
-				self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
-				learned.append({
-					"id": move_id,
-					"name": move_id.replace("-", " ").title(),
-					"level": level,
-					"pp_max": pp_max
-				})
-			else:
-				needs_choice.append({
-					"id": move_id,
-					"name": move_id.replace("-", " ").title(),
-					"level": level,
-					"pp_max": pp_max
-				})
-				
-				if message:
-					pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-					await self._handle_move_choice(message, owner_id, pokemon_id, move_id, pp_max, pokemon)
-		
-		del poke
-		
-		return {
-			"learned": learned,
-			"needs_choice": needs_choice,
-			"levels_gained": levels_gained
-		}
+	    if not levels_gained:
+	        return {
+	            "learned": [],
+	            "needs_choice": [],
+	            "levels_gained": []
+	        }
+	    
+	    pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+	    poke = await self.service.get_pokemon(pokemon["species_id"])
+	    
+	    all_moves = self.service.get_level_up_moves(poke)
+	    
+	    new_moves = {}
+	    for move_id, level in all_moves:
+	        if level in levels_gained:
+	            new_moves[move_id] = level
+	    
+	    learned = []
+	    needs_choice = []
+	    
+	    sorted_moves = sorted(new_moves.items(), key=lambda x: x[1])
+	    
+	    for move_id, level in sorted_moves:
+	        pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+	        current_move_ids = [m["id"] for m in pokemon.get("moves", [])]
+	        
+	        if move_id in current_move_ids:
+	            continue
+	        
+	        try:
+	            move_detail = await self.service.get_move(move_id)
+	            pp_max = move_detail.pp if move_detail.pp else 10
+	        except Exception as e:
+	            pp_max = 10
+	        
+	        if self.tk.can_learn_move(owner_id, pokemon_id):
+	            try:
+	                self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
+	                learned.append({
+	                    "id": move_id,
+	                    "name": move_id.replace("-", " ").title(),
+	                    "level": level,
+	                    "pp_max": pp_max
+	                })
+	            except Exception:
+	                pass
+	        else:
+	            needs_choice.append({
+	                "id": move_id,
+	                "name": move_id.replace("-", " ").title(),
+	                "level": level,
+	                "pp_max": pp_max
+	            })
+	            
+	            if message:
+	                pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+	                await self._handle_move_choice(message, owner_id, pokemon_id, move_id, pp_max, pokemon)
+	    
+	    del poke
+	    
+	    return {
+	        "learned": learned,
+	        "needs_choice": needs_choice,
+	        "levels_gained": levels_gained
+	    }
 
 	async def _handle_move_choice(
 		self,
@@ -413,6 +427,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
