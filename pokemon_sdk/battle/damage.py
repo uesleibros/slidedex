@@ -25,7 +25,13 @@ class DamageCalculator:
         if effect_data.get("level_damage"):
             return attacker.level, 1.0, False
         
+        if effect_data.get("half_hp_damage"):
+            damage = max(1, defender.current_hp // 2)
+            return damage, 1.0, False
+        
         if effect_data.get("ohko"):
+            if defender.level > attacker.level:
+                return 0, 0.0, False
             return defender.current_hp, 1.0, False
         
         if effect_data.get("psywave"):
@@ -36,13 +42,153 @@ class DamageCalculator:
             return max(1, defender.current_hp // 2), 1.0, False
         
         if effect_data.get("endeavor"):
-            return 0, 1.0, False
+            if defender.current_hp <= attacker.current_hp:
+                return 0, 1.0, False
+            return defender.current_hp - attacker.current_hp, 1.0, False
         
-        if effect_data.get("spit_up"):
+        if effect_data.get("counter"):
+            counter_type = effect_data["counter"]
+            last_damage = attacker.volatile.get(f"last_{counter_type}_damage", 0)
+            multiplier = effect_data.get("multiplier", 2)
+            return max(1, last_damage * multiplier), 1.0, False
+        
+        if effect_data.get("false_swipe"):
+            max_damage = defender.current_hp - 1
+            if max_damage <= 0:
+                return 0, 1.0, False
+        
+        if effect_data.get("magnitude"):
+            magnitude_table = [
+                (5, 10, 10),
+                (15, 30, 20),
+                (35, 50, 20),
+                (65, 70, 20),
+                (75, 90, 10),
+                (95, 110, 10),
+                (100, 150, 5)
+            ]
+            
+            roll = random.randint(1, 100)
+            cumulative = 0
+            magnitude_power = 10
+            
+            for threshold, pwr, chance in magnitude_table:
+                cumulative += chance
+                if roll <= cumulative:
+                    magnitude_power = pwr
+                    break
+            
+            power = magnitude_power
+        elif effect_data.get("present"):
+            roll = random.randint(1, 100)
+            if roll <= 40:
+                power = 40
+            elif roll <= 70:
+                power = 80
+            elif roll <= 80:
+                power = 120
+            else:
+                heal = defender.stats["hp"] // 4
+                defender.heal(heal)
+                return 0, 1.0, False
+        elif effect_data.get("triple_kick"):
+            total_damage = 0
+            base_power = move_data.power
+            
+            for i in range(3):
+                if random.random() < 0.9:
+                    hit_power = base_power * (i + 1)
+                    damage, _, _ = await self._calculate_single_hit(
+                        attacker, defender, move_data, effect_data, hit_power
+                    )
+                    total_damage += damage
+                else:
+                    break
+            
+            return total_damage, 1.0, False
+        elif effect_data.get("beat_up"):
+            return 0, 1.0, False
+        elif effect_data.get("spit_up"):
             stockpile = attacker.volatile.get("stockpile", 0)
             if stockpile == 0:
                 return 0, 1.0, False
             power = 100 * stockpile
+        elif effect_data.get("reversal_based") or effect_data.get("eruption_based"):
+            hp_percent = attacker.current_hp / attacker.stats["hp"]
+            max_power = effect_data.get("max_power", 150)
+            
+            if effect_data.get("reversal_based"):
+                if hp_percent > 0.6875:
+                    power = 20
+                elif hp_percent > 0.3542:
+                    power = 40
+                elif hp_percent > 0.2083:
+                    power = 80
+                elif hp_percent > 0.1042:
+                    power = 100
+                elif hp_percent > 0.0417:
+                    power = 150
+                else:
+                    power = 200
+                power = min(power, max_power)
+            else:
+                power = int(max_power * hp_percent)
+                power = max(1, power)
+        elif effect_data.get("happiness_based"):
+            happiness = getattr(attacker, 'happiness', 255)
+            power = max(1, int(happiness / 2.5))
+            power = min(power, effect_data.get("max_power", 102))
+        elif effect_data.get("frustration_based"):
+            happiness = getattr(attacker, 'happiness', 0)
+            power = max(1, int((255 - happiness) / 2.5))
+            power = min(power, effect_data.get("max_power", 102))
+        elif effect_data.get("hidden_power"):
+            ivs = getattr(attacker, 'ivs', {})
+            
+            type_bits = sum([
+                (ivs.get('hp', 31) & 1),
+                ((ivs.get('attack', 31) & 1) << 1),
+                ((ivs.get('defense', 31) & 1) << 2),
+                ((ivs.get('speed', 31) & 1) << 3),
+                ((ivs.get('special-attack', 31) & 1) << 4),
+                ((ivs.get('special-defense', 31) & 1) << 5)
+            ])
+            
+            power_bits = sum([
+                ((ivs.get('hp', 31) >> 1) & 1),
+                (((ivs.get('attack', 31) >> 1) & 1) << 1),
+                (((ivs.get('defense', 31) >> 1) & 1) << 2),
+                (((ivs.get('speed', 31) >> 1) & 1) << 3),
+                (((ivs.get('special-attack', 31) >> 1) & 1) << 4),
+                (((ivs.get('special-defense', 31) >> 1) & 1) << 5)
+            ])
+            
+            power = int(power_bits * 40 / 63) + 30
+            power = min(70, max(30, power))
+        elif effect_data.get("weight_based"):
+            defender_weight = getattr(defender, 'weight', 100)
+            
+            if defender_weight < 10:
+                power = 20
+            elif defender_weight < 25:
+                power = 40
+            elif defender_weight < 50:
+                power = 60
+            elif defender_weight < 100:
+                power = 80
+            elif defender_weight < 200:
+                power = 100
+            else:
+                power = 120
+            
+            power = min(power, effect_data.get("max_power", 120))
+        elif effect_data.get("pursuit"):
+            if defender.volatile.get("force_switch") or defender.volatile.get("switching_out"):
+                power = move_data.power * 2
+            else:
+                power = move_data.power
+        elif effect_data.get("future_sight"):
+            power = move_data.power
         else:
             power = move_data.power
         
@@ -86,6 +232,53 @@ class DamageCalculator:
             crit_mult
         )
         
+        if effect_data.get("false_swipe"):
+            if defender.current_hp - final_damage < 1:
+                final_damage = defender.current_hp - 1
+        
+        return max(1, final_damage), type_mult, is_crit
+    
+    async def _calculate_single_hit(
+        self,
+        attacker: BattlePokemon,
+        defender: BattlePokemon,
+        move_data: MoveData,
+        effect_data: Dict[str, Any],
+        override_power: Optional[int] = None
+    ) -> Tuple[int, float, bool]:
+        power = override_power if override_power else move_data.power
+        
+        if power <= 0:
+            return 0, 1.0, False
+        
+        is_crit = self._calculate_crit(attacker, defender, move_data, effect_data)
+        attack_stat, defense_stat = self._get_stats(attacker, defender, move_data, effect_data, is_crit)
+        
+        base_damage = self._base_damage(attacker.level, power, attack_stat, defense_stat)
+        
+        is_struggle = move_data.name.lower() == "struggle"
+        type_mult = 1.0 if is_struggle else _type_mult(move_data.type_name, defender.types)
+        
+        if type_mult == 0.0:
+            return 0, 0.0, False
+        
+        stab = self._calculate_stab(attacker, move_data, is_struggle)
+        weather_mult = self._calculate_weather_mult(attacker, defender, move_data)
+        other_mult = self._calculate_other_multipliers(attacker, defender, move_data, effect_data)
+        
+        random_mult = random.uniform(BattleConstants.DAMAGE_ROLL_MIN, BattleConstants.DAMAGE_ROLL_MAX)
+        crit_mult = BattleConstants.CRIT_DAMAGE_MULT if is_crit else 1.0
+        
+        final_damage = int(
+            base_damage * 
+            stab * 
+            type_mult * 
+            weather_mult *
+            other_mult *
+            random_mult * 
+            crit_mult
+        )
+        
         return max(1, final_damage), type_mult, is_crit
     
     def _get_stats(
@@ -108,7 +301,7 @@ class DamageCalculator:
             else:
                 defense = defender.eff_stat("sp_def")
             
-            if defender.volatile.get("light_screen", 0) > 0:
+            if defender.volatile.get("light_screen", 0) > 0 and not is_crit:
                 defense = int(defense * BattleConstants.SCREEN_DEF_MULT)
             
             if defender.volatile.get("held_item") == "assault_vest":
@@ -130,7 +323,7 @@ class DamageCalculator:
             else:
                 defense = defender.eff_stat("def")
             
-            if defender.volatile.get("reflect", 0) > 0:
+            if defender.volatile.get("reflect", 0) > 0 and not is_crit:
                 defense = int(defense * BattleConstants.SCREEN_DEF_MULT)
             
             if self.weather.get("type") == "sandstorm" and "rock" in defender.types:
@@ -171,10 +364,10 @@ class DamageCalculator:
         if move_id == "hex" and defender.status["name"]:
             modified_power *= 2
         
-        if move_id in ["revenge", "avalanche"] and attacker.volatile.get("last_damage_taken", 0) > 0:
+        if move_id in ["revenge", "avalanche"] and attacker.volatile.get("was_hit_this_turn"):
             modified_power *= 2
         
-        if move_id == "assurance" and defender.volatile.get("last_damage_taken", 0) > 0:
+        if move_id == "assurance" and defender.volatile.get("was_hit_this_turn"):
             modified_power *= 2
         
         if move_id == "payback" and defender.volatile.get("moved_this_turn"):
@@ -268,16 +461,12 @@ class DamageCalculator:
             "blaze": ("fire", 1.5),
             "torrent": ("water", 1.5),
             "swarm": ("bug", 1.5),
-            "chlorophyll": ("grass", 1.5) if self.weather.get("type") == "sun" else ("grass", 1.0),
         }
         
         if ability in type_ability_map:
             boost_type, multiplier = type_ability_map[ability]
             if move_type == boost_type:
-                if ability in ["overgrow", "blaze", "torrent", "swarm"]:
-                    if attacker.current_hp <= attacker.stats["hp"] // 3:
-                        modified_power = int(modified_power * multiplier)
-                else:
+                if attacker.current_hp <= attacker.stats["hp"] // 3:
                     modified_power = int(modified_power * multiplier)
         
         return max(1, modified_power)
