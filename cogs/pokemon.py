@@ -991,6 +991,10 @@ class Pokemon(commands.Cog):
 		party = toolkit.get_user_party(user_id)
 		if not party:
 			return await ctx.send("Seu time está vazio.")
+		
+		toolkit.heal_party(user_id)
+		await ctx.send("Todos os pokémon do seu time estão curados (HP e PP).")
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
