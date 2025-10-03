@@ -244,7 +244,7 @@ class PokemonManager:
 				"levels_gained": []
 			}
 		
-		pokemon = self.repo.get(owner_id, pokemon_id)
+		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 		poke = await self.service.get_pokemon(pokemon["species_id"])
 		
 		all_moves = self.service.get_level_up_moves(poke)
@@ -260,7 +260,7 @@ class PokemonManager:
 		sorted_moves = sorted(new_moves.items(), key=lambda x: x[1])
 		
 		for move_id, level in sorted_moves:
-			pokemon = self.repo.get(owner_id, pokemon_id)
+			pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 			
 			if self.repo.tk.has_move(owner_id, pokemon_id, move_id):
 				continue
@@ -271,8 +271,8 @@ class PokemonManager:
 			except:
 				pp_max = 10
 			
-			if self.repo.tk.can_learn_move(owner_id, pokemon_id):
-				self.repo.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
+			if self.tk.can_learn_move(owner_id, pokemon_id):
+				self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
 				learned.append({
 					"id": move_id,
 					"name": move_id.replace("-", " ").title(),
@@ -288,7 +288,7 @@ class PokemonManager:
 				})
 				
 				if message:
-					pokemon = self.repo.get(owner_id, pokemon_id)
+					pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 					await self._handle_move_choice(message, owner_id, pokemon_id, move_id, pp_max, pokemon)
 		
 		del poke
@@ -335,7 +335,7 @@ class PokemonManager:
 		exp_gain: int,
 		notify_message: Optional[discord.Message] = None
 	) -> Dict:
-		result = self.repo.tk.add_exp(owner_id, pokemon_id, exp_gain)
+		result = self.tk.add_exp(owner_id, pokemon_id, exp_gain)
 		
 		levels_gained = result.get("levels_gained", [])
 		
@@ -364,7 +364,7 @@ class PokemonManager:
 		exp_result: Dict,
 		move_result: Dict
 	) -> None:
-		pokemon = self.repo.get(exp_result["owner_id"], exp_result["id"])
+		pokemon = self.tk.get_pokemon(exp_result["owner_id"], exp_result["id"])
 		
 		lines = []
 		
@@ -381,16 +381,16 @@ class PokemonManager:
 			await message.channel.send("\n".join(lines))
 		
 	def get_party(self, user_id: str) -> List[Dict]:
-		return self.repo.list(user_id, on_party=True)
+		return self.tk.get_user_pokemon(user_id, on_party=True)
 
 	def get_box(self, user_id: str) -> List[Dict]:
-		return self.repo.list(user_id, on_party=False)
+		return self.tk.get_user_pokemon(user_id, on_party=False)
 
 	def list_all(self, user_id: str) -> List[Dict]:
-		return self.repo.list(user_id, on_party=None)
+		return self.tk.list_pokemon_by_owner(user_id)
 
 	async def heal(self, owner_id: str, pokemon_id: int) -> Dict:
-		p = self.repo.get(owner_id, pokemon_id)
+		p = self.tk.get_pokemon(owner_id, pokemon_id)
 		poke = await self.service.get_pokemon(p["species_id"])
 		base_stats = self.service.get_base_stats(poke)
 		stats = calculate_stats(base_stats, p["ivs"], p["evs"], p["level"], p["nature"])
@@ -399,26 +399,19 @@ class PokemonManager:
 		del base_stats
 		del p
 
-		return self.repo.set_current_hp(owner_id, pokemon_id, stats["hp"])
+		return self.tk.set_current_hp(owner_id, pokemon_id, stats["hp"])
 
 	def move_to_party(self, owner_id: str, pokemon_id: int) -> Dict:
-		return self.repo.move_to_party(owner_id, pokemon_id)
+		return self.tk.move_to_party(owner_id, pokemon_id)
 
 	def move_to_box(self, owner_id: str, pokemon_id: int) -> Dict:
-		return self.repo.move_to_box(owner_id, pokemon_id)
+		return self.tk.move_to_box(owner_id, pokemon_id)
 
 	def set_moves(self, owner_id: str, pokemon_id: int, moves: List[Dict]) -> Dict:
-		return self.repo.set_moves(owner_id, pokemon_id, moves)
+		return self.tk.set_moves(owner_id, pokemon_id, moves)
 
 	def iv_percent(self, p: Dict, decimals: int = 2) -> float:
 		return iv_percent(p["ivs"], decimals)
 
 	async def close(self):
-
 		await self.service.close()
-
-
-
-
-
-
