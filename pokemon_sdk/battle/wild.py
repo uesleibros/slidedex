@@ -52,6 +52,49 @@ class WildBattle(BattleEngine):
 	def _validate_party(self) -> bool:
 		return any(not p.fainted for p in self.player_team)
 	
+	def _has_remaining_pokemon(self) -> bool:
+		return any(not p.fainted for p in self.player_team)
+	
+	def _check_battle_state(self) -> Optional[str]:
+		wild_alive = not self.wild.fainted
+		player_alive = not self.player_active.fainted
+		has_backup = any(idx != self.active_player_idx and not p.fainted for idx, p in enumerate(self.player_team))
+		
+		if not wild_alive and not player_alive:
+			if has_backup:
+				return "both_fainted_has_backup"
+			else:
+				return "both_fainted_no_backup"
+		
+		if not wild_alive:
+			return "wild_fainted"
+		
+		if not player_alive:
+			if has_backup:
+				return "player_fainted_has_backup"
+			else:
+				return "player_fainted_no_backup"
+		
+		return "ongoing"
+	
+	async def _resolve_battle_state(self, state: str) -> bool:
+		if state == "wild_fainted":
+			await self._handle_victory()
+			return True
+		
+		elif state == "player_fainted_no_backup" or state == "both_fainted_no_backup":
+			await self._handle_defeat()
+			return True
+		
+		elif state == "player_fainted_has_backup" or state == "both_fainted_has_backup":
+			if state == "both_fainted_has_backup":
+				self.lines.append("")
+				self.lines.append("Ambos os Pokémon desmaiaram!")
+			await self._handle_forced_switch()
+			return True
+		
+		return False
+	
 	async def setup(self) -> bool:
 		w_api, w_spec = await asyncio.gather(
 			pm.service.get_pokemon(self.wild_raw["species_id"]),
@@ -313,46 +356,64 @@ class WildBattle(BattleEngine):
 			turn_order = self._determine_turn_order(player_move_data, enemy_move_data)
 			
 			for side in turn_order:
-				if self.player_active.fainted or self.wild.fainted:
-					break
-				
 				if side == "player":
+					if self.player_active.fainted:
+						continue
+					
 					self.lines.extend(
 						await self._execute_turn_action(True, move_id, player_move_data, self.player_active, self.wild)
 					)
-					if self.wild.fainted:
-						await self._handle_victory()
-						await self.refresh()
-						return
+					
+					state = self._check_battle_state()
+					if state != "ongoing":
+						resolved = await self._resolve_battle_state(state)
+						if resolved:
+							await self.refresh()
+							return
+				
 				else:
+					if self.wild.fainted:
+						continue
+					
 					if self.lines:
 						self.lines.append("")
+					
 					self.lines.extend(
 						await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
 					)
-					if self.player_active.fainted:
-						await self._handle_player_faint()
-						await self.refresh()
-						return
+					
+					state = self._check_battle_state()
+					if state != "ongoing":
+						resolved = await self._resolve_battle_state(state)
+						if resolved:
+							await self.refresh()
+							return
 			
 			end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
 			if end_turn_effects:
 				self.lines.append("")
 				self.lines.extend(end_turn_effects)
 			
+			state = self._check_battle_state()
+			if state != "ongoing":
+				resolved = await self._resolve_battle_state(state)
+				if resolved:
+					await self.refresh()
+					return
+			
 			self.lines.append("")
 			await self._process_end_of_turn([self.player_active, self.wild])
 			await self._process_weather_effects([self.player_active, self.wild])
 			await self._process_field_effects()
 			
-			if self.wild.fainted:
-				await self._handle_victory()
-			elif self.player_active.fainted:
-				await self._handle_player_faint()
+			state = self._check_battle_state()
+			if state != "ongoing":
+				resolved = await self._resolve_battle_state(state)
+				if resolved:
+					await self.refresh()
+					return
 			
-			if not self.ended:
-				self.turn += 1
-			
+			self.turn += 1
 			await self.refresh()
 	
 	async def switch_active(self, new_index: int, consume_turn: bool = True) -> None:
@@ -395,6 +456,16 @@ class WildBattle(BattleEngine):
 				self.wild.modify_stat_stage("atk", -1)
 				self.lines.append(f"😤 Intimidate baixou o ataque de {self.wild.display_name}!")
 			
+			if self.actions_view:
+				self.actions_view.force_switch_mode = False
+			
+			state = self._check_battle_state()
+			if state != "ongoing":
+				resolved = await self._resolve_battle_state(state)
+				if resolved:
+					await self.refresh()
+					return
+			
 			if consume_turn:
 				self.lines.append("")
 				enemy_move_id = self._select_enemy_move()
@@ -410,21 +481,38 @@ class WildBattle(BattleEngine):
 					await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
 				)
 				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					resolved = await self._resolve_battle_state(state)
+					if resolved:
+						await self.refresh()
+						return
+				
 				end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
 				if end_turn_effects:
 					self.lines.append("")
 					self.lines.extend(end_turn_effects)
+				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					resolved = await self._resolve_battle_state(state)
+					if resolved:
+						await self.refresh()
+						return
 				
 				self.lines.append("")
 				await self._process_end_of_turn([self.player_active, self.wild])
 				await self._process_weather_effects([self.player_active, self.wild])
 				await self._process_field_effects()
 				
-				if self.player_active.fainted:
-					await self._handle_player_faint()
+				state = self._check_battle_state()
+				if state != "ongoing":
+					resolved = await self._resolve_battle_state(state)
+					if resolved:
+						await self.refresh()
+						return
 				
-				if not self.ended:
-					self.turn += 1
+				self.turn += 1
 			
 			await self.refresh()
 	
@@ -542,119 +630,140 @@ class WildBattle(BattleEngine):
 		return lines
 	
 	async def attempt_capture(self, ball_type: str = BallType.POKE_BALL) -> bool:
-		if self.player_active.fainted:
-			self.lines = ["Seu Pokémon está desmaiado!"]
-			if self.actions_view:
-				self.actions_view.force_switch_mode = True
-			await self.refresh()
-			return False
-
-		already_caught = pm.repo.tk.has_caught_species(self.user_id, self.wild.species_id)
-		success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
-			wild=self.wild,
-			ball_type=self.ball_type,
-			turn=self.turn,
-			time_of_day=self.time_of_day,
-			location_type=self.location_type,
-			already_caught=already_caught
-		)
-		
-		ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
-		ball_name = PokeBallSystem.get_ball_name(ball_type)
-		
-		if success:
-			experience_distribution = await self._calculate_experience_distribution()
-			ev_distribution = await self._distribute_evs()
-			
-			pm.repo.tk.add_pokemon(
-				owner_id=self.user_id,
-				species_id=self.wild_raw["species_id"],
-				ivs=self.wild_raw["ivs"],
-				nature=self.wild_raw["nature"],
-				ability=self.wild_raw["ability"],
-				gender=self.wild_raw["gender"],
-				shiny=self.wild_raw.get("is_shiny", False),
-				level=self.wild_raw["level"],
-				is_legendary=self.wild_raw["is_legendary"],
-				is_mythical=self.wild_raw["is_mythical"],
-				types=self.wild_raw["types"],
-				region=self.wild_raw["region"],
-				base_stats=self.wild_raw["base_stats"],
-				exp=self.wild_raw.get("exp", 0),
-				moves=self.wild_raw.get("moves", []),
-				nickname=self.wild_raw.get("nickname"),
-				name=self.wild_raw.get("name"),
-				current_hp=self.wild_raw.get("current_hp"),
-				on_party=pm.repo.tk.can_add_to_party(self.user_id)
-			)
-			
-			self.ended = True
-			
-			bonus_text = f" (Bônus {modifier:.1f}x)" if modifier > 1.0 else ""
-			
-			self.lines = [
-				"🎉 **CAPTURA!**",
-				f"{ball_emoji} Capturado com {ball_name}!{bonus_text}",
-				f"✨ {self.wild.display_name} foi adicionado à sua Pokédex!",
-				""
-			]
-			
-			self.lines.extend(self._format_experience_gains(experience_distribution))
-			
-			ev_lines = self._format_ev_gains(ev_distribution)
-			if ev_lines:
-				self.lines.append("")
-				self.lines.extend(ev_lines)
-			
-			if self.actions_view:
-				self.actions_view.disable_all()
-			
-			await self.refresh()
-			
-			total_experience = sum(xp for _, _, xp in experience_distribution)
-			await self.interaction.channel.send(
-				f"🎉 **Capturou {self.wild.display_name}!** ⭐ +{total_experience} XP distribuído!"
-			)
-			
-			await self.cleanup()
-			return True
-		else:
-			self.lines = []
-			shake_display = f"{ball_emoji} " * shake_count if shake_count > 0 else ""
-			self.lines.append(f"💢 {shake_display}Escapou! ({shake_count}x)")
-			self.lines.append("")
-			
-			enemy_move_id = self._select_enemy_move()
-			
-			if enemy_move_id != "__struggle__":
-				enemy_move_data = await self._fetch_move(enemy_move_id)
-			else:
-				enemy_move_data = MoveData(
-					"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
-				)
-			
-			self.lines.extend(
-				await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
-			)
-			
-			end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-			if end_turn_effects:
-				self.lines.append("")
-				self.lines.extend(end_turn_effects)
-			
-			self.lines.append("")
-			await self._process_end_of_turn([self.player_active, self.wild])
-			await self._process_weather_effects([self.player_active, self.wild])
-			await self._process_field_effects()
+		async with self.lock:
+			if self.ended:
+				return False
 			
 			if self.player_active.fainted:
-				await self._handle_player_faint()
+				self.lines = ["Seu Pokémon está desmaiado!"]
+				if self.actions_view:
+					self.actions_view.force_switch_mode = True
+				await self.refresh()
+				return False
+
+			already_caught = pm.repo.tk.has_caught_species(self.user_id, self.wild.species_id)
+			success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
+				wild=self.wild,
+				ball_type=self.ball_type,
+				turn=self.turn,
+				time_of_day=self.time_of_day,
+				location_type=self.location_type,
+				already_caught=already_caught
+			)
 			
-			if not self.ended:
+			ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
+			ball_name = PokeBallSystem.get_ball_name(ball_type)
+			
+			if success:
+				experience_distribution = await self._calculate_experience_distribution()
+				ev_distribution = await self._distribute_evs()
+				
+				pm.repo.tk.add_pokemon(
+					owner_id=self.user_id,
+					species_id=self.wild_raw["species_id"],
+					ivs=self.wild_raw["ivs"],
+					nature=self.wild_raw["nature"],
+					ability=self.wild_raw["ability"],
+					gender=self.wild_raw["gender"],
+					shiny=self.wild_raw.get("is_shiny", False),
+					level=self.wild_raw["level"],
+					is_legendary=self.wild_raw["is_legendary"],
+					is_mythical=self.wild_raw["is_mythical"],
+					types=self.wild_raw["types"],
+					region=self.wild_raw["region"],
+					base_stats=self.wild_raw["base_stats"],
+					exp=self.wild_raw.get("exp", 0),
+					moves=self.wild_raw.get("moves", []),
+					nickname=self.wild_raw.get("nickname"),
+					name=self.wild_raw.get("name"),
+					current_hp=self.wild_raw.get("current_hp"),
+					on_party=pm.repo.tk.can_add_to_party(self.user_id)
+				)
+				
+				self.ended = True
+				
+				bonus_text = f" (Bônus {modifier:.1f}x)" if modifier > 1.0 else ""
+				
+				self.lines = [
+					"🎉 **CAPTURA!**",
+					f"{ball_emoji} Capturado com {ball_name}!{bonus_text}",
+					f"✨ {self.wild.display_name} foi adicionado à sua Pokédex!",
+					""
+				]
+				
+				self.lines.extend(self._format_experience_gains(experience_distribution))
+				
+				ev_lines = self._format_ev_gains(ev_distribution)
+				if ev_lines:
+					self.lines.append("")
+					self.lines.extend(ev_lines)
+				
+				if self.actions_view:
+					self.actions_view.disable_all()
+				
+				await self.refresh()
+				
+				total_experience = sum(xp for _, _, xp in experience_distribution)
+				await self.interaction.channel.send(
+					f"🎉 **Capturou {self.wild.display_name}!** ⭐ +{total_experience} XP distribuído!"
+				)
+				
+				await self.cleanup()
+				return True
+			else:
+				self.lines = []
+				shake_display = f"{ball_emoji} " * shake_count if shake_count > 0 else ""
+				self.lines.append(f"💢 {shake_display}Escapou! ({shake_count}x)")
+				self.lines.append("")
+				
+				enemy_move_id = self._select_enemy_move()
+				
+				if enemy_move_id != "__struggle__":
+					enemy_move_data = await self._fetch_move(enemy_move_id)
+				else:
+					enemy_move_data = MoveData(
+						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
+					)
+				
+				self.lines.extend(
+					await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
+				)
+				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					resolved = await self._resolve_battle_state(state)
+					if resolved:
+						await self.refresh()
+						return False
+				
+				end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
+				if end_turn_effects:
+					self.lines.append("")
+					self.lines.extend(end_turn_effects)
+				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					resolved = await self._resolve_battle_state(state)
+					if resolved:
+						await self.refresh()
+						return False
+				
+				self.lines.append("")
+				await self._process_end_of_turn([self.player_active, self.wild])
+				await self._process_weather_effects([self.player_active, self.wild])
+				await self._process_field_effects()
+				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					resolved = await self._resolve_battle_state(state)
+					if resolved:
+						await self.refresh()
+						return False
+				
 				self.turn += 1
-			
-			await self.refresh()
-			return False
+				
+				await self.refresh()
+				return False
 	
 	async def _handle_victory(self) -> None:
 		experience_distribution = await self._calculate_experience_distribution()
@@ -680,24 +789,21 @@ class WildBattle(BattleEngine):
 		)
 		await self.cleanup()
 	
-	async def _handle_player_faint(self) -> None:
-		remaining_pokemon = [p for p in self.player_team if not p.fainted]
-		
-		if not remaining_pokemon:
-			self.ended = True
-			self.lines.extend([
-				"",
-				"😔 **DERROTA**",
-				"Todos os seus pokémon desmaiaram!"
-			])
-			if self.actions_view:
-				self.actions_view.disable_all()
-			await self.refresh()
-			await self.interaction.channel.send("💀 **Derrota!**")
-			await self.cleanup()
-			return
-		
-		self.lines.extend(["", "Escolha outro Pokémon!"])
+	async def _handle_defeat(self) -> None:
+		self.ended = True
+		self.lines.extend([
+			"",
+			"😔 **DERROTA**",
+			"Todos os seus Pokémon desmaiaram!"
+		])
+		if self.actions_view:
+			self.actions_view.disable_all()
+		await self.refresh()
+		await self.interaction.channel.send("💀 **Derrota!**")
+		await self.cleanup()
+	
+	async def _handle_forced_switch(self) -> None:
+		self.lines.extend(["", "⚠️ Escolha outro Pokémon!"])
 		if self.actions_view:
 			self.actions_view.force_switch_mode = True
 	
