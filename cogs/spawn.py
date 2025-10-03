@@ -1,5 +1,6 @@
 import random
 import discord
+from typing import Optional
 from discord.ext import commands
 from __main__ import pm, battle_tracker
 from utils.preloaded import preloaded_backgrounds
@@ -92,7 +93,7 @@ class Spawn(commands.Cog):
 
 	@commands.command(name="spawn", aliases=["sp"])
 	@requires_account()
-	async def spawn_command(self, ctx: commands.Context) -> None:
+	async def spawn_command(self, ctx: commands.Context, pokemon_level: Optional[int] = None) -> None:
 		is_shiny = False
 		
 		if random.randint(1, SHINY_ROLL) == 1:
@@ -119,14 +120,17 @@ class Spawn(commands.Cog):
 			player_party = pm.tk.get_user_party(str(ctx.author.id))
 		except ValueError:
 			player_party = None
-			
-		if player_party:
-			active_level = player_party[0]["level"]
-			min_level = max(pokemon_min_level, active_level - 5)
-			max_level = max(min_level, min(100, active_level + 5))
-			level = random.randint(min_level, max_level)
+
+		if pokemon_level:
+			level = pokemon_level
 		else:
-			level = random.randint(pokemon_min_level, max(pokemon_min_level, 15))
+			if player_party:
+				active_level = player_party[0]["level"]
+				min_level = max(pokemon_min_level, active_level - 5)
+				max_level = max(min_level, min(100, active_level + 5))
+				level = random.randint(min_level, max_level)
+			else:
+				level = random.randint(pokemon_min_level, max(pokemon_min_level, 15))
 
 		wild = await pm.generate_temp_pokemon(
 			owner_id="wild",
@@ -155,4 +159,5 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
 
