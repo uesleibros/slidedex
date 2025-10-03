@@ -78,8 +78,20 @@ class Info(commands.Cog):
 
 		current_exp = user_pokemon.get("exp", 0)
 		current_level = user_pokemon["level"]
-		exp_needed = toolkit.get_exp_for_level(user_pokemon.get("growth_type"), current_level)
-		exp_progress_percent = round((current_exp / exp_needed) * 100, 1) if exp_needed > 0 else 100
+		growth_type = user_pokemon.get("growth_type")
+
+		exp_current_level = toolkit.get_exp_for_level(growth_type, current_level)
+
+		if current_level >= 100:
+			exp_next_level = exp_current_level
+			exp_progress = 0
+			exp_needed = 0
+			exp_progress_percent = 100.0
+		else:
+			exp_next_level = toolkit.get_exp_for_level(growth_type, current_level + 1)
+			exp_progress = current_exp - exp_current_level
+			exp_needed = exp_next_level - exp_current_level
+			exp_progress_percent = round((exp_progress / exp_needed) * 100, 1) if exp_needed > 0 else 0
 
 		title = f"Level {user_pokemon['level']} {format_pokemon_display(user_pokemon, show_fav=True, show_poke=False)}"
 		
@@ -96,10 +108,9 @@ class Info(commands.Cog):
 			f"**ID do Pokemon:** {pokemon_id}",
 			f"**ID da Espécie:** #{user_pokemon.get('species_id')} - {user_pokemon.get('name', 'Desconhecido').title()}",
 			f"**Nível:** {current_level}",
-			f"**Experiência:** {current_exp}/{exp_needed} ({exp_progress_percent}%)",
+			f"**Experiência:** {exp_progress}/{exp_needed} ({exp_progress_percent}%)",
 			f"**Natureza:** {user_pokemon['nature'].title()}",
 			f"**Tipo de Crescimento:** {user_pokemon['growth_type'].replace('-', ' ').title()}",
-			f"**Gênero:** {user_pokemon.get('gender', 'N/A')}",
 			f"**Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
 			f"**Tipos:** {' / '.join(t.title() for t in user_pokemon['types'])}",
 			f"**Região:** {user_pokemon['region'].replace('-', ' ').title()}",
@@ -143,9 +154,6 @@ class Info(commands.Cog):
 		embed = discord.Embed(title=title, color=discord.Color.blurple())
 		
 		embed.add_field(name="Informacoes Gerais", value="\n".join(details_lines), inline=False)
-		
-		#embed.add_field(name=f"Individual Values (IVs)", value="\n".join(iv_lines), inline=True)
-		#embed.add_field(name=f"Effort Values (EVs) - Total: {ev_total}/510", value=f"**HP:** {user_pokemon.get('evs', {}).get('hp', 0)}/255\n**Ataque:** {user_pokemon.get('evs', {}).get('attack', 0)}/255\n**Defesa:** {user_pokemon.get('evs', {}).get('defense', 0)}/255\n**Sp. Atk:** {user_pokemon.get('evs', {}).get('special-attack', 0)}/255\n**Sp. Def:** {user_pokemon.get('evs', {}).get('special-defense', 0)}/255\n**Velocidade:** {user_pokemon.get('evs', {}).get('speed', 0)}/255", inline=True)
 		
 		embed.add_field(name="Estatisticas Finais", value="\n".join(stats_lines), inline=False)
 		
@@ -200,8 +208,4 @@ class Info(commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
-
 	await bot.add_cog(Info(bot))
-
-
-
