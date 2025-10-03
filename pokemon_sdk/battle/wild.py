@@ -204,11 +204,19 @@ class WildBattle(BattleEngine):
 		self.must_redraw_image = False
 
 	async def _save_battle_state(self) -> None:
-		for idx, pokemon in enumerate(self.player_team):
-			pokemon_id = self.player_party_raw[idx]["id"]
-			
-			pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
-			pm.tk.set_moves(self.user_id, pokemon_id, pokemon.moves)
+	    for idx, pokemon in enumerate(self.player_team):
+	        pokemon_id = self.player_party_raw[idx]["id"]
+	        
+	        pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
+	        
+	        current_pokemon = pm.tk.get_pokemon(self.user_id, pokemon_id)
+	        
+	        for battle_move in pokemon.moves:
+	            for db_move in current_pokemon["moves"]:
+	                if db_move["id"] == battle_move["id"]:
+	                    db_move["pp"] = battle_move["pp"]
+	        
+	        pm.tk.set_moves(self.user_id, pokemon_id, current_pokemon["moves"])
 	
 	async def refresh(self) -> None:
 		if not self.message:
@@ -760,3 +768,4 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
