@@ -324,56 +324,68 @@ class Toolkit:
 			return [self._deepcopy(p) for p in self.db["pokemon"] if p["owner_id"] == owner_id]
 
 	def set_level(self, owner_id: str, pokemon_id: int, level: int) -> int:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			self.db["pokemon"][idx]["level"] = int(level)
-			self._save()
-			return self.db["pokemon"][idx]["level"]
+	    with self._lock:
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        self.db["pokemon"][idx]["level"] = min(int(level), 100)
+	        self._save()
+	        return self.db["pokemon"][idx]["level"]
 
 	def add_exp(self, owner_id: str, pokemon_id: int, exp_gain: int) -> Dict:
-		with self._lock:
-			from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
-			
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			p = self.db["pokemon"][idx]
-			old_level = p["level"]
-			p["exp"] += int(exp_gain)
-			
-			growth_type = p.get("growth_type", GrowthRate.MEDIUM)
-			new_level = self.get_level_from_exp(growth_type, p["exp"])
-			
-			levels_gained = []
-			if new_level > old_level:
-				for lvl in range(old_level + 1, new_level + 1):
-					levels_gained.append(lvl)
-				
-				old_max_hp = calculate_max_hp(
-					p["base_stats"]["hp"],
-					p["ivs"]["hp"],
-					p["evs"]["hp"],
-					old_level
-				)
-				
-				new_max_hp = calculate_max_hp(
-					p["base_stats"]["hp"],
-					p["ivs"]["hp"],
-					p["evs"]["hp"],
-					new_level
-				)
-				
-				current_hp = p.get("current_hp")
-				if current_hp is None:
-					current_hp = old_max_hp
-				
-				p["current_hp"] = adjust_hp_on_level_up(old_max_hp, new_max_hp, current_hp)
-				p["level"] = new_level
-			
-			self._save()
-			
-			result = self._deepcopy(p)
-			result["levels_gained"] = levels_gained
-			result["old_level"] = old_level
-			return result
+	    with self._lock:
+	        from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
+	        
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        p = self.db["pokemon"][idx]
+	        
+	        old_level = p["level"]
+	        
+	        if old_level >= 100:
+	            result = self._deepcopy(p)
+	            result["levels_gained"] = []
+	            result["old_level"] = old_level
+	            result["max_level_reached"] = True
+	            return result
+	        
+	        growth_type = p.get("growth_type", GrowthRate.MEDIUM)
+	        max_exp = self.get_exp_for_level(growth_type, 100)
+	        
+	        p["exp"] = min(p["exp"] + int(exp_gain), max_exp)
+	        
+	        new_level = min(self.get_level_from_exp(growth_type, p["exp"]), 100)
+	        
+	        levels_gained = []
+	        if new_level > old_level:
+	            for lvl in range(old_level + 1, min(new_level + 1, 101)):
+	                levels_gained.append(lvl)
+	            
+	            old_max_hp = calculate_max_hp(
+	                p["base_stats"]["hp"],
+	                p["ivs"]["hp"],
+	                p["evs"]["hp"],
+	                old_level
+	            )
+	            
+	            new_max_hp = calculate_max_hp(
+	                p["base_stats"]["hp"],
+	                p["ivs"]["hp"],
+	                p["evs"]["hp"],
+	                new_level
+	            )
+	            
+	            current_hp = p.get("current_hp")
+	            if current_hp is None:
+	                current_hp = old_max_hp
+	            
+	            p["current_hp"] = adjust_hp_on_level_up(old_max_hp, new_max_hp, current_hp)
+	            p["level"] = new_level
+	        
+	        self._save()
+	        
+	        result = self._deepcopy(p)
+	        result["levels_gained"] = levels_gained
+	        result["old_level"] = old_level
+	        result["max_level_reached"] = new_level >= 100
+	        return result
 
 	def calc_battle_exp(self, poke_level: int, enemy_level: int) -> int:
 		base = enemy_level * 10
@@ -829,3 +841,4 @@ class Toolkit:
 	    with self._lock:
 	        idx = self._get_pokemon_index(owner_id, pokemon_id)
 	        return self.db["pokemon"][idx].get("evolution_blocked", False)
+
