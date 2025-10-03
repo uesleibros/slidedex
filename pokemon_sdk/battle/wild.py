@@ -865,14 +865,12 @@ class WildBattleView(discord.ui.View):
 	
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:PokeBall:1345558169090265151>", label="Capturar")
 	async def capture(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-		if str(interaction.user.id) != self.user_id:
-			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
-		if self.battle.ended:
-			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
-		if self.force_switch_mode or self.battle.player_active.fainted:
-			return await interaction.response.send_message("Troque de Pokémon!", ephemeral=True)
-		await interaction.response.defer()
-
-		await self.battle.attempt_capture()
-
-
+	    if str(interaction.user.id) != self.user_id:
+	        return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
+	    if self.battle.ended:
+	        return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
+	    if self.force_switch_mode or self.battle.player_active.fainted:
+	        return await interaction.response.send_message("Troque de Pokémon!", ephemeral=True)
+	    
+	    from .helpers import PokeballsView
+	    await interaction.response.edit_message(view=PokeballsView(self.battle))
