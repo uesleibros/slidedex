@@ -557,6 +557,9 @@ class BattleEngine:
                 if result:
                     has_effect = True
                     lines.extend(result)
+                    
+                    if effect.get("type") == "transform":
+                        self.must_redraw_image = True
         elif move_data.stat_changes:
             for stat_change in move_data.stat_changes:
                 stat, stages = stat_change[0], stat_change[1]
@@ -860,3 +863,4 @@ class BattleEngine:
         
         if self.field.get("water_sport", 0) > 0:
             self.field["water_sport"] -= 1
+
