@@ -513,10 +513,12 @@ class Toolkit:
 	        return self._deepcopy(p["moves"])
 	
 	def has_move(self, owner_id: str, pokemon_id: int, move_id: str) -> bool:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			moves = self.db["pokemon"][idx].get("moves", [])
-			return any(m["id"] == move_id for m in moves)
+	    with self._lock:
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        moves = self.db["pokemon"][idx].get("moves", [])
+	        
+	        has_it = any(m["id"] == move_id for m in moves)
+	        return has_it
 
 	def remove_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[Dict]:
 		with self._lock:
@@ -819,5 +821,6 @@ class Toolkit:
 					continue
 			
 			return results
+
 
 
