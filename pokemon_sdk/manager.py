@@ -133,6 +133,7 @@ class PokemonManager:
 		species: aiopoke.PokemonSpecies = await self.service.get_species(species_id)
 		base_stats = self.service.get_base_stats(poke)
 
+		growth_type: str = species.growth_rate.name
 		pkm_name = poke.name
 
 		final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
@@ -172,6 +173,7 @@ class PokemonManager:
 			"is_legendary": is_legendary,
 			"is_mythical": is_mythical,
 			"moves": final_moves,
+			"growth_type": growth_type,
 			"base_stats": gen["stats"],
 			"current_hp": gen["current_hp"],
 			"on_party": on_party,
@@ -214,6 +216,7 @@ class PokemonManager:
 			region=pkmn["region"],
 			on_party=pkmn["on_party"],
 			current_hp=pkmn["current_hp"],
+			growth_type=pkmn["growth_type"],
 			held_item=pkmn["held_item"],
 			nickname=pkmn["nickname"],
 			base_stats=pkmn["base_stats"],
@@ -409,3 +412,4 @@ class PokemonManager:
 	async def close(self):
 
 		await self.service.close()
+
