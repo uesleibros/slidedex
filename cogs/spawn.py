@@ -30,7 +30,7 @@ class BattleView(discord.ui.View):
 				ephemeral=True
 			)
 		try:
-			player_party = pm.repo.tk.get_user_party(str(self.author.id))
+			player_party = pm.tk.get_user_party(str(self.author.id))
 		except ValueError:
 			player_party = None
 			
@@ -116,7 +116,7 @@ class Spawn(commands.Cog):
 		pokemon_min_level = await self.get_pokemon_min_level(species)
 
 		try:
-			player_party = pm.repo.tk.get_user_party(str(ctx.author.id))
+			player_party = pm.tk.get_user_party(str(ctx.author.id))
 		except ValueError:
 			player_party = None
 			
@@ -155,3 +155,4 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
