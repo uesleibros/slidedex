@@ -513,6 +513,7 @@ class EffectHandler:
         user.volatile["original_stats"] = user.stats.copy()
         user.volatile["original_types"] = user.types.copy()
         user.volatile["original_moves"] = user.moves.copy() if hasattr(user, 'moves') else []
+        user.volatile["original_sprites"] = user.sprites.copy() if hasattr(user, 'sprites') else {}
         
         user.stats = target.stats.copy()
         user.types = target.types.copy()
@@ -520,6 +521,9 @@ class EffectHandler:
         
         if hasattr(target, 'moves'):
             user.moves = target.moves.copy()
+        
+        if hasattr(target, 'sprites'):
+            user.sprites = target.sprites.copy()
         
         user.volatile["transformed"] = True
         user.volatile["transform_target"] = target.display_name
