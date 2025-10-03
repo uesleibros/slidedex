@@ -13,7 +13,7 @@ class PokeballsView(discord.ui.View):
     def load_pokeballs(self):
         from .pokeballs import PokeBallSystem, BallType
         
-        already_caught = pm.repo.tk.has_caught_species(self.user_id, self.battle.wild.species_id)
+        already_caught = pm.tk.has_caught_species(self.user_id, self.battle.wild.species_id)
         
         available_balls = [
             BallType.POKE_BALL,
