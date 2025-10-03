@@ -254,6 +254,9 @@ class PokemonManager:
 	        if level in levels_gained:
 	            new_moves[move_id] = level
 	    
+	    if not new_moves and message:
+	        await message.channel.send(f"DEBUG: Nenhum move disponível para os níveis {levels_gained}")
+	    
 	    learned = []
 	    needs_choice = []
 	    
@@ -268,17 +271,30 @@ class PokemonManager:
 	        try:
 	            move_detail = await self.service.get_move(move_id)
 	            pp_max = move_detail.pp if move_detail.pp else 10
-	        except:
+	        except Exception as e:
 	            pp_max = 10
+	            if message:
+	                await message.channel.send(f"DEBUG: Erro ao buscar move {move_id}: {e}")
 	        
-	        if self.tk.can_learn_move(owner_id, pokemon_id):
-	            self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
-	            learned.append({
-	                "id": move_id,
-	                "name": move_id.replace("-", " ").title(),
-	                "level": level,
-	                "pp_max": pp_max
-	            })
+	        can_learn = self.tk.can_learn_move(owner_id, pokemon_id)
+	        
+	        if can_learn:
+	            try:
+	                result = self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
+	                
+	                learned.append({
+	                    "id": move_id,
+	                    "name": move_id.replace("-", " ").title(),
+	                    "level": level,
+	                    "pp_max": pp_max
+	                })
+	                
+	                if message:
+	                    await message.channel.send(f"DEBUG: Move {move_id} aprendido! Total moves agora: {len(result)}")
+	                
+	            except Exception as e:
+	                if message:
+	                    await message.channel.send(f"DEBUG: ERRO ao aprender {move_id}: {type(e).__name__}: {e}")
 	        else:
 	            needs_choice.append({
 	                "id": move_id,
@@ -415,6 +431,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
