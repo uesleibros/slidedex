@@ -569,24 +569,30 @@ class WildBattle(BattleEngine):
 		return distribution
 	
 	async def _calculate_experience_distribution(self) -> List[Tuple[int, Dict[str, Any], int]]:
-		base_experience = pm.repo.tk.calc_battle_exp(
-			self.player_active.level,
-			self.wild.level
-		)
+		wild_species = await pm.service.get_species(self.wild_data["species_id"])
+		base_experience = wild_species.base_experience if wild_species.base_experience else 50
+		
+		enemy_level = self.wild.level
+		is_trainer_battle = False
+		
+		base_exp_gain = int((base_experience * enemy_level) / 7)
+		
+		if is_trainer_battle:
+			base_exp_gain = int(base_exp_gain * 1.5)
 		
 		participant_count = len(self.battle_participants)
 		if participant_count == 0:
 			return []
 		
-		experience_per_pokemon = max(1, base_experience // participant_count)
-		
 		distribution = []
 		for participant_index in self.battle_participants:
 			pokemon_data = self.player_party_raw[participant_index]
-			exp_to_give = experience_per_pokemon
+			exp_to_give = base_exp_gain // participant_count
 			
 			if self.player_team[participant_index].volatile.get("held_item") == "lucky_egg":
 				exp_to_give = int(exp_to_give * 1.5)
+			
+			exp_to_give = max(1, exp_to_give)
 			
 			exp_result = await pm.add_experience(
 				self.user_id,
@@ -596,6 +602,8 @@ class WildBattle(BattleEngine):
 			)
 			
 			distribution.append((participant_index, pokemon_data, exp_to_give))
+		
+		del wild_species
 		
 		return distribution
 	
@@ -869,3 +877,4 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
+
