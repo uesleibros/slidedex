@@ -683,7 +683,7 @@ class WildBattle(BattleEngine):
 					nickname=self.wild_raw.get("nickname"),
 					name=self.wild_raw.get("name"),
 					current_hp=self.wild_raw.get("current_hp"),
-					on_party=pm.repo.tk.can_add_to_party(self.user_id)
+					on_party=pm.tk.can_add_to_party(self.user_id)
 				)
 				
 				self.ended = True
@@ -875,3 +875,4 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
