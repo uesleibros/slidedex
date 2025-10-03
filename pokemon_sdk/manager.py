@@ -73,7 +73,7 @@ class MoveChoiceView(discord.ui.View):
 			move_forgotten_name = move_to_forget.replace("-", " ").title()
 			
 			await interaction.response.edit_message(
-				content=f"{format_pokemon_display(self.pokemon, bold_name=True)} Esqueceu **{move_forgotten_name}** e Aprendeu **{self.new_move_name}**!",
+				content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Esqueceu **{move_forgotten_name}** e Aprendeu **{self.new_move_name}**!",
 				view=None
 			)
 			
@@ -93,7 +93,7 @@ class MoveChoiceView(discord.ui.View):
 		self.answered = True
 		
 		await interaction.response.edit_message(
-			content=f"{format_pokemon_display(self.pokemon, bold_name=True)} Não aprendeu **{self.new_move_name}**.",
+			content=f"<@{self.owner_id}> {format_pokemon_display(self.pokemon, bold_name=True)} Não aprendeu **{self.new_move_name}**.",
 			view=None
 		)
 		
@@ -105,7 +105,7 @@ class MoveChoiceView(discord.ui.View):
 				item.disabled = True
 			
 			await self.message.edit(
-				content=f"Tempo esgotado! {format_pokemon_display(self.pokemon, bold_name=True)} não aprendeu **{self.new_move_name}**.",
+				content=f"<@{self.owner_id}> Tempo esgotado! {format_pokemon_display(self.pokemon, bold_name=True)} não aprendeu **{self.new_move_name}**.",
 				view=None
 			)
 
@@ -321,7 +321,7 @@ class PokemonManager:
 			manager=self
 		)
 		
-		content = f"{format_pokemon_display(pokemon, bold_name=True)} Quer aprender **{new_move_name}**, mas já conhece 4 movimentos.\nEscolha um movimento para esquecer ou cancele para não aprender **{new_move_name}**.\n-# Você tem até 1 minuto para fazer sua escolha."
+		content = f"<@{owner_id}> {format_pokemon_display(pokemon, bold_name=True)} Quer aprender **{new_move_name}**, mas já conhece 4 movimentos.\nEscolha um movimento para esquecer ou cancele para não aprender **{new_move_name}**.\n-# Você tem até 1 minuto para fazer sua escolha."
 		
 		sent_message = await message.channel.send(content=content, view=view)
 		view.message = sent_message
@@ -413,6 +413,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
