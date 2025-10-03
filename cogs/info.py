@@ -143,8 +143,8 @@ class Info(commands.Cog):
 		
 		embed.add_field(name="Informacoes Gerais", value="\n".join(details_lines), inline=False)
 		
-		embed.add_field(name=f"Individual Values (IVs)", value="\n".join(iv_lines), inline=True)
-		embed.add_field(name=f"Effort Values (EVs) - Total: {ev_total}/510", value=f"**HP:** {user_pokemon.get('evs', {}).get('hp', 0)}/255\n**Ataque:** {user_pokemon.get('evs', {}).get('attack', 0)}/255\n**Defesa:** {user_pokemon.get('evs', {}).get('defense', 0)}/255\n**Sp. Atk:** {user_pokemon.get('evs', {}).get('special-attack', 0)}/255\n**Sp. Def:** {user_pokemon.get('evs', {}).get('special-defense', 0)}/255\n**Velocidade:** {user_pokemon.get('evs', {}).get('speed', 0)}/255", inline=True)
+		#embed.add_field(name=f"Individual Values (IVs)", value="\n".join(iv_lines), inline=True)
+		#embed.add_field(name=f"Effort Values (EVs) - Total: {ev_total}/510", value=f"**HP:** {user_pokemon.get('evs', {}).get('hp', 0)}/255\n**Ataque:** {user_pokemon.get('evs', {}).get('attack', 0)}/255\n**Defesa:** {user_pokemon.get('evs', {}).get('defense', 0)}/255\n**Sp. Atk:** {user_pokemon.get('evs', {}).get('special-attack', 0)}/255\n**Sp. Def:** {user_pokemon.get('evs', {}).get('special-defense', 0)}/255\n**Velocidade:** {user_pokemon.get('evs', {}).get('speed', 0)}/255", inline=True)
 		
 		embed.add_field(name="Estatisticas Finais", value="\n".join(stats_lines), inline=False)
 		
@@ -199,4 +199,5 @@ class Info(commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
+
 	await bot.add_cog(Info(bot))
