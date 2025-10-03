@@ -10,33 +10,43 @@ class PokeballsView(discord.ui.View):
         self.user_id = battle.user_id
         self.load_pokeballs()
     
-    def load_pokeballs(self):
-        from .pokeballs import PokeBallSystem, BallType
-        
-        already_caught = pm.repo.tk.has_caught_species(self.user_id, self.battle.wild.species_id)
-        
-        options = []
-        for ball_type, ball_info in PokeBallSystem.BALL_DATA.items():
-            modifier = PokeBallSystem.calculate_modifier(
-                ball_type,
-                self.battle.wild,
-                self.battle.turn,
-                self.battle.time_of_day,
-                self.battle.location_type,
-                already_caught
-            )
-            
-            bonus_text = f" [{modifier:.1f}x]" if modifier > 1.0 else ""
-            
-            options.append(discord.SelectOption(
-                label=f"{ball_info['name']}{bonus_text}",
-                value=ball_type,
-                description=ball_info['description'][:100],
-                emoji=ball_info['emoji']
-            ))
-        
-        self.children[0].options = options
-    
+	def load_pokeballs(self):
+	    from .pokeballs import PokeBallSystem, BallType
+	    
+	    already_caught = pm.repo.tk.has_caught_species(self.user_id, self.battle.wild.species_id)
+	    
+	    available_balls = [
+	        BallType.POKE_BALL,
+	        BallType.GREAT_BALL,
+	        BallType.NET_BALL,
+	        BallType.NEST_BALL,
+	        BallType.REPEAT_BALL,
+	        BallType.TIMER_BALL,
+	    ]
+	    
+	    options = []
+	    for ball_type in available_balls:
+	        ball_info = PokeBallSystem.BALL_DATA[ball_type]
+	        modifier = PokeBallSystem.calculate_modifier(
+	            ball_type,
+	            self.battle.wild,
+	            self.battle.turn,
+	            self.battle.time_of_day,
+	            self.battle.location_type,
+	            already_caught
+	        )
+	        
+	        bonus_text = f" [{modifier:.1f}x]" if modifier > 1.0 else ""
+	        
+	        options.append(discord.SelectOption(
+	            label=f"{ball_info['name']}{bonus_text}",
+	            value=ball_type,
+	            description=ball_info['description'][:100],
+	            emoji=ball_info['emoji']
+	        ))
+	    
+	    self.children[0].options = options
+	
     @discord.ui.select(placeholder="Escolha uma Pokébola...")
     async def select_ball(self, interaction: discord.Interaction, select: discord.ui.Select):
         if str(interaction.user.id) != self.user_id:
