@@ -5,12 +5,10 @@ from typing import List, Dict, Any, Optional, Set, Tuple
 from __main__ import pm, battle_tracker
 from utils.canvas import compose_battle_async
 from utils.preloaded import preloaded_textures
-from utils.formatting import format_pokemon_display
 from .pokemon import BattlePokemon
-from .messages import BattleMessages
 from .status import StatusHandler
 from .capture import CaptureSystem
-from .helpers import SwitchView, MovesView, MoveData, _hp_bar
+from .helpers import SwitchView, MovesView
 from .pokeballs import PokeBallSystem, BallType
 from .engine import BattleEngine
 
@@ -43,37 +41,19 @@ class WildBattle(BattleEngine):
 	def player_active(self) -> BattlePokemon:
 		return self.player_team[self.active_player_idx]
 	
-	def _find_first_available_pokemon(self) -> Optional[int]:
-		for idx, pokemon in enumerate(self.player_team):
-			if not pokemon.fainted:
-				return idx
-		return None
-	
-	def _validate_party(self) -> bool:
-		return any(not p.fainted for p in self.player_team)
-	
-	def _has_remaining_pokemon(self) -> bool:
-		return any(not p.fainted for p in self.player_team)
-	
 	def _check_battle_state(self) -> Optional[str]:
 		wild_alive = not self.wild.fainted
 		player_alive = not self.player_active.fainted
 		has_backup = any(idx != self.active_player_idx and not p.fainted for idx, p in enumerate(self.player_team))
 		
 		if not wild_alive and not player_alive:
-			if has_backup:
-				return "both_fainted_has_backup"
-			else:
-				return "both_fainted_no_backup"
+			return "both_fainted_has_backup" if has_backup else "both_fainted_no_backup"
 		
 		if not wild_alive:
 			return "wild_fainted"
 		
 		if not player_alive:
-			if has_backup:
-				return "player_fainted_has_backup"
-			else:
-				return "player_fainted_no_backup"
+			return "player_fainted_has_backup" if has_backup else "player_fainted_no_backup"
 		
 		return "ongoing"
 	
@@ -117,7 +97,7 @@ class WildBattle(BattleEngine):
 				party_data[i + 1]
 			))
 		
-		if not self._validate_party():
+		if not self._validate_party(self.player_team):
 			await self.interaction.followup.send(
 				"Todos os seus Pokémon estão desmaiados!\n"
 				"Cure-os em um Centro Pokémon antes de batalhar.",
@@ -125,7 +105,7 @@ class WildBattle(BattleEngine):
 			)
 			return False
 		
-		first_available = self._find_first_available_pokemon()
+		first_available = self._find_first_available_pokemon(self.player_team)
 		if first_available is None:
 			await self.interaction.followup.send(
 				"Nenhum Pokémon disponível para batalha!",
@@ -159,32 +139,6 @@ class WildBattle(BattleEngine):
 		ef = await self.wild.sprites["front"].read() if self.wild.sprites["front"] else None
 		buf = await compose_battle_async(pb, ef, preloaded_textures["battle"])
 		return discord.File(buf, filename="battle.png")
-	
-	def _generate_hp_display(self, pokemon: BattlePokemon) -> str:
-		bar = _hp_bar(pokemon.current_hp, pokemon.stats["hp"])
-		hp_percent = (pokemon.current_hp / pokemon.stats["hp"] * 100) if pokemon.stats["hp"] > 0 else 0
-		base_display = (
-			f"{format_pokemon_display(pokemon.raw, bold_name=True)} "
-			f"{pokemon.status_tag()} Lv{pokemon.level}\n"
-			f"{bar} {max(0, pokemon.current_hp)}/{pokemon.stats['hp']} ({hp_percent:.1f}%)"
-		)
-
-		stage_modifications = []
-		for stat_key in ["atk", "def", "sp_atk", "sp_def", "speed"]:
-			stage_value = pokemon.stages.get(stat_key, 0)
-			if stage_value != 0:
-				stat_abbrev = stat_key.upper().replace("_", "")
-				stage_modifications.append(f"{stat_abbrev}: {stage_value:+d}")
-		
-		if pokemon.stages.get("accuracy", 0) != 0:
-			stage_modifications.append(f"ACC: {pokemon.stages['accuracy']:+d}")
-		if pokemon.stages.get("evasion", 0) != 0:
-			stage_modifications.append(f"EVA: {pokemon.stages['evasion']:+d}")
-		
-		if stage_modifications:
-			base_display += f" [{' | '.join(stage_modifications)}]"
-		
-		return base_display
 	
 	def _build_embed(self) -> discord.Embed:
 		description_components = [
@@ -253,24 +207,14 @@ class WildBattle(BattleEngine):
 		for idx, pokemon in enumerate(self.player_team):
 			pokemon_id = self.player_party_raw[idx]["id"]
 			
-			pm.tk.set_current_hp(
-				self.user_id,
-				pokemon_id,
-				pokemon.current_hp
-			)
-			
-			pm.tk.set_moves(
-				self.user_id,
-				pokemon_id,
-				pokemon.moves
-			)
+			pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
+			pm.tk.set_moves(self.user_id, pokemon_id, pokemon.moves)
 	
 	async def refresh(self) -> None:
 		if not self.message:
 			return
 		
 		embed = self._build_embed()
-
 		await self._save_battle_state()
 		
 		if self.must_redraw_image:
@@ -280,83 +224,33 @@ class WildBattle(BattleEngine):
 		else:
 			await self.message.edit(embed=embed, view=self.actions_view)
 	
-	def _select_enemy_move(self) -> str:
-		from .helpers import _slug
-		
-		available_moves = []
-		
-		for m in self.wild.moves:
-			move_id = str(m["id"])
-			pp = int(m.get("pp", 0))
-			
-			if pp <= 0:
-				continue
-			
-			if self.wild.is_move_disabled(move_id):
-				continue
-			
-			available_moves.append(m)
-		
-		if not available_moves:
-			return "__struggle__"
-		
-		return str(random.choice(available_moves)["id"])
-	
-	def _determine_turn_order(
-		self,
-		player_move: MoveData,
-		enemy_move: MoveData
-	) -> List[str]:
-		player_priority = self._get_move_priority(player_move, self.player_active)
-		enemy_priority = self._get_move_priority(enemy_move, self.wild)
-		
-		if player_priority != enemy_priority:
-			return ["player", "enemy"] if player_priority > enemy_priority else ["enemy", "player"]
-		
-		player_speed = self.player_active.eff_stat("speed")
-		enemy_speed = self.wild.eff_stat("speed")
-		
-		player_item = self.player_active.volatile.get("held_item", "")
-		enemy_item = self.wild.volatile.get("held_item", "")
-		
-		if player_item == "quick_claw" and random.random() < 0.2:
-			return ["player", "enemy"]
-		if enemy_item == "quick_claw" and random.random() < 0.2:
-			return ["enemy", "player"]
-		
-		if self.field.get("trick_room", 0) > 0:
-			if player_speed != enemy_speed:
-				return ["player", "enemy"] if player_speed < enemy_speed else ["enemy", "player"]
-		else:
-			if player_speed != enemy_speed:
-				return ["player", "enemy"] if player_speed > enemy_speed else ["enemy", "player"]
-		
-		return random.choice([["player", "enemy"], ["enemy", "player"]])
-	
 	async def handle_player_move(self, move_id: str) -> None:
 		async with self.lock:
 			if self.ended:
 				return
 			
 			self.lines = []
-			
 			self.player_active.clear_turn_volatiles()
 			self.wild.clear_turn_volatiles()
 			
 			player_move_data = await self._fetch_move(move_id)
-			enemy_move_id = self._select_enemy_move()
+			enemy_move_id = self._select_ai_move(self.wild)
 			
 			if enemy_move_id != "__struggle__":
 				enemy_move_data = await self._fetch_move(enemy_move_id)
 			else:
+				from .helpers import MoveData
 				enemy_move_data = MoveData(
 					"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
 				)
 			
-			turn_order = self._determine_turn_order(player_move_data, enemy_move_data)
+			turn_order = self._determine_turn_order(
+				player_move_data, self.player_active,
+				enemy_move_data, self.wild
+			)
 			
 			for side in turn_order:
-				if side == "player":
+				if side == "first":
 					if self.player_active.fainted:
 						continue
 					
@@ -366,8 +260,7 @@ class WildBattle(BattleEngine):
 					
 					state = self._check_battle_state()
 					if state != "ongoing":
-						resolved = await self._resolve_battle_state(state)
-						if resolved:
+						if await self._resolve_battle_state(state):
 							await self.refresh()
 							return
 				
@@ -384,8 +277,7 @@ class WildBattle(BattleEngine):
 					
 					state = self._check_battle_state()
 					if state != "ongoing":
-						resolved = await self._resolve_battle_state(state)
-						if resolved:
+						if await self._resolve_battle_state(state):
 							await self.refresh()
 							return
 			
@@ -396,8 +288,7 @@ class WildBattle(BattleEngine):
 			
 			state = self._check_battle_state()
 			if state != "ongoing":
-				resolved = await self._resolve_battle_state(state)
-				if resolved:
+				if await self._resolve_battle_state(state):
 					await self.refresh()
 					return
 			
@@ -408,8 +299,7 @@ class WildBattle(BattleEngine):
 			
 			state = self._check_battle_state()
 			if state != "ongoing":
-				resolved = await self._resolve_battle_state(state)
-				if resolved:
+				if await self._resolve_battle_state(state):
 					await self.refresh()
 					return
 			
@@ -461,18 +351,18 @@ class WildBattle(BattleEngine):
 			
 			state = self._check_battle_state()
 			if state != "ongoing":
-				resolved = await self._resolve_battle_state(state)
-				if resolved:
+				if await self._resolve_battle_state(state):
 					await self.refresh()
 					return
 			
 			if consume_turn:
 				self.lines.append("")
-				enemy_move_id = self._select_enemy_move()
+				enemy_move_id = self._select_ai_move(self.wild)
 				
 				if enemy_move_id != "__struggle__":
 					enemy_move_data = await self._fetch_move(enemy_move_id)
 				else:
+					from .helpers import MoveData
 					enemy_move_data = MoveData(
 						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
 					)
@@ -483,8 +373,7 @@ class WildBattle(BattleEngine):
 				
 				state = self._check_battle_state()
 				if state != "ongoing":
-					resolved = await self._resolve_battle_state(state)
-					if resolved:
+					if await self._resolve_battle_state(state):
 						await self.refresh()
 						return
 				
@@ -495,8 +384,7 @@ class WildBattle(BattleEngine):
 				
 				state = self._check_battle_state()
 				if state != "ongoing":
-					resolved = await self._resolve_battle_state(state)
-					if resolved:
+					if await self._resolve_battle_state(state):
 						await self.refresh()
 						return
 				
@@ -507,8 +395,7 @@ class WildBattle(BattleEngine):
 				
 				state = self._check_battle_state()
 				if state != "ongoing":
-					resolved = await self._resolve_battle_state(state)
-					if resolved:
+					if await self._resolve_battle_state(state):
 						await self.refresh()
 						return
 				
@@ -593,7 +480,7 @@ class WildBattle(BattleEngine):
 			
 			exp_to_give = max(1, exp_to_give)
 			
-			exp_result = await pm.add_experience(
+			await pm.add_experience(
 				self.user_id,
 				pokemon_data["id"],
 				exp_to_give,
@@ -722,11 +609,12 @@ class WildBattle(BattleEngine):
 				self.lines.append(f"💢 {shake_display}Escapou! ({shake_count}x)")
 				self.lines.append("")
 				
-				enemy_move_id = self._select_enemy_move()
+				enemy_move_id = self._select_ai_move(self.wild)
 				
 				if enemy_move_id != "__struggle__":
 					enemy_move_data = await self._fetch_move(enemy_move_id)
 				else:
+					from .helpers import MoveData
 					enemy_move_data = MoveData(
 						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
 					)
@@ -737,8 +625,7 @@ class WildBattle(BattleEngine):
 				
 				state = self._check_battle_state()
 				if state != "ongoing":
-					resolved = await self._resolve_battle_state(state)
-					if resolved:
+					if await self._resolve_battle_state(state):
 						await self.refresh()
 						return False
 				
@@ -749,8 +636,7 @@ class WildBattle(BattleEngine):
 				
 				state = self._check_battle_state()
 				if state != "ongoing":
-					resolved = await self._resolve_battle_state(state)
-					if resolved:
+					if await self._resolve_battle_state(state):
 						await self.refresh()
 						return False
 				
@@ -761,8 +647,7 @@ class WildBattle(BattleEngine):
 				
 				state = self._check_battle_state()
 				if state != "ongoing":
-					resolved = await self._resolve_battle_state(state)
-					if resolved:
+					if await self._resolve_battle_state(state):
 						await self.refresh()
 						return False
 				
@@ -875,4 +760,3 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
-
