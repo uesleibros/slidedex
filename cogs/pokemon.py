@@ -166,6 +166,67 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 		max_hp = lambda p: p.get("base_stats", {}).get("hp", 0)
 		res = [p for p in res if p.get("current_hp", 0) >= max_hp(p)]
 	
+	if flags.get("growth_type"):
+		growth_types = [g.lower() for group in flags["growth_type"] for g in group]
+		res = [p for p in res if p.get("growth_type", "").lower() in growth_types]
+	
+	if flags.get("min_exp") is not None:
+		res = [p for p in res if p.get("exp", 0) >= flags.get("min_exp")]
+	if flags.get("max_exp") is not None:
+		res = [p for p in res if p.get("exp", 0) <= flags.get("max_exp")]
+	if flags.get("exp"):
+		exp_values = [int(v) for group in flags["exp"] for v in group]
+		res = [p for p in res if p.get("exp", 0) in exp_values]
+	
+	if flags.get("exp_percent") is not None:
+		percent_values = [int(v) for group in flags["exp_percent"] for v in group]
+		filtered = []
+		for p in res:
+			progress = toolkit.get_exp_progress(p.get("growth_type", "medium"), p.get("exp", 0))
+			if int(progress["progress_percent"]) in percent_values:
+				filtered.append(p)
+		res = filtered
+	
+	if flags.get("background"):
+		backgrounds = [b.lower() for group in flags["background"] for b in group]
+		res = [p for p in res if p.get("background", "").lower() in backgrounds]
+	
+	if flags.get("min_move_count") is not None:
+		res = [p for p in res if len(p.get("moves", [])) >= flags.get("min_move_count")]
+	if flags.get("max_move_count") is not None:
+		res = [p for p in res if len(p.get("moves", [])) <= flags.get("max_move_count")]
+	if flags.get("move_count"):
+		counts = [int(v) for group in flags["move_count"] for v in group]
+		res = [p for p in res if len(p.get("moves", [])) in counts]
+	
+	if flags.get("triple_31"):
+		res = [p for p in res if sum(1 for v in p["ivs"].values() if v == 31) >= 3]
+	if flags.get("quad_31"):
+		res = [p for p in res if sum(1 for v in p["ivs"].values() if v == 31) >= 4]
+	if flags.get("penta_31"):
+		res = [p for p in res if sum(1 for v in p["ivs"].values() if v == 31) >= 5]
+	if flags.get("hexa_31"):
+		res = [p for p in res if sum(1 for v in p["ivs"].values() if v == 31) == 6]
+	
+	if flags.get("triple_0"):
+		res = [p for p in res if sum(1 for v in p["ivs"].values() if v == 0) >= 3]
+	if flags.get("quad_0"):
+		res = [p for p in res if sum(1 for v in p["ivs"].values() if v == 0) >= 4]
+	
+	if flags.get("duplicates"):
+		species_count = {}
+		for p in pokemons:
+			sid = p["species_id"]
+			species_count[sid] = species_count.get(sid, 0) + 1
+		res = [p for p in res if species_count.get(p["species_id"], 0) > 1]
+	
+	if flags.get("unique"):
+		species_count = {}
+		for p in pokemons:
+			sid = p["species_id"]
+			species_count[sid] = species_count.get(sid, 0) + 1
+		res = [p for p in res if species_count.get(p["species_id"], 0) == 1]
+	
 	return res
 
 def apply_sort_limit(pokemons: List[Dict], flags) -> List[Dict]:
@@ -181,6 +242,8 @@ def apply_sort_limit(pokemons: List[Dict], flags) -> List[Dict]:
 			"species": lambda p: p["species_id"],
 			"ev": lambda p: sum(p.get("evs", {}).values()),
 			"hp": lambda p: p.get("current_hp", 0),
+			"exp": lambda p: p.get("exp", 0),
+			"growth": lambda p: p.get("growth_type", ""),
 		}
 		res.sort(key=keymap.get(flags.get("sort"), lambda p: p["id"]), reverse=bool(flags.get("reverse")))
 	if flags.get("limit") is not None and flags.get("limit") > 0:
@@ -298,6 +361,23 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--has_held_item", action="store_true")
 	@flags.add_flag("--fainted", action="store_true")
 	@flags.add_flag("--healthy", action="store_true")
+	@flags.add_flag("--growth_type", nargs="+", action="append")
+	@flags.add_flag("--min_exp", type=int)
+	@flags.add_flag("--max_exp", type=int)
+	@flags.add_flag("--exp", nargs="+", action="append")
+	@flags.add_flag("--exp_percent", nargs="+", action="append")
+	@flags.add_flag("--background", nargs="+", action="append")
+	@flags.add_flag("--min_move_count", type=int)
+	@flags.add_flag("--max_move_count", type=int)
+	@flags.add_flag("--move_count", nargs="+", action="append")
+	@flags.add_flag("--triple_31", action="store_true")
+	@flags.add_flag("--quad_31", action="store_true")
+	@flags.add_flag("--penta_31", action="store_true")
+	@flags.add_flag("--hexa_31", action="store_true")
+	@flags.add_flag("--triple_0", action="store_true")
+	@flags.add_flag("--quad_0", action="store_true")
+	@flags.add_flag("--duplicates", action="store_true")
+	@flags.add_flag("--unique", action="store_true")
 	@flags.add_flag("--page_size", type=int, default=20)
 	@flags.add_flag("--limit", type=int)
 	@commands.cooldown(3, 5, commands.BucketType.user)
@@ -329,7 +409,9 @@ class Pokemon(commands.Cog):
 			"  --no_held_item          Pokémon sem item segurado\n"
 			"  --has_held_item         Pokémon com item segurado\n"
 			"  --fainted               Pokémon desmaiados (HP = 0)\n"
-			"  --healthy               Pokémon com HP cheio\n\n"
+			"  --healthy               Pokémon com HP cheio\n"
+			"  --duplicates            Apenas espécies duplicadas\n"
+			"  --unique                Apenas espécies únicas\n\n"
 			"FILTRAGEM NUMÉRICA\n"
 			"  --min_iv N              Seleciona apenas Pokémon com IV total >= N (valor em %)\n"
 			"  --max_iv N              Seleciona apenas Pokémon com IV total <= N (valor em %)\n"
@@ -353,8 +435,26 @@ class Pokemon(commands.Cog):
 			"  --spatkev <N...>        EV exato de Special Attack\n"
 			"  --spdefev <N...>        EV exato de Special Defense\n"
 			"  --spedev <N...>         EV exato de Speed\n\n"
+			"FILTRAGEM AVANÇADA DE IVs\n"
+			"  --triple_31             Pelo menos 3 IVs perfeitos (31)\n"
+			"  --quad_31               Pelo menos 4 IVs perfeitos (31)\n"
+			"  --penta_31              Pelo menos 5 IVs perfeitos (31)\n"
+			"  --hexa_31               6 IVs perfeitos (31)\n"
+			"  --triple_0              Pelo menos 3 IVs em 0\n"
+			"  --quad_0                Pelo menos 4 IVs em 0\n\n"
+			"EXPERIÊNCIA E CRESCIMENTO\n"
+			"  --growth_type <tipo>    Tipo de crescimento: slow | medium | fast | medium-slow | slow-then-very-fast | fast-then-very-slow\n"
+			"  --min_exp N             Experiência mínima\n"
+			"  --max_exp N             Experiência máxima\n"
+			"  --exp <N...>            Experiência exata\n"
+			"  --exp_percent <N...>    Percentual de progresso no nível (0-100)\n\n"
+			"MOVIMENTOS E VISUAL\n"
+			"  --min_move_count N      Número mínimo de movimentos\n"
+			"  --max_move_count N      Número máximo de movimentos\n"
+			"  --move_count <N...>     Número exato de movimentos\n"
+			"  --background <tipo>     Background específico\n\n"
 			"ORDENAÇÃO\n"
-			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species | ev | hp\n"
+			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species | ev | hp | exp | growth\n"
 			"  --reverse               Inverte a ordem de ordenação\n"
 			"  --random                Embaralha a ordem (ignora sort)\n\n"
 			"PAGINAÇÃO E LIMITES\n"
@@ -366,10 +466,11 @@ class Pokemon(commands.Cog):
 			"  .pokemon --box --shiny\n"
 			"  .pokemon --species 25 133 --min_iv 85 --sort level --reverse\n"
 			"  .pokemon --type fire flying --region kalos\n"
-			"  .pokemon --atkiv 31 --spdiv 31\n"
-			"  .pokemon --random --limit 5\n"
-			"  .pokemon --move thunderbolt --min_ev 100\n"
-			"  .pokemon --fainted --party"
+			"  --hexa_31 --shiny\n"
+			"  .pokemon --growth_type slow medium-slow\n"
+			"  .pokemon --exp_percent 90 95 100\n"
+			"  .pokemon --duplicates --sort species\n"
+			"  .pokemon --triple_31 --min_level 50"
 		)
 	)
 	@requires_account()
@@ -497,6 +598,23 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--has_nickname", action="store_true")
 	@flags.add_flag("--no_held_item", action="store_true")
 	@flags.add_flag("--has_held_item", action="store_true")
+	@flags.add_flag("--growth_type", nargs="+", action="append")
+	@flags.add_flag("--min_exp", type=int)
+	@flags.add_flag("--max_exp", type=int)
+	@flags.add_flag("--exp", nargs="+", action="append")
+	@flags.add_flag("--exp_percent", nargs="+", action="append")
+	@flags.add_flag("--background", nargs="+", action="append")
+	@flags.add_flag("--min_move_count", type=int)
+	@flags.add_flag("--max_move_count", type=int)
+	@flags.add_flag("--move_count", nargs="+", action="append")
+	@flags.add_flag("--triple_31", action="store_true")
+	@flags.add_flag("--quad_31", action="store_true")
+	@flags.add_flag("--penta_31", action="store_true")
+	@flags.add_flag("--hexa_31", action="store_true")
+	@flags.add_flag("--triple_0", action="store_true")
+	@flags.add_flag("--quad_0", action="store_true")
+	@flags.add_flag("--duplicates", action="store_true")
+	@flags.add_flag("--unique", action="store_true")
 	@flags.add_flag("--limit", type=int)
 	@flags.command(
 		name="favoriteall",
@@ -618,6 +736,23 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--has_nickname", action="store_true")
 	@flags.add_flag("--no_held_item", action="store_true")
 	@flags.add_flag("--has_held_item", action="store_true")
+	@flags.add_flag("--growth_type", nargs="+", action="append")
+	@flags.add_flag("--min_exp", type=int)
+	@flags.add_flag("--max_exp", type=int)
+	@flags.add_flag("--exp", nargs="+", action="append")
+	@flags.add_flag("--exp_percent", nargs="+", action="append")
+	@flags.add_flag("--background", nargs="+", action="append")
+	@flags.add_flag("--min_move_count", type=int)
+	@flags.add_flag("--max_move_count", type=int)
+	@flags.add_flag("--move_count", nargs="+", action="append")
+	@flags.add_flag("--triple_31", action="store_true")
+	@flags.add_flag("--quad_31", action="store_true")
+	@flags.add_flag("--penta_31", action="store_true")
+	@flags.add_flag("--hexa_31", action="store_true")
+	@flags.add_flag("--triple_0", action="store_true")
+	@flags.add_flag("--quad_0", action="store_true")
+	@flags.add_flag("--duplicates", action="store_true")
+	@flags.add_flag("--unique", action="store_true")
 	@flags.add_flag("--limit", type=int)
 	@flags.command(
 		name="unfavouriteall",
@@ -740,6 +875,23 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--has_nickname", action="store_true")
 	@flags.add_flag("--no_held_item", action="store_true")
 	@flags.add_flag("--has_held_item", action="store_true")
+	@flags.add_flag("--growth_type", nargs="+", action="append")
+	@flags.add_flag("--min_exp", type=int)
+	@flags.add_flag("--max_exp", type=int)
+	@flags.add_flag("--exp", nargs="+", action="append")
+	@flags.add_flag("--exp_percent", nargs="+", action="append")
+	@flags.add_flag("--background", nargs="+", action="append")
+	@flags.add_flag("--min_move_count", type=int)
+	@flags.add_flag("--max_move_count", type=int)
+	@flags.add_flag("--move_count", nargs="+", action="append")
+	@flags.add_flag("--triple_31", action="store_true")
+	@flags.add_flag("--quad_31", action="store_true")
+	@flags.add_flag("--penta_31", action="store_true")
+	@flags.add_flag("--hexa_31", action="store_true")
+	@flags.add_flag("--triple_0", action="store_true")
+	@flags.add_flag("--quad_0", action="store_true")
+	@flags.add_flag("--duplicates", action="store_true")
+	@flags.add_flag("--unique", action="store_true")
 	@flags.add_flag("--limit", type=int)
 	@flags.command(
 		name="nicknameall",
