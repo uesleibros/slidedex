@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
 from pokemon_sdk.constants import NATURES, STAT_KEYS
 from pokemon_sdk.calculations import calculate_max_hp
+from helpers.growth import GrowthRate, GROWTH_RATE_INFO
 import copy
 
 PARTY_LIMIT = 6
@@ -26,6 +27,49 @@ class Toolkit:
 
 	def set_move_service(self, service):
 		self._move_service = service
+
+	def get_growth_levels(self, growth_type: str, max_level: int = 100) -> List[Dict]:
+		return [
+			{"level": level, "experience": GrowthRate.calculate_exp(growth_type, level)}
+			for level in range(1, max_level + 1)
+		]
+
+	def get_exp_for_level(self, growth_type: str, level: int) -> int:
+		return GrowthRate.calculate_exp(growth_type, level)
+
+	def get_level_from_exp(self, growth_type: str, experience: int) -> int:
+		return GrowthRate.get_level_from_exp(growth_type, experience)
+
+	def get_exp_progress(self, growth_type: str, current_exp: int) -> Dict:
+		current_level = self.get_level_from_exp(growth_type, current_exp)
+		
+		if current_level >= 100:
+			return {
+				"current_level": 100,
+				"current_exp": current_exp,
+				"exp_for_current": self.get_exp_for_level(growth_type, 100),
+				"exp_for_next": 0,
+				"exp_needed": 0,
+				"progress_percent": 100.0
+			}
+		
+		exp_for_current = self.get_exp_for_level(growth_type, current_level)
+		exp_for_next = self.get_exp_for_level(growth_type, current_level + 1)
+		exp_needed = exp_for_next - current_exp
+		exp_in_level = current_exp - exp_for_current
+		exp_required_for_level = exp_for_next - exp_for_current
+		progress = (exp_in_level / exp_required_for_level * 100) if exp_required_for_level > 0 else 0
+		
+		return {
+			"current_level": current_level,
+			"current_exp": current_exp,
+			"exp_for_current": exp_for_current,
+			"exp_for_next": exp_for_next,
+			"exp_needed": exp_needed,
+			"exp_in_level": exp_in_level,
+			"exp_required_for_level": exp_required_for_level,
+			"progress_percent": round(progress, 2)
+		}
 
 	def _load(self) -> None:
 		with self._lock:
@@ -286,9 +330,6 @@ class Toolkit:
 			self._save()
 			return self.db["pokemon"][idx]["level"]
 
-	def exp_to_next_level(self, level: int) -> int:
-		return level ** 3
-
 	def add_exp(self, owner_id: str, pokemon_id: int, exp_gain: int) -> Dict:
 		with self._lock:
 			from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
@@ -297,14 +338,15 @@ class Toolkit:
 			p = self.db["pokemon"][idx]
 			old_level = p["level"]
 			p["exp"] += int(exp_gain)
-			lvl = p["level"]
+			
+			growth_type = p.get("growth_type", GrowthRate.MEDIUM)
+			new_level = self.get_level_from_exp(growth_type, p["exp"])
+			
 			levels_gained = []
-			
-			while p["exp"] >= self.exp_to_next_level(lvl):
-				lvl += 1
-				levels_gained.append(lvl)
-			
-			if levels_gained:
+			if new_level > old_level:
+				for lvl in range(old_level + 1, new_level + 1):
+					levels_gained.append(lvl)
+				
 				old_max_hp = calculate_max_hp(
 					p["base_stats"]["hp"],
 					p["ivs"]["hp"],
@@ -316,7 +358,7 @@ class Toolkit:
 					p["base_stats"]["hp"],
 					p["ivs"]["hp"],
 					p["evs"]["hp"],
-					lvl
+					new_level
 				)
 				
 				current_hp = p.get("current_hp")
@@ -324,9 +366,7 @@ class Toolkit:
 					current_hp = old_max_hp
 				
 				p["current_hp"] = adjust_hp_on_level_up(old_max_hp, new_max_hp, current_hp)
-				p["level"] = lvl
-			else:
-				p["level"] = lvl
+				p["level"] = new_level
 			
 			self._save()
 			
@@ -694,7 +734,7 @@ class Toolkit:
 			
 			calculated_stats = {}
 			for stat in STAT_KEYS:
-				base = p["stats"].get(stat, 0)
+				base = p["base_stats"].get(stat, 0)
 				iv = p["ivs"][stat]
 				ev = p["evs"][stat]
 				
@@ -713,6 +753,9 @@ class Toolkit:
 			
 			if p["current_hp"] is None:
 				p["current_hp"] = calculated_stats["hp"]
+			
+			growth_type = p.get("growth_type", GrowthRate.MEDIUM)
+			p["exp_progress"] = self.get_exp_progress(growth_type, p.get("exp", 0))
 			
 			return p
 
@@ -761,7 +804,7 @@ class Toolkit:
 				if p["owner_id"] != user_id:
 					continue
 				
-				if p.get("name") and query in p.name().lower():
+				if p.get("name") and query in p["name"].lower():
 					results.append(self._deepcopy(p))
 					continue
 				
@@ -769,6 +812,4 @@ class Toolkit:
 					results.append(self._deepcopy(p))
 					continue
 			
-
 			return results
-
