@@ -253,13 +253,13 @@ class WildBattle(BattleEngine):
 		for idx, pokemon in enumerate(self.player_team):
 			pokemon_id = self.player_party_raw[idx]["id"]
 			
-			pm.repo.tk.set_current_hp(
+			pm.tk.set_current_hp(
 				self.user_id,
 				pokemon_id,
 				pokemon.current_hp
 			)
 			
-			pm.repo.tk.set_moves(
+			pm.tk.set_moves(
 				self.user_id,
 				pokemon_id,
 				pokemon.moves
@@ -561,7 +561,7 @@ class WildBattle(BattleEngine):
 				evs_to_give = {k: v * 2 for k, v in evs_to_give.items()}
 			
 			try:
-				pm.repo.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
+				pm.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
 				distribution.append((participant_index, pokemon_data, evs_to_give))
 			except ValueError:
 				pass
@@ -646,7 +646,7 @@ class WildBattle(BattleEngine):
 				await self.refresh()
 				return False
 
-			already_caught = pm.repo.tk.has_caught_species(self.user_id, self.wild.species_id)
+			already_caught = pm.tk.has_caught_species(self.user_id, self.wild.species_id)
 			success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
 				wild=self.wild,
 				ball_type=self.ball_type,
@@ -663,7 +663,7 @@ class WildBattle(BattleEngine):
 				experience_distribution = await self._calculate_experience_distribution()
 				ev_distribution = await self._distribute_evs()
 				
-				pm.repo.tk.add_pokemon(
+				pm.tk.add_pokemon(
 					owner_id=self.user_id,
 					species_id=self.wild_raw["species_id"],
 					ivs=self.wild_raw["ivs"],
@@ -875,4 +875,3 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
-
