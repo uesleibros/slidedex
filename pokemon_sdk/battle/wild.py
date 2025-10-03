@@ -678,6 +678,7 @@ class WildBattle(BattleEngine):
 					region=self.wild_raw["region"],
 					base_stats=self.wild_raw["base_stats"],
 					exp=self.wild_raw.get("exp", 0),
+					growth_type=self.wild_raw.get("growth_type", "medium"),
 					moves=self.wild_raw.get("moves", []),
 					nickname=self.wild_raw.get("nickname"),
 					name=self.wild_raw.get("name"),
@@ -874,3 +875,4 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
