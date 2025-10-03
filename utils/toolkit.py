@@ -343,16 +343,19 @@ class Toolkit:
 	        p = self.db["pokemon"][idx]
 	        
 	        old_level = p["level"]
+	        growth_type = p.get("growth_type", GrowthRate.MEDIUM)
+	        max_exp = self.get_exp_for_level(growth_type, 100)
 	        
 	        if old_level >= 100:
+	            p["exp"] = max_exp
+	            p["level"] = 100
+	            self._save()
+	            
 	            result = self._deepcopy(p)
 	            result["levels_gained"] = []
 	            result["old_level"] = old_level
 	            result["max_level_reached"] = True
 	            return result
-	        
-	        growth_type = p.get("growth_type", GrowthRate.MEDIUM)
-	        max_exp = self.get_exp_for_level(growth_type, 100)
 	        
 	        p["exp"] = min(p["exp"] + int(exp_gain), max_exp)
 	        
@@ -383,6 +386,9 @@ class Toolkit:
 	            
 	            p["current_hp"] = adjust_hp_on_level_up(old_max_hp, new_max_hp, current_hp)
 	            p["level"] = new_level
+	            
+	            if new_level >= 100:
+	                p["exp"] = max_exp
 	        
 	        self._save()
 	        
@@ -846,5 +852,6 @@ class Toolkit:
 	    with self._lock:
 	        idx = self._get_pokemon_index(owner_id, pokemon_id)
 	        return self.db["pokemon"][idx].get("evolution_blocked", False)
+
 
 
