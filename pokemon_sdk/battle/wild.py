@@ -428,6 +428,58 @@ class WildBattle(BattleEngine):
 			
 			await self.refresh()
 	
+	def _calculate_ev_yield(self) -> Dict[str, int]:
+		base_stats = self.wild.raw.get("base_stats", {})
+		ev_yield = {}
+		
+		stats_map = {
+			"hp": "hp",
+			"attack": "attack",
+			"defense": "defense",
+			"special-attack": "special-attack",
+			"special-defense": "special-defense",
+			"speed": "speed"
+		}
+		
+		for stat_key, stat_name in stats_map.items():
+			base_value = base_stats.get(stat_key, 0)
+			
+			if base_value >= 120:
+				ev_yield[stat_name] = 3
+			elif base_value >= 100:
+				ev_yield[stat_name] = 2
+			elif base_value >= 70:
+				ev_yield[stat_name] = 1
+			else:
+				ev_yield[stat_name] = 0
+		
+		total_evs = sum(ev_yield.values())
+		if total_evs == 0:
+			highest_stat = max(stats_map.keys(), key=lambda k: base_stats.get(k, 0))
+			ev_yield[stats_map[highest_stat]] = 1
+		
+		return ev_yield
+	
+	async def _distribute_evs(self) -> List[Tuple[int, Dict[str, Any], Dict[str, int]]]:
+		ev_yield = self._calculate_ev_yield()
+		
+		distribution = []
+		for participant_index in self.battle_participants:
+			pokemon_data = self.player_party_raw[participant_index]
+			
+			evs_to_give = ev_yield.copy()
+			
+			if self.player_team[participant_index].volatile.get("held_item") == "macho_brace":
+				evs_to_give = {k: v * 2 for k, v in evs_to_give.items()}
+			
+			try:
+				pm.repo.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
+				distribution.append((participant_index, pokemon_data, evs_to_give))
+			except ValueError:
+				pass
+		
+		return distribution
+	
 	async def _calculate_experience_distribution(self) -> List[Tuple[int, Dict[str, Any], int]]:
 		base_experience = pm.repo.tk.calc_battle_exp(
 			self.player_active.level,
@@ -473,6 +525,22 @@ class WildBattle(BattleEngine):
 		
 		return lines
 	
+	def _format_ev_gains(self, distribution: List[Tuple[int, Dict[str, Any], Dict[str, int]]]) -> List[str]:
+		lines = []
+		
+		if not distribution:
+			return lines
+		
+		lines.append("💪 **EVs Ganhos:**")
+		
+		for index, _, evs in distribution:
+			pokemon_name = self.player_team[index].display_name
+			ev_parts = [f"{stat.upper()}: +{value}" for stat, value in evs.items() if value > 0]
+			if ev_parts:
+				lines.append(f"  • {pokemon_name} [{', '.join(ev_parts)}]")
+		
+		return lines
+	
 	async def attempt_capture(self, ball_type: str = BallType.POKE_BALL) -> bool:
 		if self.player_active.fainted:
 			self.lines = ["Seu Pokémon está desmaiado!"]
@@ -496,6 +564,7 @@ class WildBattle(BattleEngine):
 		
 		if success:
 			experience_distribution = await self._calculate_experience_distribution()
+			ev_distribution = await self._distribute_evs()
 			
 			pm.repo.tk.add_pokemon(
 				owner_id=self.user_id,
@@ -531,6 +600,11 @@ class WildBattle(BattleEngine):
 			]
 			
 			self.lines.extend(self._format_experience_gains(experience_distribution))
+			
+			ev_lines = self._format_ev_gains(ev_distribution)
+			if ev_lines:
+				self.lines.append("")
+				self.lines.extend(ev_lines)
 			
 			if self.actions_view:
 				self.actions_view.disable_all()
@@ -584,10 +658,16 @@ class WildBattle(BattleEngine):
 	
 	async def _handle_victory(self) -> None:
 		experience_distribution = await self._calculate_experience_distribution()
+		ev_distribution = await self._distribute_evs()
 		
 		self.ended = True
 		self.lines.extend(["", "🏆 **VITÓRIA!**", ""])
 		self.lines.extend(self._format_experience_gains(experience_distribution))
+		
+		ev_lines = self._format_ev_gains(ev_distribution)
+		if ev_lines:
+			self.lines.append("")
+			self.lines.extend(ev_lines)
 		
 		if self.actions_view:
 			self.actions_view.disable_all()
@@ -683,5 +763,3 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_capture()
-
-
