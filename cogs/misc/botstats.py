@@ -104,9 +104,7 @@ class BotStats(commands.Cog):
 			inline=True
 		)
 
-		embed.set_footer(text="Feito com ❤️ usando a uEngine")
 		await ctx.send(embed=embed)
-
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(BotStats(bot))
