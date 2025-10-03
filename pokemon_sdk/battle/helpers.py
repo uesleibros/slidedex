@@ -1,6 +1,58 @@
 from typing import Optional, Dict, List, Tuple, Any
 from pokemon_sdk.constants import STAT_ALIASES, TYPE_CHART
+from __main__ import pm
 import discord
+
+class PokeballsView(discord.ui.View):
+    def __init__(self, battle, timeout: float = 60.0):
+        super().__init__(timeout=timeout)
+        self.battle = battle
+        self.user_id = battle.user_id
+        self.load_pokeballs()
+    
+    def load_pokeballs(self):
+        from .pokeballs import PokeBallSystem, BallType
+        
+        already_caught = pm.repo.tk.has_caught_species(self.user_id, self.battle.wild.species_id)
+        
+        options = []
+        for ball_type, ball_info in PokeBallSystem.BALL_DATA.items():
+            modifier = PokeBallSystem.calculate_modifier(
+                ball_type,
+                self.battle.wild,
+                self.battle.turn,
+                self.battle.time_of_day,
+                self.battle.location_type,
+                already_caught
+            )
+            
+            bonus_text = f" [{modifier:.1f}x]" if modifier > 1.0 else ""
+            
+            options.append(discord.SelectOption(
+                label=f"{ball_info['name']}{bonus_text}",
+                value=ball_type,
+                description=ball_info['description'][:100],
+                emoji=ball_info['emoji']
+            ))
+        
+        self.children[0].options = options
+    
+    @discord.ui.select(placeholder="Escolha uma Pokébola...")
+    async def select_ball(self, interaction: discord.Interaction, select: discord.ui.Select):
+        if str(interaction.user.id) != self.user_id:
+            return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
+        
+        ball_type = select.values[0]
+        self.battle.ball_type = ball_type
+        
+        await interaction.response.edit_message(view=self.battle.actions_view)
+        await self.battle.attempt_capture(ball_type)
+    
+    @discord.ui.button(style=discord.ButtonStyle.secondary, label="Voltar", emoji="◀️", row=1)
+    async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
+        await interaction.response.edit_message(view=self.battle.actions_view)
 
 class MovesView(discord.ui.View):
 	__slots__ = ('battle',)
