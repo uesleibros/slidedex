@@ -3,7 +3,6 @@ import random
 import aiopoke
 from typing import List, Optional, Dict
 from utils.formatting import format_pokemon_display
-from .repository import PokemonRepository
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
 from .constants import NATURES, REGIONS_GENERATION
@@ -112,7 +111,6 @@ class MoveChoiceView(discord.ui.View):
 
 class PokemonManager:
 	def __init__(self, toolkit):
-		self.repo = PokemonRepository(toolkit)
 		self.tk = toolkit
 		self.service = PokeAPIService()
 
@@ -415,5 +413,6 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
