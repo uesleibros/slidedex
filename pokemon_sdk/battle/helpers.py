@@ -18,7 +18,6 @@ class PokeballsView(discord.ui.View):
         available_balls = [
             BallType.POKE_BALL,
             BallType.GREAT_BALL,
-            BallType.MASTER_BALL,
             BallType.NET_BALL,
             BallType.NEST_BALL,
             BallType.REPEAT_BALL,
