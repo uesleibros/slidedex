@@ -123,7 +123,7 @@ class Spawn(commands.Cog):
 		if player_party:
 			active_level = player_party[0]["level"]
 			min_level = max(pokemon_min_level, active_level - 5)
-			max_level = min(100, active_level + 5)
+			max_level = max(min_level, min(100, active_level + 5))
 			level = random.randint(min_level, max_level)
 		else:
 			level = random.randint(pokemon_min_level, max(pokemon_min_level, 15))
