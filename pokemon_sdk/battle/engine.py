@@ -406,16 +406,27 @@ class BattleEngine:
             total_damage += actual_damage
             actual_hits += 1
             
+            target.volatile["last_damage_taken"] = actual_damage
+            target.volatile["was_hit_this_turn"] = True
+            
+            if move_data.dmg_class == "physical":
+                target.volatile["last_physical_damage"] = actual_damage
+            elif move_data.dmg_class == "special":
+                target.volatile["last_special_damage"] = actual_damage
+            
             if target.fainted:
                 if target.volatile.get("destiny_bond"):
                     user.current_hp = 0
                     lines.append(f"👻 Destiny Bond ativado! {user.display_name} também caiu!")
                 
                 if target.volatile.get("grudge") and not is_struggle:
-                    move_data_user = user.get_move_data(user.volatile.get("last_move_used"))
-                    if move_data_user:
-                        move_data_user["pp"] = 0
-                        lines.append(f"👻 Grudge ativou! PP de {move_data.name} foi drenado!")
+                    last_move_used = user.volatile.get("last_move_used")
+                    if last_move_used:
+                        for move in user.moves:
+                            if move.get("id") == last_move_used:
+                                move["pp"] = 0
+                                lines.append(f"👻 Grudge ativou! PP de {move_data.name} foi drenado!")
+                                break
                 
                 break
         
@@ -585,6 +596,8 @@ class BattleEngine:
         user: BattlePokemon,
         target: BattlePokemon
     ) -> List[str]:
+        user.volatile["moved_this_turn"] = False
+        
         action_blocked, pre_messages = StatusHandler.check_pre_action(user)
         if action_blocked:
             return pre_messages
@@ -598,6 +611,8 @@ class BattleEngine:
             return pre_messages + confusion_messages + [restriction_msg]
         
         move_result = await self._execute_move(user, target, move_data, move_id)
+        
+        user.volatile["moved_this_turn"] = True
         
         return pre_messages + confusion_messages + move_result
     
@@ -659,6 +674,16 @@ class BattleEngine:
             pokemon.volatile["spotlight"] = False
             pokemon.volatile["wide_guard"] = False
             pokemon.volatile["quick_guard"] = False
+            pokemon.volatile["protect"] = False
+            pokemon.volatile["endure"] = False
+            pokemon.volatile["kings_shield"] = False
+            pokemon.volatile["spiky_shield"] = False
+            pokemon.volatile["baneful_bunker"] = False
+            pokemon.volatile["magic_coat"] = False
+            pokemon.volatile["snatch"] = False
+            pokemon.volatile["was_hit_this_turn"] = False
+            pokemon.volatile["moved_this_turn"] = False
+            pokemon.volatile["last_damage_taken"] = 0
         
         for pokemon in participants:
             if pokemon.fainted:
@@ -863,4 +888,3 @@ class BattleEngine:
         
         if self.field.get("water_sport", 0) > 0:
             self.field["water_sport"] -= 1
-
