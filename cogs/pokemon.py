@@ -992,9 +992,6 @@ class Pokemon(commands.Cog):
 		if not party:
 			return await ctx.send("Seu time está vazio.")
 
-		toolkit.heal_party(user_id)
-		await ctx.send("Todos os pokémon do seu time estão curados (HP e PP).")
-
 	@flags.add_flag("--page", nargs="?", type=int, default=0)
 	@flags.add_flag("--region", "--r", type=str)
 	@flags.add_flag("--type", "--t", type=str)
@@ -1016,7 +1013,7 @@ class Pokemon(commands.Cog):
 			"FILTROS\n"
 			"  --caught                Mostra apenas especies capturadas\n"
 			"  --uncaught              Mostra apenas especies nao capturadas\n"
-			"  --region <nome>         Filtra por regiao (kanto, johto, hoenn, sinnoh, unova, kalos, alola, galar, paldea)\n"
+			"  --region <nome>         Filtra por regiao (kanto, johto, hoenn)\n"
 			"  --type <nome>           Filtra por tipo\n"
 			"  --shiny                 Mostra apenas especies que voce tem shiny\n"
 			"  --legendary             Filtra apenas lendarios\n"
@@ -1038,11 +1035,12 @@ class Pokemon(commands.Cog):
 	)
 	@requires_account()
 	async def pokedex_command(self, ctx: commands.Context, **flags):
+		import asyncio
 		from __main__ import pm
 		
 		user_id = str(ctx.author.id)
 		
-		msg = await ctx.send("Carregando Pokedex...")
+		msg = await ctx.send("Carregando Pokédex...")
 		
 		try:
 			all_pokemon = toolkit.list_pokemon_by_owner(user_id)
@@ -1064,7 +1062,7 @@ class Pokemon(commands.Cog):
 			region_ranges = {
 				"kanto": (1, 151),
 				"johto": (152, 251),
-				"hoenn": (252, 386),
+				"hoenn": (252, 386)
 			}
 			
 			start_id = 1
@@ -1078,9 +1076,13 @@ class Pokemon(commands.Cog):
 					await msg.delete()
 					return await ctx.send(f"Região inválida! Use: {', '.join(region_ranges.keys())}")
 			
-			entries = []
+			page_size = flags.get("page_size") if flags.get("page_size") and flags.get("page_size") > 0 else 20
+			current_page = flags.get("page", 0)
 			
-			for species_id in range(start_id, end_id + 1):
+			page_start = start_id + (current_page * page_size)
+			page_end = min(page_start + page_size, end_id + 1)
+			
+			async def load_entry(species_id):
 				try:
 					species = await pm.service.get_species(species_id)
 					pokemon = await pm.service.get_pokemon(species_id)
@@ -1094,25 +1096,25 @@ class Pokemon(commands.Cog):
 					shiny_count = species_data.get(species_id, {}).get("shiny_count", 0)
 					
 					if flags.get("caught") and caught_count == 0:
-						continue
+						return None
 					if flags.get("uncaught") and caught_count > 0:
-						continue
+						return None
 					if flags.get("shiny") and not has_shiny:
-						continue
+						return None
 					if flags.get("legendary") and not is_legendary:
-						continue
+						return None
 					if flags.get("mythical") and not is_mythical:
-						continue
+						return None
 					if flags.get("min_caught") is not None and caught_count < flags.get("min_caught"):
-						continue
+						return None
 					if flags.get("max_caught") is not None and caught_count > flags.get("max_caught"):
-						continue
+						return None
 					if flags.get("type"):
 						type_filter = flags.get("type").lower()
 						if type_filter not in [t.lower() for t in types]:
-							continue
+							return None
 					
-					entries.append({
+					return {
 						"id": species_id,
 						"name": pokemon.name.title(),
 						"caught": caught_count > 0,
@@ -1122,84 +1124,76 @@ class Pokemon(commands.Cog):
 						"is_legendary": is_legendary,
 						"is_mythical": is_mythical,
 						"types": types
-					})
-					
+					}
 				except:
-					continue
+					return None
+			
+			tasks = [load_entry(sid) for sid in range(page_start, page_end)]
+			results = await asyncio.gather(*tasks)
+			entries = [e for e in results if e is not None]
 			
 			if not entries:
 				await msg.delete()
-				return await ctx.send("Nenhuma entrada encontrada com esses filtros.")
+				return await ctx.send("Nenhuma entrada encontrada nesta página.")
 			
 			total_species = end_id - start_id + 1
-			caught_species = sum(1 for e in entries if e["caught"])
 			
-			async def generate_pokedex_embed(items, start, end, total, current_page):
-				lines = []
-				for entry in items:
-					species_id = entry["id"]
-					name = entry["name"]
+			caught_in_range = sum(1 for sid in range(start_id, end_id + 1) if sid in species_data)
+			
+			lines = []
+			for entry in entries:
+				species_id = entry["id"]
+				name = entry["name"]
+				
+				if entry["caught"]:
+					icon = "✓"
+					extras = []
 					
-					if entry["caught"]:
-						icon = "✓"
-						extras = []
-						
-						if flags.get("show_count"):
-							extras.append(f"x{entry['count']}")
-						
-						if entry["has_shiny"]:
-							extras.append(f"✨x{entry['shiny_count']}")
-						
-						if entry["is_legendary"]:
-							extras.append("L")
-						elif entry["is_mythical"]:
-							extras.append("M")
-						
-						extra_text = f" [{', '.join(extras)}]" if extras else ""
-						lines.append(f"`#{species_id:04d}` {icon} **{name}**{extra_text}")
-					else:
-						icon = "✗"
-						rarity = ""
-						if entry["is_legendary"]:
-							rarity = " [L]"
-						elif entry["is_mythical"]:
-							rarity = " [M]"
-						lines.append(f"`#{species_id:04d}` {icon} {name}{rarity}")
-				
-				region_text = f" - {flags.get('region').title()}" if flags.get('region') else ""
-				completion = (caught_species / total_species * 100) if total_species > 0 else 0
-				
-				embed = discord.Embed(
-					title=f"Pokedex{region_text}",
-					description="\n".join(lines) if lines else "Nenhum resultado",
-					color=discord.Color.blue()
-				)
-				
-				embed.add_field(
-					name="Progresso",
-					value=f"{caught_species}/{total_species} especies capturadas ({completion:.1f}%)",
-					inline=False
-				)
-				
-				embed.set_footer(text=f"Mostrando {start+1}-{end} de {total}")
-				
-				return embed
+					if flags.get("show_count"):
+						extras.append(f"x{entry['count']}")
+					
+					if entry["has_shiny"]:
+						extras.append(f"✨x{entry['shiny_count']}")
+					
+					if entry["is_legendary"]:
+						extras.append("L")
+					elif entry["is_mythical"]:
+						extras.append("M")
+					
+					extra_text = f" [{', '.join(extras)}]" if extras else ""
+					lines.append(f"`#{species_id:04d}` {icon} **{name}**{extra_text}")
+				else:
+					icon = "✗"
+					rarity = ""
+					if entry["is_legendary"]:
+						rarity = " [L]"
+					elif entry["is_mythical"]:
+						rarity = " [M]"
+					lines.append(f"`#{species_id:04d}` {icon} {name}{rarity}")
 			
-			page_size = flags.get("page_size") if flags.get("page_size") and flags.get("page_size") > 0 else 20
-			view = Paginator(
-				items=entries,
-				user_id=ctx.author.id,
-				embed_generator=generate_pokedex_embed,
-				page_size=page_size,
-				current_page=flags.get("page", 0)
+			region_text = f" - {flags.get('region').title()}" if flags.get('region') else ""
+			completion = (caught_in_range / total_species * 100) if total_species > 0 else 0
+			
+			embed = discord.Embed(
+				title=f"Pokédex{region_text}",
+				description="\n".join(lines) if lines else "Nenhum resultado",
+				color=discord.Color.blue()
 			)
 			
-			embed = await view.get_embed()
-			await msg.edit(content=None, embed=embed, view=view)
+			embed.add_field(
+				name="Progresso",
+				value=f"{caught_in_range}/{total_species} espécies capturadas ({completion:.1f}%)",
+				inline=False
+			)
+			
+			total_pages = (total_species + page_size - 1) // page_size
+			embed.set_footer(text=f"Página {current_page + 1}/{total_pages}")
+			
+			await msg.edit(content=None, embed=embed)
 			
 		except Exception as e:
 			await msg.delete()
-			await ctx.send(f"Erro ao carregar Pokedex: {str(e)}")
+			await ctx.send(f"Erro ao carregar Pokédex: {str(e)}")
 	
 	@commands.command(name="pokedexstats", aliases=["dexstats", "pdstats"])
 	@requires_account()
@@ -1216,17 +1210,20 @@ class Pokemon(commands.Cog):
 		region_counts = {
 			"kanto": {"caught": 0, "total": 151},
 			"johto": {"caught": 0, "total": 100},
-			"hoenn": {"caught": 0, "total": 135},
+			"hoenn": {"caught": 0, "total": 135}
 		}
 		
 		region_ranges = {
 			"kanto": (1, 151),
 			"johto": (152, 251),
-			"hoenn": (252, 386),
+			"hoenn": (252, 386)
 		}
 		
 		for p in all_pokemon:
 			sid = p["species_id"]
+			if sid > 386:
+				continue
+			
 			species_caught.add(sid)
 			
 			if p.get("is_shiny"):
@@ -1245,7 +1242,7 @@ class Pokemon(commands.Cog):
 		completion = (total_caught / total_species * 100) if total_species > 0 else 0
 		
 		embed = discord.Embed(
-			title=f"Estatisticas da Pokedex de {ctx.author.display_name}",
+			title=f"Estatísticas da Pokédex de {ctx.author.display_name}",
 			color=discord.Color.gold()
 		)
 		
@@ -1256,11 +1253,11 @@ class Pokemon(commands.Cog):
 		)
 		
 		embed.add_field(
-			name="Especies Especiais",
+			name="Espécies Especiais",
 			value=(
 				f"Shiny: {len(shiny_species)} especies diferentes\n"
-				f"Lendarios: {len(legendary_species)} especies\n"
-				f"Miticos: {len(mythical_species)} especies"
+				f"Lendários: {len(legendary_species)} especies\n"
+				f"Míticos: {len(mythical_species)} especies"
 			),
 			inline=False
 		)
@@ -1271,12 +1268,12 @@ class Pokemon(commands.Cog):
 			region_lines.append(f"{region.title()}: {data['caught']}/{data['total']} ({percent:.0f}%)")
 		
 		embed.add_field(
-			name="Progresso por Regiao",
+			name="Progresso por Região",
 			value="\n".join(region_lines),
 			inline=False
 		)
 		
-		embed.set_footer(text=f"Total de Pokemon capturados: {len(all_pokemon)}")
+		embed.set_footer(text=f"Total de Pokémon capturados: {len(all_pokemon)}")
 		
 		await ctx.send(embed=embed)
 
