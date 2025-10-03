@@ -27,24 +27,23 @@ async def generate_pokemon_embed(pokemons, start, end, total, current_page):
 
 def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 	res = pokemons
-	if flags.get("box") and not flags.get("party"):
-		res = [p for p in res if not p.get("on_party", False)]
-	if flags.get("party") and not flags.get("box"):
-		res = [p for p in res if p.get("on_party", False)]
+	
+	if flags.get("favorite"):
+		res = [p for p in res if p.get("is_favorite")]
 	if flags.get("shiny"):
 		res = [p for p in res if p.get("is_shiny", False)]
 	if flags.get("legendary"):
 		res = [p for p in res if p.get("is_legendary", False)]
 	if flags.get("mythical"):
 		res = [p for p in res if p.get("is_mythical", False)]
-	if flags.get("favorite"):
-		res = [p for p in res if p.get("is_favorite")]
 	if flags.get("gender"):
-		res = [p for p in res if p["gender"].lower() == flags.get("gender")]
+		res = [p for p in res if p["gender"].lower() == flags.get("gender").lower()]
+	
 	if flags.get("min_iv") is not None:
 		res = [p for p in res if iv_percent(p["ivs"]) >= flags.get("min_iv")]
 	if flags.get("max_iv") is not None:
 		res = [p for p in res if iv_percent(p["ivs"]) <= flags.get("max_iv")]
+	
 	if flags.get("min_level") is not None:
 		res = [p for p in res if p["level"] >= flags.get("min_level")]
 	if flags.get("max_level") is not None:
@@ -52,6 +51,7 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 	if flags.get("level"):
 		levels = [int(v) for group in flags["level"] for v in group]
 		res = [p for p in res if p["level"] in levels]
+	
 	if flags.get("hpiv"):
 		hp_values = [int(v) for group in flags["hpiv"] for v in group]
 		res = [p for p in res if p["ivs"]["hp"] in hp_values]
@@ -73,41 +73,100 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 	if flags.get("iv"):
 		iv_values = [int(v) for group in flags["iv"] for v in group]
 		res = [p for p in res if int(iv_percent(p["ivs"])) in iv_values]
+	
+	if flags.get("min_ev") is not None:
+		res = [p for p in res if sum(p.get("evs", {}).values()) >= flags.get("min_ev")]
+	if flags.get("max_ev") is not None:
+		res = [p for p in res if sum(p.get("evs", {}).values()) <= flags.get("max_ev")]
+	
+	if flags.get("hpev"):
+		hp_values = [int(v) for group in flags["hpev"] for v in group]
+		res = [p for p in res if p.get("evs", {}).get("hp", 0) in hp_values]
+	if flags.get("atkev"):
+		atk_values = [int(v) for group in flags["atkev"] for v in group]
+		res = [p for p in res if p.get("evs", {}).get("attack", 0) in atk_values]
+	if flags.get("defev"):
+		def_values = [int(v) for group in flags["defev"] for v in group]
+		res = [p for p in res if p.get("evs", {}).get("defense", 0) in def_values]
+	if flags.get("spatkev"):
+		spatk_values = [int(v) for group in flags["spatkev"] for v in group]
+		res = [p for p in res if p.get("evs", {}).get("special-attack", 0) in spatk_values]
+	if flags.get("spdefev"):
+		spdef_values = [int(v) for group in flags["spdefev"] for v in group]
+		res = [p for p in res if p.get("evs", {}).get("special-defense", 0) in spdef_values]
+	if flags.get("spedev"):
+		spd_values = [int(v) for group in flags["spedev"] for v in group]
+		res = [p for p in res if p.get("evs", {}).get("speed", 0) in spd_values]
+	
 	if flags.get("species") is not None:
 		species = [int(s) for group in flags["species"] for s in group]
 		res = [p for p in res if p.get("species_id") in species]
+	
 	if flags.get("name"):
 		names = [n.lower() for group in flags["name"] for n in group]
 		res = [
 			p for p in res
 			if any(q in (p.get("name", "")).lower() for q in names)
 		]
+	
 	if flags.get("type"):
 		types = [t.lower() for group in flags["type"] for t in group]
 		res = [p for p in res if any(ptype.lower() in types for ptype in p["types"])]
+	
 	if flags.get("region"):
 		regions = [r.lower() for group in flags["region"] for r in group]
 		res = [
 			p for p in res
 			if any(q in (p.get("region", "")).lower() for q in regions)
 		]
+	
 	if flags.get("nickname"):
 		nicks = [n.lower() for group in flags["nickname"] for n in group]
 		res = [
 			p for p in res
 			if any(q in (p.get("nickname", "") or "").lower() for q in nicks)
 		]
+	
 	if flags.get("nature"):
 		natures = [n.lower() for group in flags["nature"] for n in group]
 		res = [p for p in res if any(p["nature"].lower() == nat for nat in natures)]
+	
 	if flags.get("ability"):
 		abilities = [a.lower() for group in flags["ability"] for a in (group if isinstance(group, list) else [group])]
 		res = [p for p in res if any(p["ability"].lower() == ab for ab in abilities)]
+	
 	if flags.get("held_item"):
 		held_items = [h.lower() for group in flags["held_item"] for h in (group if isinstance(group, list) else [group])]
 		res = [p for p in res if p.get("held_item") and any(p["held_item"].lower() == hi for hi in held_items)]
+	
+	if flags.get("move"):
+		moves = [m.lower().replace(" ", "-") for group in flags["move"] for m in group]
+		res = [
+			p for p in res
+			if any(
+				move_id.lower() in moves 
+				for move in p.get("moves", []) 
+				for move_id in [move.get("id", "")]
+			)
+		]
+	
+	if flags.get("no_nickname"):
+		res = [p for p in res if not p.get("nickname")]
+	if flags.get("has_nickname"):
+		res = [p for p in res if p.get("nickname")]
+	
+	if flags.get("no_held_item"):
+		res = [p for p in res if not p.get("held_item")]
+	if flags.get("has_held_item"):
+		res = [p for p in res if p.get("held_item")]
+	
+	if flags.get("fainted"):
+		res = [p for p in res if p.get("current_hp", 0) <= 0]
+	if flags.get("healthy"):
+		max_hp = lambda p: p.get("base_stats", {}).get("hp", 0)
+		res = [p for p in res if p.get("current_hp", 0) >= max_hp(p)]
+	
 	return res
-
 
 def apply_sort_limit(pokemons: List[Dict], flags) -> List[Dict]:
 	res = list(pokemons)
@@ -120,8 +179,10 @@ def apply_sort_limit(pokemons: List[Dict], flags) -> List[Dict]:
 			"id": lambda p: p["id"],
 			"name": lambda p: (p.get("nickname") or p.get("name", "")).lower(),
 			"species": lambda p: p["species_id"],
+			"ev": lambda p: sum(p.get("evs", {}).values()),
+			"hp": lambda p: p.get("current_hp", 0),
 		}
-		res.sort(key=keymap[flags.get("sort")], reverse=bool(flags.get("reverse")))
+		res.sort(key=keymap.get(flags.get("sort"), lambda p: p["id"]), reverse=bool(flags.get("reverse")))
 	if flags.get("limit") is not None and flags.get("limit") > 0:
 		res = res[:flags.get("limit")]
 	return res
@@ -222,6 +283,21 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--spdefiv", nargs="+", action="append")
 	@flags.add_flag("--spdiv", nargs="+", action="append")
 	@flags.add_flag("--iv", nargs="+", action="append")
+	@flags.add_flag("--min_ev", type=int)
+	@flags.add_flag("--max_ev", type=int)
+	@flags.add_flag("--hpev", nargs="+", action="append")
+	@flags.add_flag("--atkev", nargs="+", action="append")
+	@flags.add_flag("--defev", nargs="+", action="append")
+	@flags.add_flag("--spatkev", nargs="+", action="append")
+	@flags.add_flag("--spdefev", nargs="+", action="append")
+	@flags.add_flag("--spedev", nargs="+", action="append")
+	@flags.add_flag("--move", nargs="+", action="append")
+	@flags.add_flag("--no_nickname", action="store_true")
+	@flags.add_flag("--has_nickname", action="store_true")
+	@flags.add_flag("--no_held_item", action="store_true")
+	@flags.add_flag("--has_held_item", action="store_true")
+	@flags.add_flag("--fainted", action="store_true")
+	@flags.add_flag("--healthy", action="store_true")
 	@flags.add_flag("--page_size", type=int, default=20)
 	@flags.add_flag("--limit", type=int)
 	@commands.cooldown(3, 5, commands.BucketType.user)
@@ -243,16 +319,25 @@ class Pokemon(commands.Cog):
 			"  --ability <nome...>     Filtra por ability(ies) específicas\n"
 			"  --held_item <nome...>   Filtra por item segurado\n"
 			"  --type <nome...>        Filtra por tipos do Pokémon (aceita múltiplos)\n"
-			"  --region <nome...>      Filtra por região de origem da espécie\n\n"
+			"  --region <nome...>      Filtra por região de origem da espécie\n"
+			"  --move <nome...>        Filtra por movimento específico\n\n"
 			"ESPECIAL\n"
 			"  --legendary             Filtra apenas espécies lendárias\n"
-			"  --mythical              Filtra apenas espécies míticas\n\n"
+			"  --mythical              Filtra apenas espécies míticas\n"
+			"  --no_nickname           Pokémon sem nickname\n"
+			"  --has_nickname          Pokémon com nickname\n"
+			"  --no_held_item          Pokémon sem item segurado\n"
+			"  --has_held_item         Pokémon com item segurado\n"
+			"  --fainted               Pokémon desmaiados (HP = 0)\n"
+			"  --healthy               Pokémon com HP cheio\n\n"
 			"FILTRAGEM NUMÉRICA\n"
 			"  --min_iv N              Seleciona apenas Pokémon com IV total >= N (valor em %)\n"
 			"  --max_iv N              Seleciona apenas Pokémon com IV total <= N (valor em %)\n"
 			"  --min_level N           Seleciona apenas Pokémon com level >= N\n"
 			"  --max_level N           Seleciona apenas Pokémon com level <= N\n"
-			"  --level <N...>          Filtra por levels exatos (aceita vários)\n\n"
+			"  --level <N...>          Filtra por levels exatos (aceita vários)\n"
+			"  --min_ev N              Seleciona apenas Pokémon com EV total >= N\n"
+			"  --max_ev N              Seleciona apenas Pokémon com EV total <= N\n\n"
 			"FILTRAGEM POR IV INDIVIDUAL\n"
 			"  --hpiv <N...>           IV exato de HP\n"
 			"  --atkiv <N...>          IV exato de Attack\n"
@@ -261,8 +346,15 @@ class Pokemon(commands.Cog):
 			"  --spdefiv <N...>        IV exato de Special Defense\n"
 			"  --spdiv <N...>          IV exato de Speed\n"
 			"  --iv <N...>             IV total em % exato (ex.: 100 = perfeitos)\n\n"
+			"FILTRAGEM POR EV INDIVIDUAL\n"
+			"  --hpev <N...>           EV exato de HP\n"
+			"  --atkev <N...>          EV exato de Attack\n"
+			"  --defev <N...>          EV exato de Defense\n"
+			"  --spatkev <N...>        EV exato de Special Attack\n"
+			"  --spdefev <N...>        EV exato de Special Defense\n"
+			"  --spedev <N...>         EV exato de Speed\n\n"
 			"ORDENAÇÃO\n"
-			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species\n"
+			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species | ev | hp\n"
 			"  --reverse               Inverte a ordem de ordenação\n"
 			"  --random                Embaralha a ordem (ignora sort)\n\n"
 			"PAGINAÇÃO E LIMITES\n"
@@ -276,13 +368,21 @@ class Pokemon(commands.Cog):
 			"  .pokemon --type fire flying --region kalos\n"
 			"  .pokemon --atkiv 31 --spdiv 31\n"
 			"  .pokemon --random --limit 5\n"
-			"  .pokemon --page 2 --page_size 10"
+			"  .pokemon --move thunderbolt --min_ev 100\n"
+			"  .pokemon --fainted --party"
 		)
 	)
 	@requires_account()
 	async def pokemon_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
-		pokemons = toolkit.get_user_pokemon(user_id)
+		
+		if flags.get("party") and not flags.get("box"):
+			pokemons = toolkit.get_user_party(user_id)
+		elif flags.get("box") and not flags.get("party"):
+			pokemons = toolkit.get_user_box(user_id)
+		else:
+			pokemons = toolkit.list_pokemon_by_owner(user_id)
+		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
 
@@ -390,6 +490,13 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--spdefiv", nargs="+", action="append")
 	@flags.add_flag("--spdiv", nargs="+", action="append")
 	@flags.add_flag("--iv", nargs="+", action="append")
+	@flags.add_flag("--min_ev", type=int)
+	@flags.add_flag("--max_ev", type=int)
+	@flags.add_flag("--move", nargs="+", action="append")
+	@flags.add_flag("--no_nickname", action="store_true")
+	@flags.add_flag("--has_nickname", action="store_true")
+	@flags.add_flag("--no_held_item", action="store_true")
+	@flags.add_flag("--has_held_item", action="store_true")
 	@flags.add_flag("--limit", type=int)
 	@flags.command(
 		name="favoriteall",
@@ -406,7 +513,14 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def favoriteall_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
-		pokemons = toolkit.get_user_pokemon(user_id)
+		
+		if flags.get("party") and not flags.get("box"):
+			pokemons = toolkit.get_user_party(user_id)
+		elif flags.get("box") and not flags.get("party"):
+			pokemons = toolkit.get_user_box(user_id)
+		else:
+			pokemons = toolkit.list_pokemon_by_owner(user_id)
+		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
 
@@ -453,13 +567,9 @@ class Pokemon(commands.Cog):
 			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=None)
 			return
 
-		count = 0
-		for pokemon in pokemons_to_fav:
-			try:
-				toolkit.toggle_favorite(user_id, pokemon["id"])
-				count += 1
-			except ValueError:
-				continue
+		pokemon_ids = [p["id"] for p in pokemons_to_fav]
+		updated = toolkit.bulk_update_pokemon(user_id, pokemon_ids, {"is_favorite": True})
+		count = len(updated)
 
 		if count == 0:
 			result_text = "Não foi possível favoritar nenhum Pokémon!"
@@ -501,6 +611,13 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--spdefiv", nargs="+", action="append")
 	@flags.add_flag("--spdiv", nargs="+", action="append")
 	@flags.add_flag("--iv", nargs="+", action="append")
+	@flags.add_flag("--min_ev", type=int)
+	@flags.add_flag("--max_ev", type=int)
+	@flags.add_flag("--move", nargs="+", action="append")
+	@flags.add_flag("--no_nickname", action="store_true")
+	@flags.add_flag("--has_nickname", action="store_true")
+	@flags.add_flag("--no_held_item", action="store_true")
+	@flags.add_flag("--has_held_item", action="store_true")
 	@flags.add_flag("--limit", type=int)
 	@flags.command(
 		name="unfavouriteall",
@@ -517,7 +634,14 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def unfavouriteall_command(self, ctx: commands.Context, **flags):
 		user_id = str(ctx.author.id)
-		pokemons = toolkit.get_user_pokemon(user_id)
+		
+		if flags.get("party") and not flags.get("box"):
+			pokemons = toolkit.get_user_party(user_id)
+		elif flags.get("box") and not flags.get("party"):
+			pokemons = toolkit.get_user_box(user_id)
+		else:
+			pokemons = toolkit.list_pokemon_by_owner(user_id)
+		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
 
@@ -564,13 +688,9 @@ class Pokemon(commands.Cog):
 			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=None)
 			return
 
-		count = 0
-		for pokemon in pokemons_to_unfav:
-			try:
-				toolkit.toggle_favorite(user_id, pokemon["id"])
-				count += 1
-			except ValueError:
-				continue
+		pokemon_ids = [p["id"] for p in pokemons_to_unfav]
+		updated = toolkit.bulk_update_pokemon(user_id, pokemon_ids, {"is_favorite": False})
+		count = len(updated)
 
 		if count == 0:
 			result_text = "Não foi possível desfavoritar nenhum Pokémon!"
@@ -613,6 +733,13 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--spdefiv", nargs="+", action="append")
 	@flags.add_flag("--spdiv", nargs="+", action="append")
 	@flags.add_flag("--iv", nargs="+", action="append")
+	@flags.add_flag("--min_ev", type=int)
+	@flags.add_flag("--max_ev", type=int)
+	@flags.add_flag("--move", nargs="+", action="append")
+	@flags.add_flag("--no_nickname", action="store_true")
+	@flags.add_flag("--has_nickname", action="store_true")
+	@flags.add_flag("--no_held_item", action="store_true")
+	@flags.add_flag("--has_held_item", action="store_true")
 	@flags.add_flag("--limit", type=int)
 	@flags.command(
 		name="nicknameall",
@@ -637,7 +764,13 @@ class Pokemon(commands.Cog):
 		if nickname and len(nickname) > 20:
 			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
 		
-		pokemons = toolkit.get_user_pokemon(user_id)
+		if flags.get("party") and not flags.get("box"):
+			pokemons = toolkit.get_user_party(user_id)
+		elif flags.get("box") and not flags.get("party"):
+			pokemons = toolkit.get_user_box(user_id)
+		else:
+			pokemons = toolkit.list_pokemon_by_owner(user_id)
+		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
 
@@ -683,13 +816,9 @@ class Pokemon(commands.Cog):
 			await message.edit(content="**Operação cancelada ou com tempo limite esgotado.**", view=None)
 			return
 		
-		count = 0
-		for pokemon in pokemons:
-			try:
-				toolkit.set_nickname(user_id, pokemon["id"], nickname if nickname else None)
-				count += 1
-			except ValueError:
-				continue
+		pokemon_ids = [p["id"] for p in pokemons]
+		updated = toolkit.bulk_update_pokemon(user_id, pokemon_ids, {"nickname": nickname if nickname else None})
+		count = len(updated)
 
 		if count == 0:
 			result_text = "Não foi possível alterar o nickname de nenhum Pokémon!"
@@ -716,4 +845,3 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
-
