@@ -113,6 +113,7 @@ class MoveChoiceView(discord.ui.View):
 class PokemonManager:
 	def __init__(self, toolkit):
 		self.repo = PokemonRepository(toolkit)
+		self.tk = toolkit
 		self.service = PokeAPIService()
 
 	async def _build_pokemon_data(
@@ -203,7 +204,7 @@ class PokemonManager:
 			**kwargs
 		)
 
-		created = self.repo.add(
+		created = self.toolkit.add_pokemon(
 			owner_id=pkmn["owner_id"],
 			species_id=pkmn["species_id"],
 			ivs=pkmn["ivs"],
@@ -415,6 +416,7 @@ class PokemonManager:
 	async def close(self):
 
 		await self.service.close()
+
 
 
 
