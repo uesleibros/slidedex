@@ -219,7 +219,7 @@ class Toolkit:
 			self._save()
 			return self._deepcopy(self.db["pokemon"][idx])
 
-	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, types: List[str], region: str, is_legendary: bool, is_mythical: bool, base_stats: Dict, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
+	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, types: List[str], region: str, is_legendary: bool, is_mythical: bool, growth_type: str, base_stats: Dict, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
 		with self._lock:
 			self._ensure_user(owner_id)
 			self._validate_ivs(ivs)
@@ -248,6 +248,7 @@ class Toolkit:
 				"region": region,
 				"gender": gender,
 				"is_shiny": bool(shiny),
+				"growth_type": growth_type,
 				"background": "lab",
 				"held_item": held_item,
 				"is_favorite": False,
@@ -770,3 +771,4 @@ class Toolkit:
 			
 
 			return results
+
