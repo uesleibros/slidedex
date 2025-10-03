@@ -543,89 +543,89 @@ class WildBattle(BattleEngine):
 		return lines
 	
 	async def attempt_capture(self, ball_type: str = BallType.POKE_BALL) -> bool:
-	    async with self.lock:
-	        if self.ended:
-	            return False
-	        
-	        if self.player_active.fainted:
-	            self.lines = ["Seu Pokémon está desmaiado!"]
-	            if self.actions_view:
-	                self.actions_view.force_switch_mode = True
-	            await self.refresh()
-	            return False
+		async with self.lock:
+			if self.ended:
+				return False
+			
+			if self.player_active.fainted:
+				self.lines = ["Seu Pokémon está desmaiado!"]
+				if self.actions_view:
+					self.actions_view.force_switch_mode = True
+				await self.refresh()
+				return False
 	
-	        already_caught = pm.tk.has_caught_species(self.user_id, self.wild.species_id)
-	        success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
-	            wild=self.wild,
-	            ball_type=self.ball_type,
-	            turn=self.turn,
-	            time_of_day=self.time_of_day,
-	            location_type=self.location_type,
-	            already_caught=already_caught
-	        )
-	        
-	        ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
-	        ball_name = PokeBallSystem.get_ball_name(ball_type)
-	        
-	        if success:
-	            experience_distribution = await self._calculate_experience_distribution()
-	            ev_distribution = await self._distribute_evs()
-	            
-	            pm.tk.add_pokemon(
-	                owner_id=self.user_id,
-	                species_id=self.wild_raw["species_id"],
-	                ivs=self.wild_raw["ivs"],
-	                nature=self.wild_raw["nature"],
-	                ability=self.wild_raw["ability"],
-	                gender=self.wild_raw["gender"],
-	                shiny=self.wild_raw.get("is_shiny", False),
-	                level=self.wild_raw["level"],
-	                is_legendary=self.wild_raw["is_legendary"],
-	                is_mythical=self.wild_raw["is_mythical"],
-	                types=self.wild_raw["types"],
-	                region=self.wild_raw["region"],
-	                base_stats=self.wild_raw["base_stats"],
-	                exp=self.wild_raw.get("exp", 0),
-	                growth_type=self.wild_raw.get("growth_type", "medium"),
-	                moves=self.wild_raw.get("moves", []),
-	                nickname=self.wild_raw.get("nickname"),
-	                name=self.wild_raw.get("name"),
-	                current_hp=self.wild_raw.get("current_hp"),
-	                on_party=pm.tk.can_add_to_party(self.user_id)
-	            )
-	            
-	            self.ended = True
-	            
-	            bonus_text = f" (Bônus {modifier:.1f}x)" if modifier > 1.0 else ""
-	            
-	            self.lines = [
-	                "🎉 **CAPTURA!**",
-	                f"{ball_emoji} Capturado com {ball_name}!{bonus_text}",
-	                f"✨ {self.wild.display_name} foi adicionado à sua Pokédex!",
-	                ""
-	            ]
-	            
-	            max_level_skipped = getattr(self, '_max_level_skipped', 0)
-	            exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
-	            self.lines.extend(exp_lines)
-	            
-	            ev_lines = BattleRewards.format_ev_gains(ev_distribution)
-	            if ev_lines:
-	                self.lines.append("")
-	                self.lines.extend(ev_lines)
-	            
-	            if self.actions_view:
-	                self.actions_view.disable_all()
-	            
-	            await self.refresh()
-	            
-	            total_experience = sum(xp for _, _, xp in experience_distribution)
-	            await self.interaction.channel.send(
-	                f"🎉 **Capturou {self.wild.display_name}!** ⭐ +{total_experience} XP distribuído!"
-	            )
-	            
-	            await self.cleanup()
-	            return True
+			already_caught = pm.tk.has_caught_species(self.user_id, self.wild.species_id)
+			success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
+				wild=self.wild,
+				ball_type=self.ball_type,
+				turn=self.turn,
+				time_of_day=self.time_of_day,
+				location_type=self.location_type,
+				already_caught=already_caught
+			)
+			
+			ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
+			ball_name = PokeBallSystem.get_ball_name(ball_type)
+			
+			if success:
+				experience_distribution = await self._calculate_experience_distribution()
+				ev_distribution = await self._distribute_evs()
+				
+				pm.tk.add_pokemon(
+					owner_id=self.user_id,
+					species_id=self.wild_raw["species_id"],
+					ivs=self.wild_raw["ivs"],
+					nature=self.wild_raw["nature"],
+					ability=self.wild_raw["ability"],
+					gender=self.wild_raw["gender"],
+					shiny=self.wild_raw.get("is_shiny", False),
+					level=self.wild_raw["level"],
+					is_legendary=self.wild_raw["is_legendary"],
+					is_mythical=self.wild_raw["is_mythical"],
+					types=self.wild_raw["types"],
+					region=self.wild_raw["region"],
+					base_stats=self.wild_raw["base_stats"],
+					exp=self.wild_raw.get("exp", 0),
+					growth_type=self.wild_raw.get("growth_type", "medium"),
+					moves=self.wild_raw.get("moves", []),
+					nickname=self.wild_raw.get("nickname"),
+					name=self.wild_raw.get("name"),
+					current_hp=self.wild_raw.get("current_hp"),
+					on_party=pm.tk.can_add_to_party(self.user_id)
+				)
+				
+				self.ended = True
+				
+				bonus_text = f" (Bônus {modifier:.1f}x)" if modifier > 1.0 else ""
+				
+				self.lines = [
+					"🎉 **CAPTURA!**",
+					f"{ball_emoji} Capturado com {ball_name}!{bonus_text}",
+					f"✨ {self.wild.display_name} foi adicionado à sua Pokédex!",
+					""
+				]
+				
+				max_level_skipped = getattr(self, '_max_level_skipped', 0)
+				exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
+				self.lines.extend(exp_lines)
+				
+				ev_lines = BattleRewards.format_ev_gains(ev_distribution)
+				if ev_lines:
+					self.lines.append("")
+					self.lines.extend(ev_lines)
+				
+				if self.actions_view:
+					self.actions_view.disable_all()
+				
+				await self.refresh()
+				
+				total_experience = sum(xp for _, _, xp in experience_distribution)
+				await self.interaction.channel.send(
+					f"🎉 **Capturou {self.wild.display_name}!** ⭐ +{total_experience} XP distribuído!"
+				)
+				
+				await self.cleanup()
+				return True
 			else:
 				self.lines = []
 				shake_display = f"{ball_emoji} " * shake_count if shake_count > 0 else ""
@@ -786,6 +786,7 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
 
 
 
