@@ -264,54 +264,59 @@ class Toolkit:
 			return self._deepcopy(self.db["pokemon"][idx])
 
 	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, types: List[str], region: str, is_legendary: bool, is_mythical: bool, growth_type: str, base_stats: Dict, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
-		with self._lock:
-			self._ensure_user(owner_id)
-			self._validate_ivs(ivs)
-			base_evs = {k: 0 for k in STAT_KEYS}
-			auto_party = self.get_party_count(owner_id) < PARTY_LIMIT
-			final_on_party = auto_party if on_party is None else (on_party and auto_party)
-			user = self.db["users"][owner_id]
-			user["last_pokemon_id"] += 1
-			new_id = user["last_pokemon_id"]
-			pkmn = {
-				"id": int(new_id),
-				"species_id": int(species_id),
-				"nickname": nickname,
-				"name": name,
-				"owner_id": owner_id,
-				"level": int(level),
-				"exp": int(exp),
-				"ivs": ivs,
-				"evs": base_evs,
-				"nature": nature,
-				"ability": ability,
-				"types": types,
-				"is_legendary": is_legendary,
-				"is_mythical": is_mythical,
-				"base_stats": base_stats,
-				"region": region,
-				"gender": gender,
-				"is_shiny": bool(shiny),
-				"growth_type": growth_type,
-				"background": "lab",
-				"held_item": held_item,
-				"is_favorite": False,
-				"caught_at": datetime.utcnow().isoformat(),
-				"moves": [],
-				"current_hp": current_hp if current_hp is None else int(current_hp),
-				"on_party": final_on_party
-			}
-			if moves:
-				if len(moves) > MOVES_LIMIT:
-					raise ValueError("Too many moves")
-				for m in moves:
-					if not isinstance(m, dict) or "id" not in m or "pp" not in m or "pp_max" not in m:
-						raise ValueError("Invalid move shape")
-				pkmn["moves"] = moves
-			self.db["pokemon"].append(pkmn)
-			self._pk_index[(owner_id, int(new_id))] = len(self.db["pokemon"]) - 1
-			self._save()
-			return self._deepcopy(pkmn)
+	    with self._lock:
+	        self._ensure_user(owner_id)
+	        self._validate_ivs(ivs)
+	        base_evs = {k: 0 for k in STAT_KEYS}
+	        auto_party = self.get_party_count(owner_id) < PARTY_LIMIT
+	        final_on_party = auto_party if on_party is None else (on_party and auto_party)
+	        user = self.db["users"][owner_id]
+	        user["last_pokemon_id"] += 1
+	        new_id = user["last_pokemon_id"]
+	        
+	        final_level = min(max(int(level), 1), 100)
+	        max_exp = self.get_exp_for_level(growth_type, 100)
+	        final_exp = min(int(exp), max_exp)
+	        
+	        pkmn = {
+	            "id": int(new_id),
+	            "species_id": int(species_id),
+	            "nickname": nickname,
+	            "name": name,
+	            "owner_id": owner_id,
+	            "level": final_level,
+	            "exp": final_exp,
+	            "ivs": ivs,
+	            "evs": base_evs,
+	            "nature": nature,
+	            "ability": ability,
+	            "types": types,
+	            "is_legendary": is_legendary,
+	            "is_mythical": is_mythical,
+	            "base_stats": base_stats,
+	            "region": region,
+	            "gender": gender,
+	            "is_shiny": bool(shiny),
+	            "growth_type": growth_type,
+	            "background": "lab",
+	            "held_item": held_item,
+	            "is_favorite": False,
+	            "caught_at": datetime.utcnow().isoformat(),
+	            "moves": [],
+	            "current_hp": current_hp if current_hp is None else int(current_hp),
+	            "on_party": final_on_party
+	        }
+	        if moves:
+	            if len(moves) > MOVES_LIMIT:
+	                raise ValueError("Too many moves")
+	            for m in moves:
+	                if not isinstance(m, dict) or "id" not in m or "pp" not in m or "pp_max" not in m:
+	                    raise ValueError("Invalid move shape")
+	            pkmn["moves"] = moves
+	        self.db["pokemon"].append(pkmn)
+	        self._pk_index[(owner_id, int(new_id))] = len(self.db["pokemon"]) - 1
+	        self._save()
+	        return self._deepcopy(pkmn)
 
 	def get_pokemon(self, owner_id: str, pokemon_id: int) -> Dict:
 		with self._lock:
@@ -841,4 +846,5 @@ class Toolkit:
 	    with self._lock:
 	        idx = self._get_pokemon_index(owner_id, pokemon_id)
 	        return self.db["pokemon"][idx].get("evolution_blocked", False)
+
 
