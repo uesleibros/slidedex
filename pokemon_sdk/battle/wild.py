@@ -468,49 +468,49 @@ class WildBattle(BattleEngine):
 		
 		return distribution
 	
-    async def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
-        from __main__ import pm
-        
-        base_exp = BattleRewards.calculate_base_experience(
-            self.wild,
-            is_trainer_battle=False
-        )
-        
-        participant_count = len(self.battle_participants)
-        if participant_count == 0:
-            return []
-        
-        distribution = []
-        max_level_skipped = 0
-        
-        for participant_index in self.battle_participants:
-            pokemon_data = self.player_party_raw[participant_index]
-            pokemon_battle = self.player_team[participant_index]
-            
-            if pokemon_data["level"] >= 100:
-                max_level_skipped += 1
-                continue
-            
-            has_lucky_egg = pokemon_battle.volatile.get("held_item") == "lucky_egg"
-            
-            exp_to_give = BattleRewards.apply_exp_modifiers(
-                base_exp,
-                participant_count,
-                has_lucky_egg=has_lucky_egg
-            )
-            
-            await pm.add_experience(
-                self.user_id,
-                pokemon_data["id"],
-                exp_to_give,
-                notify_message=self.message
-            )
-            
-            distribution.append((participant_index, pokemon_battle.display_name, exp_to_give))
-        
-        self._max_level_skipped = max_level_skipped
-        
-        return distribution
+	async def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
+		from __main__ import pm
+		
+		base_exp = BattleRewards.calculate_base_experience(
+			self.wild,
+			is_trainer_battle=False
+		)
+		
+		participant_count = len(self.battle_participants)
+		if participant_count == 0:
+			return []
+		
+		distribution = []
+		max_level_skipped = 0
+		
+		for participant_index in self.battle_participants:
+			pokemon_data = self.player_party_raw[participant_index]
+			pokemon_battle = self.player_team[participant_index]
+			
+			if pokemon_data["level"] >= 100:
+				max_level_skipped += 1
+				continue
+			
+			has_lucky_egg = pokemon_battle.volatile.get("held_item") == "lucky_egg"
+			
+			exp_to_give = BattleRewards.apply_exp_modifiers(
+				base_exp,
+				participant_count,
+				has_lucky_egg=has_lucky_egg
+			)
+			
+			await pm.add_experience(
+				self.user_id,
+				pokemon_data["id"],
+				exp_to_give,
+				notify_message=self.message
+			)
+			
+			distribution.append((participant_index, pokemon_battle.display_name, exp_to_give))
+		
+		self._max_level_skipped = max_level_skipped
+		
+		return distribution
 	
 	def _format_experience_gains(self, distribution: List[Tuple[int, Dict[str, Any], int]]) -> List[str]:
 		lines = []
@@ -786,6 +786,7 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
 
 
 
