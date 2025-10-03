@@ -113,6 +113,9 @@ class EffectHandler:
             "conversion2": self._handle_conversion2,
             "psych_up": self._handle_psych_up,
             "foresight": self._handle_foresight,
+            "follow_me": self._handle_follow_me,
+            "curse": self._handle_curse,
+            "aqua_ring": self._handle_aqua_ring,
             "nothing": self._handle_nothing
         }
         
@@ -131,7 +134,21 @@ class EffectHandler:
         if not stat or stages == 0:
             return None
         
-        was_protected_by_mist = target.volatile.get("mist", 0) > 0 and stages < 0
+        stat_map = {
+            "attack": "atk",
+            "defense": "def",
+            "special_attack": "sp_atk",
+            "special-attack": "sp_atk",
+            "special_defense": "sp_def",
+            "special-defense": "sp_def",
+            "speed": "speed",
+            "accuracy": "accuracy",
+            "evasion": "evasion"
+        }
+        
+        stat = stat_map.get(stat, stat)
+        
+        was_protected_by_mist = target.volatile.get("mist", 0) > 0 and stages < 0 and target != user
         
         actual_change, old_value = target.modify_stat_stage(stat, stages)
         
@@ -364,7 +381,8 @@ class EffectHandler:
         return f"   └─ 💥 {user.display_name} se sacrificou!"
     
     def _handle_pay_day(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
-        money = effect.get("money_multiplier", 5) * user.level
+        multiplier = effect.get("multiplier", 5)
+        money = multiplier * user.level
         user.volatile["pay_day_money"] = user.volatile.get("pay_day_money", 0) + money
         return BattleMessages.pay_day(money)
     
@@ -396,9 +414,9 @@ class EffectHandler:
         return BattleMessages.bound(target.display_name, turns, move_name)
     
     def _handle_crash_damage(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
-        crash_percent = effect.get("crash_percent", 0.5)
-        crash_dmg = max(1, int(user.stats["hp"] * crash_percent))
-        user.take_damage(crash_dmg)
+        damage_ratio = effect.get("damage_ratio", 0.5)
+        crash_dmg = max(1, int(user.stats["hp"] * damage_ratio))
+        user.take_damage(crash_dmg, ignore_substitute=True)
         return f"   └─ 💥 {user.display_name} errou e se machucou! ({crash_dmg} de dano)"
     
     def _handle_disable(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
@@ -690,7 +708,7 @@ class EffectHandler:
         if user.volatile.get("uproar", 0) > 0:
             return BattleMessages.failed()
         
-        turns = effect.get("turns", 3)
+        turns = effect.get("min_turns", 3)
         user.volatile["uproar"] = turns
         user.volatile["uproar_active"] = True
         
@@ -742,7 +760,6 @@ class EffectHandler:
         
         user.volatile["charge"] = True
         user.volatile["charge_turns"] = 1
-        user.modify_stat_stage("sp_def", 1)
         
         return f"   └─ ⚡ {user.display_name} está carregando poder elétrico!"
     
@@ -750,7 +767,7 @@ class EffectHandler:
         if target.volatile.get("taunt", 0) > 0:
             return BattleMessages.failed()
         
-        turns = effect.get("turns", 3)
+        turns = effect.get("min_turns", 3)
         target.volatile["taunt"] = turns
         
         return BattleMessages.taunted(target.display_name, turns)
@@ -1024,6 +1041,38 @@ class EffectHandler:
         target.volatile["identified"] = True
         
         return BattleMessages.identified(target.display_name)
+    
+    def _handle_follow_me(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
+        user.volatile["follow_me"] = True
+        user.volatile["follow_me_turns"] = 1
+        
+        return f"   └─ 👋 {user.display_name} atraiu a atenção!"
+    
+    def _handle_curse(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
+        if "ghost" in user.types:
+            hp_cost = max(1, user.stats["hp"] // 2)
+            
+            if user.current_hp <= hp_cost:
+                return BattleMessages.failed()
+            
+            user.current_hp -= hp_cost
+            target.volatile["curse"] = True
+            
+            return f"   └─ 👻 {user.display_name} sacrificou metade do HP! {target.display_name} foi amaldiçoado!"
+        else:
+            user.modify_stat_stage("atk", 1)
+            user.modify_stat_stage("def", 1)
+            user.modify_stat_stage("speed", -1)
+            
+            return f"   └─ 👻 Ataque e Defesa aumentaram, Velocidade diminuiu!"
+    
+    def _handle_aqua_ring(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
+        if user.volatile.get("aqua_ring"):
+            return BattleMessages.failed()
+        
+        user.volatile["aqua_ring"] = True
+        
+        return f"   └─ 💧 {user.display_name} se envolveu em um véu de água!"
 
     def _handle_nothing(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
-        return f" :face_with_raised_eyebrow: └─ {user.display_name} fez.... nada?!"
+        return f":face_with_raised_eyebrow: └─ {user.display_name} fez.... nada?!"
