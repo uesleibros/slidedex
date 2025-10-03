@@ -136,10 +136,22 @@ class WildBattle(BattleEngine):
 			await asyncio.gather(*[self._fetch_move(mid) for mid in move_ids if mid])
 	
 	async def _compose_image(self) -> discord.File:
-		pb = await self.player_active.sprites["back"].read() if self.player_active.sprites["back"] else None
-		ef = await self.wild.sprites["front"].read() if self.wild.sprites["front"] else None
-		buf = await compose_battle_async(pb, ef, preloaded_textures["battle"])
-		return discord.File(buf, filename="battle.png")
+	    player_sprite = self.player_active.sprites["back"]
+	    wild_sprite = self.wild.sprites["front"]
+	    
+	    if self.player_active.volatile.get("transformed"):
+	        if self.wild.sprites.get("back"):
+	            player_sprite = self.wild.sprites["back"]
+	    
+	    if self.wild.volatile.get("transformed"):
+	        if self.player_active.sprites.get("front"):
+	            wild_sprite = self.player_active.sprites["front"]
+	    
+	    pb = await player_sprite.read() if player_sprite else None
+	    ef = await wild_sprite.read() if wild_sprite else None
+	    
+	    buf = await compose_battle_async(pb, ef, preloaded_textures["battle"])
+	    return discord.File(buf, filename="battle.png")
 	
 	def _build_embed(self) -> discord.Embed:
 		description_components = [
@@ -786,6 +798,7 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
 
 
 
