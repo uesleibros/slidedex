@@ -63,7 +63,7 @@ class MoveChoiceView(discord.ui.View):
 			
 			self.answered = True
 			
-			self.manager.repo.tk.learn_move(
+			self.manager.tk.learn_move(
 				self.owner_id,
 				self.pokemon_id,
 				self.new_move_id,
@@ -415,3 +415,4 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
