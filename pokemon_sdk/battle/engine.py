@@ -34,6 +34,122 @@ class BattleEngine:
         self.effect_handler = EffectHandler()
         self.battle_context = BattleContext(battle_type=battle_type)
     
+    def _find_first_available_pokemon(self, team: List[BattlePokemon]) -> Optional[int]:
+        for idx, pokemon in enumerate(team):
+            if not pokemon.fainted:
+                return idx
+        return None
+    
+    def _validate_party(self, team: List[BattlePokemon]) -> bool:
+        return any(not p.fainted for p in team)
+    
+    def _has_remaining_pokemon(self, team: List[BattlePokemon]) -> bool:
+        return any(not p.fainted for p in team)
+    
+    def _generate_hp_display(self, pokemon: BattlePokemon, show_stages: bool = True) -> str:
+        from .helpers import _hp_bar
+        from utils.formatting import format_pokemon_display
+        
+        bar = _hp_bar(pokemon.current_hp, pokemon.stats["hp"])
+        hp_percent = (pokemon.current_hp / pokemon.stats["hp"] * 100) if pokemon.stats["hp"] > 0 else 0
+        base_display = (
+            f"{format_pokemon_display(pokemon.raw, bold_name=True)} "
+            f"{pokemon.status_tag()} Lv{pokemon.level}\n"
+            f"{bar} {max(0, pokemon.current_hp)}/{pokemon.stats['hp']} ({hp_percent:.1f}%)"
+        )
+
+        if show_stages:
+            stage_modifications = []
+            for stat_key in ["atk", "def", "sp_atk", "sp_def", "speed"]:
+                stage_value = pokemon.stages.get(stat_key, 0)
+                if stage_value != 0:
+                    stat_abbrev = stat_key.upper().replace("_", "")
+                    stage_modifications.append(f"{stat_abbrev}: {stage_value:+d}")
+            
+            if pokemon.stages.get("accuracy", 0) != 0:
+                stage_modifications.append(f"ACC: {pokemon.stages['accuracy']:+d}")
+            if pokemon.stages.get("evasion", 0) != 0:
+                stage_modifications.append(f"EVA: {pokemon.stages['evasion']:+d}")
+            
+            if stage_modifications:
+                base_display += f" [{' | '.join(stage_modifications)}]"
+        
+        return base_display
+    
+    def _select_ai_move(self, pokemon: BattlePokemon) -> str:
+        available_moves = []
+        
+        for m in pokemon.moves:
+            move_id = str(m["id"])
+            pp = int(m.get("pp", 0))
+            
+            if pp <= 0:
+                continue
+            
+            if pokemon.is_move_disabled(move_id):
+                continue
+            
+            available_moves.append(m)
+        
+        if not available_moves:
+            return "__struggle__"
+        
+        return str(random.choice(available_moves)["id"])
+    
+    def _determine_turn_order(
+        self,
+        move1: MoveData,
+        pokemon1: BattlePokemon,
+        move2: MoveData,
+        pokemon2: BattlePokemon
+    ) -> List[str]:
+        priority1 = self._get_move_priority(move1, pokemon1)
+        priority2 = self._get_move_priority(move2, pokemon2)
+        
+        if priority1 != priority2:
+            return ["first", "second"] if priority1 > priority2 else ["second", "first"]
+        
+        speed1 = pokemon1.eff_stat("speed")
+        speed2 = pokemon2.eff_stat("speed")
+        
+        item1 = pokemon1.volatile.get("held_item", "")
+        item2 = pokemon2.volatile.get("held_item", "")
+        
+        if item1 == "quick_claw" and random.random() < 0.2:
+            return ["first", "second"]
+        if item2 == "quick_claw" and random.random() < 0.2:
+            return ["second", "first"]
+        
+        if self.field.get("trick_room", 0) > 0:
+            if speed1 != speed2:
+                return ["first", "second"] if speed1 < speed2 else ["second", "first"]
+        else:
+            if speed1 != speed2:
+                return ["first", "second"] if speed1 > speed2 else ["second", "first"]
+        
+        return random.choice([["first", "second"], ["second", "first"]])
+    
+    def _process_entry_hazards(self, pokemon: BattlePokemon, is_player: bool) -> List[str]:
+        lines = []
+        
+        spikes_key = "spikes_player" if is_player else "spikes_wild"
+        spikes_layers = self.field.get(spikes_key, 0)
+        
+        if spikes_layers > 0:
+            if "flying" in pokemon.types or pokemon.get_effective_ability() == "levitate":
+                return lines
+            
+            if pokemon.get_effective_ability() == "magic_guard":
+                return lines
+            
+            damage_ratios = {1: 0.125, 2: 0.1666, 3: 0.25}
+            damage = max(1, int(pokemon.stats["hp"] * damage_ratios.get(spikes_layers, 0.125)))
+            
+            actual = pokemon.take_damage(damage, ignore_substitute=True)
+            lines.append(f"⚠️ {pokemon.display_name} foi ferido por Spikes! ({actual} de dano)")
+        
+        return lines
+    
     async def _fetch_move(self, move_id: str) -> MoveData:
         from __main__ import pm
         
@@ -744,24 +860,3 @@ class BattleEngine:
         
         if self.field.get("water_sport", 0) > 0:
             self.field["water_sport"] -= 1
-    
-    def _process_entry_hazards(self, pokemon: BattlePokemon, is_player: bool) -> List[str]:
-        lines = []
-        
-        spikes_key = "spikes_player" if is_player else "spikes_wild"
-        spikes_layers = self.field.get(spikes_key, 0)
-        
-        if spikes_layers > 0:
-            if "flying" in pokemon.types or pokemon.get_effective_ability() == "levitate":
-                return lines
-            
-            if pokemon.get_effective_ability() == "magic_guard":
-                return lines
-            
-            damage_ratios = {1: 0.125, 2: 0.1666, 3: 0.25}
-            damage = max(1, int(pokemon.stats["hp"] * damage_ratios.get(spikes_layers, 0.125)))
-            
-            actual = pokemon.take_damage(damage, ignore_substitute=True)
-            lines.append(f"⚠️ {pokemon.display_name} foi ferido por Spikes! ({actual} de dano)")
-        
-        return lines
