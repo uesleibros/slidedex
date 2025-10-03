@@ -4,7 +4,7 @@ import aiopoke
 from discord.ext import commands
 from __main__ import toolkit, pm
 from pokemon_sdk.calculations import calculate_stats
-from pokemon_sdk.constants import STAT_KEYS
+from pokemon_sdk.constants import STAT_KEYS, VERSION_GROUPS
 from datetime import datetime
 from utils.formatting import format_pokemon_display
 from utils.canvas import compose_pokemon_async
@@ -41,15 +41,15 @@ class InfoView(discord.ui.View):
 			embed, files = result
 			await interaction.response.edit_message(embed=embed, attachments=files, view=self)
 		else:
-			await interaction.response.edit_message(content="Erro ao carregar este Pokémon.", embed=None, attachments=[], view=self)
+			await interaction.response.edit_message(content="Erro ao carregar este Pokemon.", embed=None, attachments=[], view=self)
 
-	@discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
+	@discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary)
 	async def prev_pokemon(self, interaction: discord.Interaction, button: discord.ui.Button):
 		if self.current_index > 0:
 			self.current_index -= 1
 			await self._update_info(interaction)
 
-	@discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
+	@discord.ui.button(label="Proximo", style=discord.ButtonStyle.secondary)
 	async def next_pokemon(self, interaction: discord.Interaction, button: discord.ui.Button):
 		if self.current_index < len(self.all_pokemon_ids) - 1:
 			self.current_index += 1
@@ -73,6 +73,13 @@ class Info(commands.Cog):
 
 		iv_total = sum(user_pokemon["ivs"].values())
 		iv_percent = round((iv_total / 186) * 100, 2)
+		
+		ev_total = sum(user_pokemon.get("evs", {}).values())
+
+		current_exp = user_pokemon.get("exp", 0)
+		current_level = user_pokemon["level"]
+		exp_needed = toolkit.exp_to_next_level(current_level)
+		exp_progress_percent = round((current_exp / exp_needed) * 100, 1) if exp_needed > 0 else 100
 
 		title = f"Level {user_pokemon['level']} {format_pokemon_display(user_pokemon, show_fav=True, show_poke=False)}"
 		
@@ -85,32 +92,74 @@ class Info(commands.Cog):
 			img_file = discord.File(buffer, filename="pokemon.png")
 			files.append(img_file)
 
-		stats_lines = [f"**{STAT_LABELS[key]}:** {stats[key]} (IV {user_pokemon['ivs'].get(key, 0)})" for key in STAT_KEYS]
-		stats_lines[0] = f"**HP:** {current_hp}/{stats['hp']} (IV {user_pokemon['ivs'].get('hp', 0)})"
+		details_lines = [
+			f"**ID do Pokemon:** {pokemon_id}",
+			f"**Especie:** #{user_pokemon.get('species_id')} - {user_pokemon.get('name', 'Desconhecido').title()}",
+			f"**Nivel:** {current_level}",
+			f"**Experiencia:** {current_exp}/{exp_needed} ({exp_progress_percent}%)",
+			f"**Natureza:** {user_pokemon['nature'].title()}",
+			f"**Genero:** {user_pokemon.get('gender', 'N/A')}",
+			f"**Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
+			f"**Tipos:** {' / '.join(t.title() for t in user_pokemon['types'])}",
+			f"**Regiao:** {user_pokemon['region'].replace('-', ' ').title()}",
+			f"**Item Segurado:** {str(user_pokemon.get('held_item') or 'Nenhum').replace('-', ' ').title()}"
+		]
 
-		moves_lines = [f"**{move['id'].replace('-', ' ').title()}** ({move['pp']}/{move['pp_max']} PP)" for move in user_pokemon.get("moves", [])]
+		stats_lines = []
+		for key in STAT_KEYS:
+			base = base_stats.get(key, 0)
+			iv = user_pokemon["ivs"].get(key, 0)
+			ev = user_pokemon.get("evs", {}).get(key, 0)
+			final = stats[key]
+			
+			if key == "hp":
+				stats_lines.append(f"**HP:** {current_hp}/{final} | Base: {base} | IV: {iv} | EV: {ev}")
+			else:
+				stat_label = STAT_LABELS[key]
+				stats_lines.append(f"**{stat_label}:** {final} | Base: {base} | IV: {iv} | EV: {ev}")
+
+		iv_lines = [
+			f"**Total:** {iv_total}/186 ({iv_percent}%)",
+			f"**HP:** {user_pokemon['ivs'].get('hp', 0)}/31",
+			f"**Ataque:** {user_pokemon['ivs'].get('attack', 0)}/31",
+			f"**Defesa:** {user_pokemon['ivs'].get('defense', 0)}/31",
+			f"**Sp. Atk:** {user_pokemon['ivs'].get('special-attack', 0)}/31",
+			f"**Sp. Def:** {user_pokemon['ivs'].get('special-defense', 0)}/31",
+			f"**Velocidade:** {user_pokemon['ivs'].get('speed', 0)}/31"
+		]
+
+		moves_lines = []
+		for move in user_pokemon.get("moves", []):
+			move_name = move['id'].replace('-', ' ').title()
+			moves_lines.append(f"**{move_name}** ({move['pp']}/{move['pp_max']} PP)")
 		
-		future_moves = []
-		learned_move_names = set()
-		for move_version in pokemon.moves:
-			for detail in move_version.version_group_details:
-				if detail.move_learn_method.name == 'level-up' and detail.level_learned_at > user_pokemon['level']:
-					if move_version.move.name not in learned_move_names:
-						future_moves.append((detail.level_learned_at, move_version.move.name))
-						learned_move_names.add(move_version.move.name)
-		future_moves.sort()
-		future_moves_lines = [f"**Lv. {lvl}:** {name.replace('-', ' ').title()}" for lvl, name in future_moves[:5]]
+		future_moves = pm.service.get_future_moves(pokemon, user_pokemon['level'])
+		future_moves_lines = []
+		for lvl, name in future_moves[:8]:
+			move_name = name.replace('-', ' ').title()
+			future_moves_lines.append(f"**Lv. {lvl}:** {move_name}")
 
 		embed = discord.Embed(title=title, color=discord.Color.blurple())
-		embed.add_field(name="Detalhes", value=(f"**ID da Espécie:** {user_pokemon.get("species_id")}\n**XP:** {user_pokemon['exp']}\n**Natureza:** {user_pokemon['nature']}\n**Gênero:** {user_pokemon.get('gender','N/A')}\n**Habilidade:** {str(user_pokemon.get('ability') or '-').title()}\n**Tipos:** {' / '.join(t.title() for t in user_pokemon['types'])}\n**Região:** {user_pokemon['region']}\n**Item:** {str(user_pokemon.get('held_item') or '-').title()}"), inline=False)
-		embed.add_field(name="IV Geral", value=f"**{iv_total}/186 ({iv_percent}%)**", inline=False)
-		embed.add_field(name="Estatísticas", value="\n".join(stats_lines), inline=False)
+		
+		embed.add_field(name="Informacoes Gerais", value="\n".join(details_lines), inline=False)
+		
+		embed.add_field(name=f"Individual Values (IVs)", value="\n".join(iv_lines), inline=True)
+		embed.add_field(name=f"Effort Values (EVs) - Total: {ev_total}/510", value=f"**HP:** {user_pokemon.get('evs', {}).get('hp', 0)}/255\n**Ataque:** {user_pokemon.get('evs', {}).get('attack', 0)}/255\n**Defesa:** {user_pokemon.get('evs', {}).get('defense', 0)}/255\n**Sp. Atk:** {user_pokemon.get('evs', {}).get('special-attack', 0)}/255\n**Sp. Def:** {user_pokemon.get('evs', {}).get('special-defense', 0)}/255\n**Velocidade:** {user_pokemon.get('evs', {}).get('speed', 0)}/255", inline=True)
+		
+		embed.add_field(name="Estatisticas Finais", value="\n".join(stats_lines), inline=False)
+		
 		if moves_lines:
-			embed.add_field(name="Movimentos Atuais", value="\n".join(moves_lines), inline=True)
+			embed.add_field(name=f"Movimentos Atuais ({len(moves_lines)}/4)", value="\n".join(moves_lines) if moves_lines else "Nenhum", inline=True)
+		else:
+			embed.add_field(name="Movimentos Atuais (0/4)", value="Nenhum movimento aprendido", inline=True)
+			
 		if future_moves_lines:
-			embed.add_field(name="Próximos Movimentos", value="\n".join(future_moves_lines), inline=True)
+			embed.add_field(name="Proximos Movimentos", value="\n".join(future_moves_lines), inline=True)
+		else:
+			embed.add_field(name="Proximos Movimentos", value="Nenhum movimento disponivel", inline=True)
 
-		embed.set_footer(text=f"ID: {pokemon_id} • Capturado em {datetime.fromisoformat(user_pokemon['caught_at']).strftime('%d/%m/%Y às %H:%M')}")
+		caught_date = datetime.fromisoformat(user_pokemon['caught_at']).strftime('%d/%m/%Y as %H:%M')
+		embed.set_footer(text=f"Capturado em {caught_date}")
 		
 		if files and any(f.filename == "pokemon.png" for f in files):
 			embed.set_image(url="attachment://pokemon.png")
@@ -124,7 +173,7 @@ class Info(commands.Cog):
 		all_pokemons = toolkit.get_user_pokemon(user_id)
 		
 		if not all_pokemons:
-			await ctx.send("Você não possui nenhum Pokémon!")
+			await ctx.send("Voce nao possui nenhum Pokemon!")
 			return
 			
 		all_pokemon_ids = [p['id'] for p in all_pokemons]
@@ -135,7 +184,7 @@ class Info(commands.Cog):
 			current_pokemon_id = party[0]['id'] if party else all_pokemon_ids[0]
 		
 		if current_pokemon_id not in all_pokemon_ids:
-			await ctx.send("Você não possui um Pokémon com este ID.")
+			await ctx.send("Voce nao possui um Pokemon com este ID.")
 			return
 
 		current_index = all_pokemon_ids.index(current_pokemon_id)
@@ -146,9 +195,8 @@ class Info(commands.Cog):
 			view = InfoView(self, ctx.author.id, all_pokemon_ids, current_index)
 			await ctx.send(embed=embed, files=files, view=view)
 		else:
-			await ctx.send("Não pude encontrar esse Pokémon!")
+			await ctx.send("Nao pude encontrar esse Pokemon!")
 
 
 async def setup(bot: commands.Bot) -> None:
-
 	await bot.add_cog(Info(bot))

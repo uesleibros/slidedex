@@ -253,7 +253,6 @@ class Toolkit:
 				"is_favorite": False,
 				"caught_at": datetime.utcnow().isoformat(),
 				"moves": [],
-				"pending_moves": [],
 				"current_hp": current_hp if current_hp is None else int(current_hp),
 				"on_party": final_on_party
 			}
@@ -301,7 +300,6 @@ class Toolkit:
 			levels_gained = []
 			
 			while p["exp"] >= self.exp_to_next_level(lvl):
-				p["exp"] -= self.exp_to_next_level(lvl)
 				lvl += 1
 				levels_gained.append(lvl)
 			
@@ -445,39 +443,6 @@ class Toolkit:
 			p = self.db["pokemon"][idx]
 			return len(p.get("moves", [])) < MOVES_LIMIT
 
-	def get_pending_moves(self, owner_id: str, pokemon_id: int) -> List[str]:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			p = self.db["pokemon"][idx]
-			return list(p.get("pending_moves", []))
-
-	def add_pending_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[str]:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			p = self.db["pokemon"][idx]
-			pending = p.setdefault("pending_moves", [])
-			if move_id not in pending:
-				pending.append(move_id)
-				self._save()
-			return list(pending)
-
-	def remove_pending_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[str]:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			p = self.db["pokemon"][idx]
-			pending = p.setdefault("pending_moves", [])
-			if move_id in pending:
-				pending.remove(move_id)
-				self._save()
-			return list(pending)
-
-	def clear_pending_moves(self, owner_id: str, pokemon_id: int) -> List[str]:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			self.db["pokemon"][idx]["pending_moves"] = []
-			self._save()
-			return []
-
 	def learn_move(self, owner_id: str, pokemon_id: int, move_id: str, pp_max: int, replace_move_id: Optional[str] = None) -> List[Dict]:
 		with self._lock:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
@@ -488,16 +453,10 @@ class Toolkit:
 				moves = [m for m in moves if m["id"] != replace_move_id]
 			
 			if len(moves) >= MOVES_LIMIT:
-				raise ValueError("Move slots full, must specify move to replace")
+				raise ValueError("Move slots full")
 			
 			moves.append({"id": move_id, "pp": int(pp_max), "pp_max": int(pp_max)})
 			p["moves"] = moves
-			
-			pending = p.setdefault("pending_moves", [])
-			if move_id in pending:
-				pending.remove(move_id)
-				p["pending_moves"] = pending
-			
 			self._save()
 			return self._deepcopy(moves)
 
@@ -796,7 +755,7 @@ class Toolkit:
 				if p["owner_id"] != user_id:
 					continue
 				
-				if p.get("name") and query in p["name"].lower():
+				if p.get("name") and query in p.name().lower():
 					results.append(self._deepcopy(p))
 					continue
 				
@@ -804,6 +763,4 @@ class Toolkit:
 					results.append(self._deepcopy(p))
 					continue
 			
-
 			return results
-

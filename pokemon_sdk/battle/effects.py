@@ -112,7 +112,8 @@ class EffectHandler:
             "gravity": self._handle_gravity,
             "conversion2": self._handle_conversion2,
             "psych_up": self._handle_psych_up,
-            "foresight": self._handle_foresight
+            "foresight": self._handle_foresight,
+            "nothing": self._handle_nothing
         }
         
         handler = handler_map.get(eff_type)
@@ -1019,3 +1020,6 @@ class EffectHandler:
         target.volatile["identified"] = True
         
         return BattleMessages.identified(target.display_name)
+
+    def _handle_nothing(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> str:
+        return f" :face_with_raised_eyebrow: └─ {user.display_name} fez.... nada?!"

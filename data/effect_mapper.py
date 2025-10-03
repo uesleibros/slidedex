@@ -363,7 +363,7 @@ effect_mapper: dict = {
     },
     "Does nothing.": {
         "damage": False,
-        "effects": []
+        "effects": [{"type": "nothing"}]
     },
     "User sleeps for two turns, completely healing itself.": {
         "damage": False,

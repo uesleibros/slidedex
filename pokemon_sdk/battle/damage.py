@@ -16,40 +16,28 @@ class DamageCalculator:
         move_data: MoveData, 
         effect_data: Dict[str, Any]
     ) -> Tuple[int, float, bool]:
-        """
-        Calcula o dano de um movimento considerando todos os modificadores.
-        Retorna: (dano, multiplicador_de_tipo, foi_crítico)
-        """
-        # Movimentos sem poder ou efeitos especiais
         if move_data.power <= 0 and not effect_data.get("damage", False):
             return 0, 1.0, False
         
-        # Dano fixo
         if effect_data.get("fixed_damage"):
             return effect_data["fixed_damage"], 1.0, False
         
-        # Dano baseado no nível
         if effect_data.get("level_damage"):
             return attacker.level, 1.0, False
         
-        # Dano OHKO (sempre mata em um hit)
         if effect_data.get("ohko"):
             return defender.current_hp, 1.0, False
         
-        # Psywave - dano aleatório baseado no nível
         if effect_data.get("psywave"):
             damage = int(attacker.level * random.uniform(0.5, 1.5))
             return max(1, damage), 1.0, False
         
-        # Super Fang - metade do HP atual
         if effect_data.get("super_fang"):
             return max(1, defender.current_hp // 2), 1.0, False
         
-        # Endeavor - já calculado no handler
         if effect_data.get("endeavor"):
             return 0, 1.0, False
         
-        # Spit Up - poder baseado em stockpile
         if effect_data.get("spit_up"):
             stockpile = attacker.volatile.get("stockpile", 0)
             if stockpile == 0:
@@ -61,23 +49,17 @@ class DamageCalculator:
         if power <= 0:
             return 0, 1.0, False
         
-        # Modifica poder baseado em efeitos
         power = self._modify_power(power, attacker, defender, move_data, effect_data)
         
-        # Calcula stats de ataque e defesa
         is_crit = self._calculate_crit(attacker, defender, move_data, effect_data)
         attack_stat, defense_stat = self._get_stats(attacker, defender, move_data, effect_data, is_crit)
         
-        # Cálculo base de dano
         base_damage = self._base_damage(attacker.level, power, attack_stat, defense_stat)
         
-        # Struggle não tem STAB nem efetividade
         is_struggle = move_data.name.lower() == "struggle"
         type_mult = 1.0 if is_struggle else _type_mult(move_data.type_name, defender.types)
         
-        # Se tem imunidade, retorna 0
         if type_mult == 0.0:
-            # Foresight/Odor Sleuth/Miracle Eye remove imunidades Ghost
             if defender.volatile.get("foresight") or defender.volatile.get("identified") or defender.volatile.get("miracle_eye"):
                 if "ghost" in defender.types and move_data.type_name.lower() in ["normal", "fighting"]:
                     type_mult = 1.0
@@ -86,18 +68,14 @@ class DamageCalculator:
             else:
                 return 0, 0.0, False
         
-        # Calcula modificadores finais
         stab = self._calculate_stab(attacker, move_data, is_struggle)
         weather_mult = self._calculate_weather_mult(attacker, defender, move_data)
         other_mult = self._calculate_other_multipliers(attacker, defender, move_data, effect_data)
         
-        # Random roll (0.85 a 1.0)
         random_mult = random.uniform(BattleConstants.DAMAGE_ROLL_MIN, BattleConstants.DAMAGE_ROLL_MAX)
         
-        # Dano crítico
         crit_mult = BattleConstants.CRIT_DAMAGE_MULT if is_crit else 1.0
         
-        # Cálculo final
         final_damage = int(
             base_damage * 
             stab * 
@@ -118,57 +96,43 @@ class DamageCalculator:
         effect_data: Dict[str, Any],
         is_crit: bool
     ) -> Tuple[int, int]:
-        """Calcula stats de ataque e defesa com todos os modificadores."""
         
         if move_data.dmg_class == "special":
-            # Ataque especial
             if is_crit:
-                # Crítico ignora reduções de ataque
                 attack = attacker.eff_stat("sp_atk") if attacker.stages.get("sp_atk", 0) >= 0 else attacker.stats["special-attack"]
             else:
                 attack = attacker.eff_stat("sp_atk")
-            
-            # Defesa especial
+
             if is_crit:
-                # Crítico ignora aumentos de defesa
                 defense = defender.eff_stat("sp_def") if defender.stages.get("sp_def", 0) <= 0 else defender.stats["special-defense"]
             else:
                 defense = defender.eff_stat("sp_def")
             
-            # Light Screen reduz dano especial
             if defender.volatile.get("light_screen", 0) > 0:
-                # Em batalha dupla seria 0.66, mas em single é 0.5
                 defense = int(defense * BattleConstants.SCREEN_DEF_MULT)
             
-            # Assault Vest (item que aumenta SpDef)
             if defender.volatile.get("held_item") == "assault_vest":
                 defense = int(defense * 1.5)
         
         else:
-            # Ataque físico
             if is_crit:
                 attack = attacker.eff_stat("atk") if attacker.stages.get("atk", 0) >= 0 else attacker.stats["attack"]
             else:
                 attack = attacker.eff_stat("atk")
             
-            # Burn reduz ataque físico
             if attacker.status["name"] == "burn":
                 ability = attacker.get_effective_ability()
-                # Guts ignora a redução de burn
                 if ability != "guts":
                     attack = int(attack * BattleConstants.BURN_ATK_MULT)
             
-            # Defesa física
             if is_crit:
                 defense = defender.eff_stat("def") if defender.stages.get("def", 0) <= 0 else defender.stats.get("defense", defender.stats.get("def"))
             else:
                 defense = defender.eff_stat("def")
             
-            # Reflect reduz dano físico
             if defender.volatile.get("reflect", 0) > 0:
                 defense = int(defense * BattleConstants.SCREEN_DEF_MULT)
             
-            # Sandstorm aumenta SpDef de Rock types
             if self.weather.get("type") == "sandstorm" and "rock" in defender.types:
                 defense = int(defense * 1.5)
         
@@ -182,28 +146,22 @@ class DamageCalculator:
         move_data: MoveData,
         effect_data: Dict[str, Any]
     ) -> int:
-        """Modifica o poder base do movimento."""
         modified_power = power
         move_type = move_data.type_name.lower()
         move_id = move_data.id.lower()
         
-        # Facade - dobra com status
         if effect_data.get("facade") and attacker.status["name"] in ["burn", "poison", "toxic", "paralysis"]:
             modified_power *= 2
         
-        # Brine - dobra se HP < 50%
         if effect_data.get("brine") and defender.current_hp <= defender.stats["hp"] // 2:
             modified_power *= 2
         
-        # Venoshock - dobra contra envenenados
         if effect_data.get("venoshock") and defender.status["name"] in ["poison", "toxic"]:
             modified_power *= 2
         
-        # Smelling Salts - dobra contra paralisados
         if effect_data.get("smelling_salts") and defender.status["name"] == "paralysis":
             modified_power *= 2
         
-        # Wake-Up Slap - dobra contra dormindo
         if effect_data.get("wake_up_slap") and defender.status["name"] == "sleep":
             modified_power *= 2
         

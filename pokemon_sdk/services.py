@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union, Tuple
 from aiopoke import AiopokeClient
 from .constants import VERSION_GROUPS, SHINY_ROLL
 
@@ -31,23 +31,48 @@ class PokeAPIService:
 			return random.choice(regular)
 		return poke.abilities[0].ability.name
 
+	def get_level_up_moves(self, poke, max_level: Optional[int] = None, min_level: Optional[int] = None) -> List[Tuple[str, int]]:
+		moves_data = {}
+		learned_move_names = set()
+		
+		for move_entry in poke.moves:
+			best_level = None
+			
+			for version_detail in move_entry.version_group_details:
+				if version_detail.version_group.name not in VERSION_GROUPS:
+					continue
+				
+				if version_detail.move_learn_method.name != "level-up":
+					continue
+				
+				learn_level = version_detail.level_learned_at
+				
+				if max_level is not None and learn_level > max_level:
+					continue
+				
+				if min_level is not None and learn_level <= min_level:
+					continue
+				
+				if best_level is None or learn_level > best_level:
+					best_level = learn_level
+			
+			if best_level is not None:
+				move_id = move_entry.move.name
+				if move_id not in learned_move_names:
+					moves_data[move_id] = best_level
+					learned_move_names.add(move_id)
+		
+		result = [(move_id, level) for move_id, level in moves_data.items()]
+		result.sort(key=lambda x: (x[1], x[0]))
+		return result
+
 	def select_level_up_moves(self, poke, level: int) -> List[Dict]:
-		candidates = {}
-		for m in poke.moves:
-			best = -1
-			for v in m.version_group_details:
-				if v.version_group.name not in VERSION_GROUPS:
-					continue
-				if v.move_learn_method.name != "level-up":
-					continue
-				if v.level_learned_at <= level and v.level_learned_at > best:
-					best = v.level_learned_at
-			if best >= 0:
-				name = m.move.name
-				if name not in candidates or best > candidates[name]:
-					candidates[name] = best
-		sorted_moves = sorted(candidates.items(), key=lambda x: (x[1], x[0]))
-		return [{"id": mv, "pp": 35, "pp_max": 35} for mv, _ in sorted_moves[-4:]]
+		moves = self.get_level_up_moves(poke, max_level=level)
+		return [{"id": move_id, "pp": 35, "pp_max": 35} for move_id, _ in moves[-4:]]
+
+	def get_future_moves(self, poke, current_level: int) -> List[Tuple[int, str]]:
+		moves = self.get_level_up_moves(poke, min_level=current_level)
+		return [(level, move_id) for move_id, level in moves]
 
 	def roll_gender(self, species, forced: Optional[str] = None) -> str:
 		if forced in ("Male", "Female", "Genderless"):
@@ -63,4 +88,3 @@ class PokeAPIService:
 
 	async def close(self):
 		await self.client.close()
-
