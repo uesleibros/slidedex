@@ -88,27 +88,6 @@ class PokeBallSystem:
             "special": "turn_based",
             "description": "Melhor quanto mais turnos passarem"
         },
-        BallType.DUSK_BALL: {
-            "name": "Dusk Ball",
-            "emoji": "🌙",
-            "base_modifier": 1.0,
-            "special": "night_cave",
-            "description": "3.5x à noite ou em cavernas"
-        },
-        BallType.QUICK_BALL: {
-            "name": "Quick Ball",
-            "emoji": "⚡",
-            "base_modifier": 1.0,
-            "special": "first_turn",
-            "description": "5x no primeiro turno"
-        },
-        BallType.DIVE_BALL: {
-            "name": "Dive Ball",
-            "emoji": "🌊",
-            "base_modifier": 1.0,
-            "special": "underwater",
-            "description": "3.5x debaixo d'água"
-        },
         BallType.LUXURY_BALL: {
             "name": "Luxury Ball",
             "emoji": "<:luxuryball_pixel:1423037034809004105>",
