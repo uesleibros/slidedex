@@ -479,10 +479,10 @@ class Toolkit:
 			return self._deepcopy(mv)
 
 	def can_learn_move(self, owner_id: str, pokemon_id: int) -> bool:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			p = self.db["pokemon"][idx]
-			return len(p.get("moves", [])) < MOVES_LIMIT
+	    with self._lock:
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        p = self.db["pokemon"][idx]
+	        return len(p.get("moves", [])) < MOVES_LIMIT
 
 	def learn_move(self, owner_id: str, pokemon_id: int, move_id: str, pp_max: int, replace_move_id: Optional[str] = None) -> List[Dict]:
 	    with self._lock:
@@ -493,7 +493,6 @@ class Toolkit:
 	            p["moves"] = []
 	        
 	        if replace_move_id:
-	            original_count = len(p["moves"])
 	            p["moves"] = [m for m in p["moves"] if m["id"] != replace_move_id]
 	        
 	        if any(m["id"] == move_id for m in p["moves"]):
@@ -502,12 +501,11 @@ class Toolkit:
 	        if len(p["moves"]) >= MOVES_LIMIT:
 	            raise ValueError("Move slots full")
 	        
-	        new_move = {
+	        p["moves"].append({
 	            "id": move_id,
 	            "pp": int(pp_max),
 	            "pp_max": int(pp_max)
-	        }
-	        p["moves"].append(new_move)
+	        })
 	        
 	        self._save()
 	        return self._deepcopy(p["moves"])
@@ -516,9 +514,7 @@ class Toolkit:
 	    with self._lock:
 	        idx = self._get_pokemon_index(owner_id, pokemon_id)
 	        moves = self.db["pokemon"][idx].get("moves", [])
-	        
-	        has_it = any(m["id"] == move_id for m in moves)
-	        return has_it
+	        return any(m["id"] == move_id for m in moves)
 
 	def remove_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[Dict]:
 		with self._lock:
@@ -821,6 +817,7 @@ class Toolkit:
 					continue
 			
 			return results
+
 
 
 
