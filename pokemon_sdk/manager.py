@@ -253,6 +253,8 @@ class PokemonManager:
 		sorted_moves = sorted(new_moves.items(), key=lambda x: x[1])
 		
 		for move_id, level in sorted_moves:
+			pokemon = self.repo.get(owner_id, pokemon_id)
+			
 			if self.repo.tk.has_move(owner_id, pokemon_id, move_id):
 				continue
 			
@@ -279,6 +281,7 @@ class PokemonManager:
 				})
 				
 				if message:
+					pokemon = self.repo.get(owner_id, pokemon_id)
 					await self._handle_move_choice(message, owner_id, pokemon_id, move_id, pp_max, pokemon)
 		
 		del poke
@@ -404,4 +407,5 @@ class PokemonManager:
 		return iv_percent(p["ivs"], decimals)
 
 	async def close(self):
+
 		await self.service.close()
