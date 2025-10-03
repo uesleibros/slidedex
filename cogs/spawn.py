@@ -57,6 +57,39 @@ class Spawn(commands.Cog):
 		self.bot = bot
 		self.preloaded_backgrounds = preloaded_backgrounds
 
+	def find_min_level_in_chain(self, chain, species_name: str, current_min_level: int = 1):
+		if chain.species.name == species_name:
+			return current_min_level
+		
+		for evolution in chain.evolves_to:
+			next_min_level = current_min_level
+			
+			if evolution.evolution_details:
+				for detail in evolution.evolution_details:
+					if detail.min_level > 0:
+						next_min_level = detail.min_level
+						break
+			
+			result = self.find_min_level_in_chain(evolution, species_name, next_min_level)
+			if result is not None:
+				return result
+		
+		return None
+
+	async def get_pokemon_min_level(self, species) -> int:
+		if not species.evolution_chain:
+			return 1
+		
+		try:
+			chain_url = species.evolution_chain.url
+			chain_id = chain_url.rstrip('/').split('/')[-1]
+			chain_data = await pm.service.client.get_evolution_chain(int(chain_id))
+			
+			min_level = self.find_min_level_in_chain(chain_data.chain, species.name)
+			return min_level if min_level else 1
+		except:
+			return 1
+
 	@commands.command(name="spawn", aliases=["sp"])
 	@requires_account()
 	async def spawn_command(self, ctx: commands.Context) -> None:
@@ -80,6 +113,8 @@ class Spawn(commands.Cog):
 		sprite = poke.sprites.front_shiny if is_shiny and poke.sprites.front_shiny else poke.sprites.front_default
 		sprite_bytes = await sprite.read() if sprite else None
 
+		pokemon_min_level = await self.get_pokemon_min_level(species)
+
 		try:
 			player_party = pm.repo.tk.get_user_party(str(ctx.author.id))
 		except ValueError:
@@ -87,11 +122,11 @@ class Spawn(commands.Cog):
 			
 		if player_party:
 			active_level = player_party[0]["level"]
-			min_level = max(2, active_level - 5)
+			min_level = max(pokemon_min_level, active_level - 5)
 			max_level = min(100, active_level + 5)
 			level = random.randint(min_level, max_level)
 		else:
-			level = random.randint(5, 15)
+			level = random.randint(pokemon_min_level, max(pokemon_min_level, 15))
 
 		wild = await pm.generate_temp_pokemon(
 			owner_id="wild",
