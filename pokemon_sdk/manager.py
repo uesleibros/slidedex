@@ -7,6 +7,7 @@ from .repository import PokemonRepository
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
 from .constants import NATURES, REGIONS_GENERATION
+from helpers.growth import GrowthRate
 
 class MoveChoiceView(discord.ui.View):
 	def __init__(
@@ -150,6 +151,8 @@ class PokemonManager:
 		final_gender = self.service.roll_gender(species, forced=forced_gender)
 		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
 
+		exp = GrowthRate.calculate_exp(growth_type, level)
+
 		del poke
 		del species
 		del base_stats
@@ -159,7 +162,7 @@ class PokemonManager:
 			"species_id": species_id,
 			"owner_id": owner_id,
 			"level": gen["level"],
-			"exp": 0,
+			"exp": exp,
 			"ivs": gen["ivs"],
 			"evs": gen["evs"],
 			"nature": gen["nature"],
@@ -412,4 +415,5 @@ class PokemonManager:
 	async def close(self):
 
 		await self.service.close()
+
 
