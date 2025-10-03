@@ -679,32 +679,32 @@ class WildBattle(BattleEngine):
 				await self.refresh()
 				return False
 	
-    async def _handle_victory(self) -> None:
-        experience_distribution = await self._calculate_experience_distribution()
-        ev_distribution = await self._distribute_evs()
-        
-        self.ended = True
-        self.lines.extend(["", "🏆 **VITÓRIA!**", ""])
-        
-        max_level_skipped = getattr(self, '_max_level_skipped', 0)
-        exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
-        self.lines.extend(exp_lines)
-        
-        ev_lines = BattleRewards.format_ev_gains(ev_distribution)
-        if ev_lines:
-            self.lines.append("")
-            self.lines.extend(ev_lines)
-        
-        if self.actions_view:
-            self.actions_view.disable_all()
-        
-        await self.refresh()
-        
-        total_experience = sum(xp for _, _, xp in experience_distribution)
-        await self.interaction.channel.send(
-            f"🏆 **Vitória!** ⭐ +{total_experience} XP distribuído!"
-        )
-        await self.cleanup()
+	async def _handle_victory(self) -> None:
+		experience_distribution = await self._calculate_experience_distribution()
+		ev_distribution = await self._distribute_evs()
+		
+		self.ended = True
+		self.lines.extend(["", "🏆 **VITÓRIA!**", ""])
+		
+		max_level_skipped = getattr(self, '_max_level_skipped', 0)
+		exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
+		self.lines.extend(exp_lines)
+		
+		ev_lines = BattleRewards.format_ev_gains(ev_distribution)
+		if ev_lines:
+			self.lines.append("")
+			self.lines.extend(ev_lines)
+		
+		if self.actions_view:
+			self.actions_view.disable_all()
+		
+		await self.refresh()
+		
+		total_experience = sum(xp for _, _, xp in experience_distribution)
+		await self.interaction.channel.send(
+			f"🏆 **Vitória!** ⭐ +{total_experience} XP distribuído!"
+		)
+		await self.cleanup()
 	
 	async def _handle_defeat(self) -> None:
 		self.ended = True
@@ -786,6 +786,7 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
 
 
 
