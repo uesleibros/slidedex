@@ -78,7 +78,7 @@ class Info(commands.Cog):
 
 		current_exp = user_pokemon.get("exp", 0)
 		current_level = user_pokemon["level"]
-		exp_needed = toolkit.get_exp_for_level(current_level, user_pokemon.get("growth_type"))
+		exp_needed = toolkit.get_exp_for_level(user_pokemon.get("growth_type"), current_level)
 		exp_progress_percent = round((current_exp / exp_needed) * 100, 1) if exp_needed > 0 else 100
 
 		title = f"Level {user_pokemon['level']} {format_pokemon_display(user_pokemon, show_fav=True, show_poke=False)}"
@@ -202,5 +202,6 @@ class Info(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Info(bot))
+
 
 
