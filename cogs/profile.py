@@ -15,10 +15,10 @@ class Profile(commands.Cog):
 	@requires_account()
 	async def profile_command(self, ctx: commands.Context) -> None:
 		user_id: str = str(ctx.author.id)
-		user = pm.repo.tk.get_user(user_id)
+		user = pm.tk.get_user(user_id)
 
-		user_party = pm.repo.tk.get_user_party(user_id)
-		user_pokemon = pm.repo.tk.get_user_pokemon(user_id)
+		user_party = pm.tk.get_user_party(user_id)
+		user_pokemon = pm.tk.get_user_pokemon(user_id)
 		party_sprites: List[bytes] = []
 
 		for poke in user_party:
