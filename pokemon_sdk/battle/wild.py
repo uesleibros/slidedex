@@ -444,29 +444,29 @@ class WildBattle(BattleEngine):
 		
 		return ev_yield
 	
-    async def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
-        ev_yield = BattleRewards.calculate_ev_yield(self.wild)
-        
-        distribution = []
-        for participant_index in self.battle_participants:
-            pokemon_data = self.player_party_raw[participant_index]
-            pokemon_battle = self.player_team[participant_index]
-            pokemon_name = pokemon_battle.display_name
-            
-            has_macho_brace = pokemon_battle.volatile.get("held_item") == "macho_brace"
-            
-            evs_to_give = BattleRewards.apply_ev_modifiers(
-                ev_yield,
-                has_macho_brace=has_macho_brace
-            )
-            
-            try:
-                pm.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
-                distribution.append((participant_index, pokemon_name, evs_to_give))
-            except ValueError:
-                pass
-        
-        return distribution
+	async def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
+		ev_yield = BattleRewards.calculate_ev_yield(self.wild)
+		
+		distribution = []
+		for participant_index in self.battle_participants:
+			pokemon_data = self.player_party_raw[participant_index]
+			pokemon_battle = self.player_team[participant_index]
+			pokemon_name = pokemon_battle.display_name
+			
+			has_macho_brace = pokemon_battle.volatile.get("held_item") == "macho_brace"
+			
+			evs_to_give = BattleRewards.apply_ev_modifiers(
+				ev_yield,
+				has_macho_brace=has_macho_brace
+			)
+			
+			try:
+				pm.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
+				distribution.append((participant_index, pokemon_name, evs_to_give))
+			except ValueError:
+				pass
+		
+		return distribution
 	
     async def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
         from __main__ import pm
@@ -786,5 +786,6 @@ class WildBattleView(discord.ui.View):
 	    
 	    from .helpers import PokeballsView
 	    await interaction.response.edit_message(view=PokeballsView(self.battle))
+
 
 
