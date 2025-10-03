@@ -485,26 +485,32 @@ class Toolkit:
 			return len(p.get("moves", [])) < MOVES_LIMIT
 
 	def learn_move(self, owner_id: str, pokemon_id: int, move_id: str, pp_max: int, replace_move_id: Optional[str] = None) -> List[Dict]:
-		with self._lock:
-			idx = self._get_pokemon_index(owner_id, pokemon_id)
-			p = self.db["pokemon"][idx]
-			
-			if "moves" not in p:
-				p["moves"] = []
-			
-			if replace_move_id:
-				p["moves"] = [m for m in p["moves"] if m["id"] != replace_move_id]
-			
-			if any(m["id"] == move_id for m in p["moves"]):
-				return self._deepcopy(p["moves"])
-			
-			if len(p["moves"]) >= MOVES_LIMIT:
-				raise ValueError("Move slots full")
-			
-			p["moves"].append({"id": move_id, "pp": int(pp_max), "pp_max": int(pp_max)})
-			
-			self._save()
-			return self._deepcopy(p["moves"])
+	    with self._lock:
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        p = self.db["pokemon"][idx]
+	        
+	        if "moves" not in p:
+	            p["moves"] = []
+	        
+	        if replace_move_id:
+	            original_count = len(p["moves"])
+	            p["moves"] = [m for m in p["moves"] if m["id"] != replace_move_id]
+	        
+	        if any(m["id"] == move_id for m in p["moves"]):
+	            return self._deepcopy(p["moves"])
+	        
+	        if len(p["moves"]) >= MOVES_LIMIT:
+	            raise ValueError("Move slots full")
+	        
+	        new_move = {
+	            "id": move_id,
+	            "pp": int(pp_max),
+	            "pp_max": int(pp_max)
+	        }
+	        p["moves"].append(new_move)
+	        
+	        self._save()
+	        return self._deepcopy(p["moves"])
 	
 	def has_move(self, owner_id: str, pokemon_id: int, move_id: str) -> bool:
 		with self._lock:
@@ -813,4 +819,5 @@ class Toolkit:
 					continue
 			
 			return results
+
 
