@@ -204,7 +204,7 @@ class PokemonManager:
 			**kwargs
 		)
 
-		created = self.toolkit.add_pokemon(
+		created = self.tk.add_pokemon(
 			owner_id=pkmn["owner_id"],
 			species_id=pkmn["species_id"],
 			ivs=pkmn["ivs"],
@@ -416,6 +416,7 @@ class PokemonManager:
 	async def close(self):
 
 		await self.service.close()
+
 
 
 
