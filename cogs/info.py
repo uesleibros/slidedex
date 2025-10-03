@@ -94,14 +94,15 @@ class Info(commands.Cog):
 
 		details_lines = [
 			f"**ID do Pokemon:** {pokemon_id}",
-			f"**Especie:** #{user_pokemon.get('species_id')} - {user_pokemon.get('name', 'Desconhecido').title()}",
-			f"**Nivel:** {current_level}",
-			f"**Experiencia:** {current_exp}/{exp_needed} ({exp_progress_percent}%)",
+			f"**ID da Espécie:** #{user_pokemon.get('species_id')} - {user_pokemon.get('name', 'Desconhecido').title()}",
+			f"**Nível:** {current_level}",
+			f"**Experiência:** {current_exp}/{exp_needed} ({exp_progress_percent}%)",
 			f"**Natureza:** {user_pokemon['nature'].title()}",
-			f"**Genero:** {user_pokemon.get('gender', 'N/A')}",
+			f"**Tipo de Crescimento:** {user_pokemon['growth_type'].replace('-', ' ').title()}",
+			f"**Gênero:** {user_pokemon.get('gender', 'N/A')}",
 			f"**Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
 			f"**Tipos:** {' / '.join(t.title() for t in user_pokemon['types'])}",
-			f"**Regiao:** {user_pokemon['region'].replace('-', ' ').title()}",
+			f"**Região:** {user_pokemon['region'].replace('-', ' ').title()}",
 			f"**Item Segurado:** {str(user_pokemon.get('held_item') or 'Nenhum').replace('-', ' ').title()}"
 		]
 
@@ -201,3 +202,4 @@ class Info(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Info(bot))
+
