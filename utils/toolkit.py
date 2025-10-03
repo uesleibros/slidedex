@@ -447,19 +447,24 @@ class Toolkit:
 		with self._lock:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
 			p = self.db["pokemon"][idx]
-			moves = list(p.get("moves", []))
+			
+			if "moves" not in p:
+				p["moves"] = []
 			
 			if replace_move_id:
-				moves = [m for m in moves if m["id"] != replace_move_id]
+				p["moves"] = [m for m in p["moves"] if m["id"] != replace_move_id]
 			
-			if len(moves) >= MOVES_LIMIT:
+			if any(m["id"] == move_id for m in p["moves"]):
+				return self._deepcopy(p["moves"])
+			
+			if len(p["moves"]) >= MOVES_LIMIT:
 				raise ValueError("Move slots full")
 			
-			moves.append({"id": move_id, "pp": int(pp_max), "pp_max": int(pp_max)})
-			p["moves"] = moves
+			p["moves"].append({"id": move_id, "pp": int(pp_max), "pp_max": int(pp_max)})
+			
 			self._save()
-			return self._deepcopy(moves)
-
+			return self._deepcopy(p["moves"])
+	
 	def has_move(self, owner_id: str, pokemon_id: int, move_id: str) -> bool:
 		with self._lock:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
@@ -763,4 +768,5 @@ class Toolkit:
 					results.append(self._deepcopy(p))
 					continue
 			
+
 			return results
