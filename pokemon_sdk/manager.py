@@ -253,73 +253,75 @@ class PokemonManager:
 		self.service = PokeAPIService()
 
 	async def _build_pokemon_data(
-		self,
-		species_id: int,
-		level: int = 5,
-		forced_gender: Optional[str] = None,
-		ivs: Optional[Dict[str, int]] = None,
-		nature: Optional[str] = None,
-		ability: Optional[str] = None,
-		moves: Optional[List[Dict]] = None,
-		shiny: Optional[bool] = None,
-		held_item: Optional[str] = None,
-		nickname: Optional[str] = None,
-		owner_id: str = "wild",
-		on_party: bool = False
+	    self,
+	    species_id: int,
+	    level: int = 5,
+	    forced_gender: Optional[str] = None,
+	    ivs: Optional[Dict[str, int]] = None,
+	    nature: Optional[str] = None,
+	    ability: Optional[str] = None,
+	    moves: Optional[List[Dict]] = None,
+	    shiny: Optional[bool] = None,
+	    held_item: Optional[str] = None,
+	    nickname: Optional[str] = None,
+	    owner_id: str = "wild",
+	    on_party: bool = False
 	) -> Dict:
-		poke: aiopoke.Pokemon = await self.service.get_pokemon(species_id)
-		species: aiopoke.PokemonSpecies = await self.service.get_species(species_id)
-		base_stats = self.service.get_base_stats(poke)
-
-		growth_type: str = species.growth_rate.name
-		pkm_name = poke.name
-
-		final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
-		final_nature = nature or random.choice(list(NATURES.keys()))
-
-		is_legendary: bool = species.is_legendary
-		is_mythical: bool = species.is_mythical
-		poke_types: list = [x.type.name for x in poke.types]
-		poke_region: str = REGIONS_GENERATION.get(species.generation.name, "generation-i")
-
-		gen = generate_pokemon_data(base_stats, level=level, nature=final_nature, ivs=final_ivs)
-		final_ability = ability or self.service.choose_ability(poke)
-		final_moves = moves or self.service.select_level_up_moves(poke, level)
-		final_gender = self.service.roll_gender(species, forced=forced_gender)
-		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
-
-		exp = GrowthRate.calculate_exp(growth_type, level)
-		
-		del poke
-		del species
-		del base_stats
-
-		return {
-			"id": 0,
-			"species_id": species_id,
-			"owner_id": owner_id,
-			"level": gen["level"],
-			"exp": exp,
-			"ivs": gen["ivs"],
-			"evs": gen["evs"],
-			"nature": gen["nature"],
-			"ability": final_ability,
-			"gender": final_gender,
-			"is_shiny": final_shiny,
-			"held_item": held_item,
-			"caught_at": "",
-			"types": poke_types,
-			"region": poke_region,
-			"is_legendary": is_legendary,
-			"is_mythical": is_mythical,
-			"moves": final_moves,
-			"growth_type": growth_type,
-			"base_stats": gen["stats"],
-			"current_hp": gen["current_hp"],
-			"on_party": on_party,
-			"nickname": nickname,
-			"name": pkm_name
-		}
+	    poke: aiopoke.Pokemon = await self.service.get_pokemon(species_id)
+	    species: aiopoke.PokemonSpecies = await self.service.get_species(species_id)
+	    base_stats = self.service.get_base_stats(poke)
+	
+	    growth_type: str = species.growth_rate.name
+	    pkm_name = poke.name
+	
+	    final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
+	    final_nature = nature or random.choice(list(NATURES.keys()))
+	
+	    is_legendary: bool = species.is_legendary
+	    is_mythical: bool = species.is_mythical
+	    poke_types: list = [x.type.name for x in poke.types]
+	    poke_region: str = REGIONS_GENERATION.get(species.generation.name, "generation-i")
+	
+	    final_level = min(max(level, 1), 100)
+	    
+	    gen = generate_pokemon_data(base_stats, level=final_level, nature=final_nature, ivs=final_ivs)
+	    final_ability = ability or self.service.choose_ability(poke)
+	    final_moves = moves or self.service.select_level_up_moves(poke, final_level)
+	    final_gender = self.service.roll_gender(species, forced=forced_gender)
+	    final_shiny = shiny if shiny is not None else self.service.roll_shiny()
+	
+	    exp = GrowthRate.calculate_exp(growth_type, final_level)
+	    
+	    del poke
+	    del species
+	    del base_stats
+	
+	    return {
+	        "id": 0,
+	        "species_id": species_id,
+	        "owner_id": owner_id,
+	        "level": gen["level"],
+	        "exp": exp,
+	        "ivs": gen["ivs"],
+	        "evs": gen["evs"],
+	        "nature": gen["nature"],
+	        "ability": final_ability,
+	        "gender": final_gender,
+	        "is_shiny": final_shiny,
+	        "held_item": held_item,
+	        "caught_at": "",
+	        "types": poke_types,
+	        "region": poke_region,
+	        "is_legendary": is_legendary,
+	        "is_mythical": is_mythical,
+	        "moves": final_moves,
+	        "growth_type": growth_type,
+	        "base_stats": gen["stats"],
+	        "current_hp": gen["current_hp"],
+	        "on_party": on_party,
+	        "nickname": nickname,
+	        "name": pkm_name
+	    }
 
 	async def generate_temp_pokemon(self, **kwargs) -> Dict:
 		return await self._build_pokemon_data(**kwargs)
@@ -618,35 +620,35 @@ class PokemonManager:
 		view.message = sent_message
 
 	async def add_experience(
-		self,
-		owner_id: str,
-		pokemon_id: int,
-		exp_gain: int,
-		notify_message: Optional[discord.Message] = None
+	    self,
+	    owner_id: str,
+	    pokemon_id: int,
+	    exp_gain: int,
+	    notify_message: Optional[discord.Message] = None
 	) -> Dict:
-		result = self.tk.add_exp(owner_id, pokemon_id, exp_gain)
-		
-		levels_gained = result.get("levels_gained", [])
-		
-		if levels_gained:
-			move_result = await self.process_level_up(owner_id, pokemon_id, levels_gained, notify_message)
-			result["move_learning"] = move_result
-			
-			if notify_message:
-				await self._send_level_up_notification(
-					notify_message,
-					result,
-					move_result
-				)
-		else:
-			result["move_learning"] = {
-				"learned": [],
-				"needs_choice": [],
-				"levels_gained": [],
-				"evolution": None
-			}
-		
-		return result
+	    result = self.tk.add_exp(owner_id, pokemon_id, exp_gain)
+	    
+	    if result.get("max_level_reached") and result.get("old_level") < 100:
+	        if notify_message:
+	            pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+	            await notify_message.channel.send(
+	                f"🎉 {format_pokemon_display(pokemon, bold_name=True)} atingiu o **nível máximo 100**!"
+	            )
+	    
+	    levels_gained = result.get("levels_gained", [])
+	    
+	    if levels_gained:
+	        move_result = await self.process_level_up(owner_id, pokemon_id, levels_gained, notify_message)
+	        result["move_learning"] = move_result
+	    else:
+	        result["move_learning"] = {
+	            "learned": [],
+	            "needs_choice": [],
+	            "levels_gained": [],
+	            "evolution": None
+	        }
+	    
+	    return result
 
 	async def _send_level_up_notification(
 		self,
@@ -705,4 +707,5 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
