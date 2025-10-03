@@ -516,8 +516,10 @@ class WildBattle(BattleEngine):
 			ball_name = PokeBallSystem.get_ball_name(ball_type)
 			
 			if success:
+				from utils.formatting import format_pokemon_display
+
 				experience_distribution = await self._calculate_experience_distribution()
-				ev_distribution = await self._distribute_evs()
+				await self._distribute_evs()
 				
 				pm.tk.add_pokemon(
 					owner_id=self.user_id,
@@ -546,21 +548,8 @@ class WildBattle(BattleEngine):
 				
 				bonus_text = f" (Bônus {modifier:.1f}x)" if modifier > 1.0 else ""
 				
-				self.lines = [
-					"🎉 **CAPTURA!**",
-					f"{ball_emoji} Capturado com {ball_name}!{bonus_text}",
-					f"✨ {self.wild.display_name} foi adicionado à sua Pokédex!",
-					""
-				]
-				
 				max_level_skipped = getattr(self, '_max_level_skipped', 0)
 				exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
-				self.lines.extend(exp_lines)
-				
-				ev_lines = BattleRewards.format_ev_gains(ev_distribution)
-				if ev_lines:
-					self.lines.append("")
-					self.lines.extend(ev_lines)
 				
 				if self.actions_view:
 					self.actions_view.disable_all()
@@ -569,7 +558,9 @@ class WildBattle(BattleEngine):
 				
 				total_experience = sum(xp for _, _, xp in experience_distribution)
 				await self.interaction.channel.send(
-					f"🎉 **Capturou {self.wild.display_name}!** ⭐ +{total_experience} XP distribuído!"
+					f"{format_pokemon_display(self.wild_raw, bold_name=True)} foi adicionado à sua Pokédex e recebeu **+{total_experience} de XP!**\n"
+					f"{ball_emoji} Capturado com {ball_name}!{bonus_text}\n"
+					f"{'\n'.join(exp_lines)}"
 				)
 				
 				await self.cleanup()
@@ -628,20 +619,13 @@ class WildBattle(BattleEngine):
 				return False
 	
 	async def _handle_victory(self) -> None:
+		await self._distribute_evs()
 		experience_distribution = await self._calculate_experience_distribution()
-		ev_distribution = await self._distribute_evs()
 		
 		self.ended = True
-		self.lines.extend(["", "🏆 **VITÓRIA!**", ""])
 		
 		max_level_skipped = getattr(self, '_max_level_skipped', 0)
 		exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
-		self.lines.extend(exp_lines)
-		
-		ev_lines = BattleRewards.format_ev_gains(ev_distribution)
-		if ev_lines:
-			self.lines.append("")
-			self.lines.extend(ev_lines)
 		
 		if self.actions_view:
 			self.actions_view.disable_all()
@@ -650,25 +634,20 @@ class WildBattle(BattleEngine):
 		
 		total_experience = sum(xp for _, _, xp in experience_distribution)
 		await self.interaction.channel.send(
-			f"🏆 **Vitória!** ⭐ +{total_experience} XP distribuído!"
+			f"💪 **Você venceu!** e recebeu **+{total_experience} de XP!**\n{'\n'.join(exp_lines)}"
 		)
 		await self.cleanup()
 	
 	async def _handle_defeat(self) -> None:
 		self.ended = True
-		self.lines.extend([
-			"",
-			"😔 **DERROTA**",
-			"Todos os seus Pokémon desmaiaram!"
-		])
 		if self.actions_view:
 			self.actions_view.disable_all()
 		await self.refresh()
-		await self.interaction.channel.send("💀 **Derrota!**")
+		await self.interaction.channel.send(f"<@{self.user_id}> **Você perdeu!**")
 		await self.cleanup()
 	
 	async def _handle_forced_switch(self) -> None:
-		self.lines.extend(["", "⚠️ Escolha outro Pokémon!"])
+		self.lines.extend(["", "Escolha outro Pokémon!"])
 		if self.actions_view:
 			self.actions_view.force_switch_mode = True
 	
@@ -698,7 +677,7 @@ class WildBattleView(discord.ui.View):
 			
 			if self.battle.message:
 				await self.battle.message.reply(
-					content="⏰ Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
+					content="Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
 				)
 	
 	def disable_all(self) -> None:
@@ -708,9 +687,9 @@ class WildBattleView(discord.ui.View):
 	@discord.ui.button(style=discord.ButtonStyle.primary, label="Lutar", emoji="⚔️")
 	async def fight(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
-			return await interaction.response.send_message("❌ Não é sua batalha!", ephemeral=True)
+			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await interaction.response.send_message("❌ Batalha encerrada.", ephemeral=True)
+			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
 		if self.force_switch_mode:
 			return await interaction.response.edit_message(view=SwitchView(self.battle, force_only=True))
 		await interaction.response.edit_message(view=MovesView(self.battle))
@@ -718,19 +697,19 @@ class WildBattleView(discord.ui.View):
 	@discord.ui.button(style=discord.ButtonStyle.primary, label="Trocar", emoji="🔄")
 	async def switch(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
-			return await interaction.response.send_message("❌ Não é sua batalha!", ephemeral=True)
+			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await interaction.response.send_message("❌ Batalha encerrada.", ephemeral=True)
+			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
 		await interaction.response.edit_message(view=SwitchView(self.battle))
 	
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:PokeBall:1345558169090265151>", label="Capturar")
 	async def capture(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
-			return await interaction.response.send_message("❌ Não é sua batalha!", ephemeral=True)
+			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
-			return await interaction.response.send_message("❌ Batalha encerrada.", ephemeral=True)
+			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
 		if self.force_switch_mode or self.battle.player_active.fainted:
-			return await interaction.response.send_message("⚠️ Troque de Pokémon primeiro!", ephemeral=True)
+			return await interaction.response.send_message("Troque de Pokémon primeiro!", ephemeral=True)
 		
 		from .helpers import PokeballsView
 		await interaction.response.edit_message(view=PokeballsView(self.battle))

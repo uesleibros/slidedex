@@ -1,4 +1,293 @@
 {
-  "users": {},
-  "pokemon": []
+  "users": {
+    "764259870563631114": {
+      "id": "764259870563631114",
+      "gender": "Male",
+      "money": 0,
+      "last_pokemon_id": 4,
+      "badges": [],
+      "created_at": "2025-10-03T23:02:44.832135"
+    }
+  },
+  "pokemon": [
+    {
+      "id": 1,
+      "species_id": 25,
+      "nickname": null,
+      "name": "pikachu",
+      "owner_id": "764259870563631114",
+      "level": 6,
+      "exp": 300,
+      "ivs": {
+        "hp": 3,
+        "attack": 24,
+        "defense": 19,
+        "special-attack": 19,
+        "special-defense": 21,
+        "speed": 28
+      },
+      "evs": {
+        "hp": 3,
+        "attack": 1,
+        "defense": 2,
+        "special-attack": 2,
+        "special-defense": 3,
+        "speed": 0
+      },
+      "nature": "Calm",
+      "ability": "static",
+      "types": [
+        "electric"
+      ],
+      "is_legendary": false,
+      "is_mythical": false,
+      "base_stats": {
+        "hp": 35,
+        "attack": 55,
+        "defense": 40,
+        "special-attack": 50,
+        "special-defense": 50,
+        "speed": 90
+      },
+      "region": "Kanto",
+      "gender": "Male",
+      "is_shiny": false,
+      "growth_type": "medium",
+      "background": "lab",
+      "held_item": null,
+      "is_favorite": false,
+      "caught_at": "2025-10-03T23:02:45.762639",
+      "moves": [
+        {
+          "id": "growl",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "thunder-shock",
+          "pp": 33,
+          "pp_max": 35
+        },
+        {
+          "id": "tail-whip",
+          "pp": 30,
+          "pp_max": 30
+        }
+      ],
+      "current_hp": 20,
+      "on_party": true,
+      "party_pos": 1
+    },
+    {
+      "id": 2,
+      "species_id": 79,
+      "nickname": null,
+      "name": "slowpoke",
+      "owner_id": "764259870563631114",
+      "level": 1,
+      "exp": 1,
+      "ivs": {
+        "hp": 7,
+        "attack": 23,
+        "defense": 10,
+        "special-attack": 7,
+        "special-defense": 16,
+        "speed": 7
+      },
+      "evs": {
+        "hp": 0,
+        "attack": 0,
+        "defense": 0,
+        "special-attack": 0,
+        "special-defense": 0,
+        "speed": 0
+      },
+      "nature": "Careful",
+      "ability": "oblivious",
+      "types": [
+        "water",
+        "psychic"
+      ],
+      "is_legendary": false,
+      "is_mythical": false,
+      "base_stats": {
+        "hp": 90,
+        "attack": 65,
+        "defense": 65,
+        "special-attack": 40,
+        "special-defense": 40,
+        "speed": 15
+      },
+      "region": "Kanto",
+      "gender": "Female",
+      "is_shiny": false,
+      "growth_type": "medium",
+      "background": "lab",
+      "held_item": null,
+      "is_favorite": false,
+      "caught_at": "2025-10-03T23:14:43.109796",
+      "moves": [
+        {
+          "id": "curse",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "tackle",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "yawn",
+          "pp": 35,
+          "pp_max": 35
+        }
+      ],
+      "current_hp": 12,
+      "on_party": true,
+      "party_pos": 2
+    },
+    {
+      "id": 3,
+      "species_id": 216,
+      "nickname": null,
+      "name": "teddiursa",
+      "owner_id": "764259870563631114",
+      "level": 9,
+      "exp": 729,
+      "ivs": {
+        "hp": 19,
+        "attack": 23,
+        "defense": 1,
+        "special-attack": 20,
+        "special-defense": 0,
+        "speed": 18
+      },
+      "evs": {
+        "hp": 0,
+        "attack": 0,
+        "defense": 0,
+        "special-attack": 0,
+        "special-defense": 0,
+        "speed": 0
+      },
+      "nature": "Hasty",
+      "ability": "quick-feet",
+      "types": [
+        "normal"
+      ],
+      "is_legendary": false,
+      "is_mythical": false,
+      "base_stats": {
+        "hp": 60,
+        "attack": 80,
+        "defense": 50,
+        "special-attack": 50,
+        "special-defense": 50,
+        "speed": 40
+      },
+      "region": "Johto",
+      "gender": "Male",
+      "is_shiny": false,
+      "growth_type": "medium",
+      "background": "lab",
+      "held_item": null,
+      "is_favorite": false,
+      "caught_at": "2025-10-03T23:17:22.308111",
+      "moves": [
+        {
+          "id": "leer",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "scratch",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "lick",
+          "pp": 35,
+          "pp_max": 35
+        }
+      ],
+      "current_hp": 31,
+      "on_party": true,
+      "party_pos": 3
+    },
+    {
+      "id": 4,
+      "species_id": 364,
+      "nickname": null,
+      "name": "sealeo",
+      "owner_id": "764259870563631114",
+      "level": 1,
+      "exp": -53,
+      "ivs": {
+        "hp": 13,
+        "attack": 17,
+        "defense": 19,
+        "special-attack": 13,
+        "special-defense": 21,
+        "speed": 2
+      },
+      "evs": {
+        "hp": 0,
+        "attack": 0,
+        "defense": 0,
+        "special-attack": 0,
+        "special-defense": 0,
+        "speed": 0
+      },
+      "nature": "Bold",
+      "ability": "thick-fat",
+      "types": [
+        "ice",
+        "water"
+      ],
+      "is_legendary": false,
+      "is_mythical": false,
+      "base_stats": {
+        "hp": 90,
+        "attack": 60,
+        "defense": 70,
+        "special-attack": 75,
+        "special-defense": 70,
+        "speed": 45
+      },
+      "region": "Hoenn",
+      "gender": "Female",
+      "is_shiny": false,
+      "growth_type": "medium-slow",
+      "background": "lab",
+      "held_item": null,
+      "is_favorite": false,
+      "caught_at": "2025-10-03T23:18:33.299394",
+      "moves": [
+        {
+          "id": "encore",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "growl",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "powder-snow",
+          "pp": 35,
+          "pp_max": 35
+        },
+        {
+          "id": "water-gun",
+          "pp": 35,
+          "pp_max": 35
+        }
+      ],
+      "current_hp": 12,
+      "on_party": true,
+      "party_pos": 4
+    }
+  ]
 }
