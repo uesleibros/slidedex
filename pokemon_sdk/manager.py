@@ -151,8 +151,8 @@ class PokemonManager:
 		final_gender = self.service.roll_gender(species, forced=forced_gender)
 		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
 
-		exp = GrowthRate.calculate_exp(growth_type, level)
-
+		exp = GrowthRate.calculate_exp(growth_type, level - 1) if level > 1 else 0
+		
 		del poke
 		del species
 		del base_stats
@@ -415,5 +415,6 @@ class PokemonManager:
 	async def close(self):
 
 		await self.service.close()
+
 
 
