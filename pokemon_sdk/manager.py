@@ -273,6 +273,7 @@ class PokemonManager:
 	
 	    growth_type: str = species.growth_rate.name
 	    pkm_name = poke.name
+		happiness: int = species.base_happiness
 	
 	    final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
 	    final_nature = nature or random.choice(list(NATURES.keys()))
@@ -315,6 +316,7 @@ class PokemonManager:
 	        "is_legendary": is_legendary,
 	        "is_mythical": is_mythical,
 	        "moves": final_moves,
+			"happiness": happiness,
 	        "growth_type": growth_type,
 	        "base_stats": gen["stats"],
 	        "current_hp": gen["current_hp"],
@@ -361,6 +363,7 @@ class PokemonManager:
 			growth_type=pkmn["growth_type"],
 			held_item=pkmn["held_item"],
 			nickname=pkmn["nickname"],
+			happiness=pkmn["happiness"],
 			base_stats=pkmn["base_stats"],
 			name=pkmn["name"],
 			exp=pkmn["exp"]
@@ -707,5 +710,6 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
