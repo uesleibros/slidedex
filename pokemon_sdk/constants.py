@@ -71,3 +71,4 @@ VERSION_GROUPS = ("firered-leafgreen", "emerald", "ruby-sapphire")
 STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 
 SHINY_ROLL = 8192
+HAPPINESS_MAX = 255
