@@ -13,7 +13,6 @@ MOVES_LIMIT = 4
 EV_PER_STAT_MAX = 255
 EV_TOTAL_MAX = 510
 HAPPINESS_MIN = 0
-HAPPINESS_MAX = 255
 
 class Toolkit:
 	__slots__ = ('path', '_lock', 'db', '_pk_index', 'NATURES', '_move_service')
@@ -76,13 +75,17 @@ class Toolkit:
 	def _load(self) -> None:
 		with self._lock:
 			if not os.path.exists(self.path):
-				self.db = {"users": {}, "pokemon": []}
+				self.db = {"users": {}, "pokemon": [], "custom_messages": {}}
 				self._save()
 			else:
 				with open(self.path, "r", encoding="utf-8") as f:
 					self.db = json.load(f)
 				if "users" not in self.db or "pokemon" not in self.db:
-					self.db = {"users": {}, "pokemon": []}
+					self.db = {"users": {}, "pokemon": [], "custom_messages": {}}
+					self._save()
+				
+				if "custom_messages" not in self.db:
+					self.db["custom_messages"] = {}
 					self._save()
 			self._reindex()
 
@@ -1057,3 +1060,4 @@ class Toolkit:
 			p["happiness"] = self._clamp_happiness(current - loss)
 			self._save()
 			return p["happiness"]
+
