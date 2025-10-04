@@ -207,6 +207,14 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 		levels = [int(v) for group in flags["level"] for v in group]
 		res = [p for p in res if p["level"] in levels]
 	
+	if flags.get("min_happiness") is not None:
+		res = [p for p in res if p.get("happiness", 0) >= flags.get("min_happiness")]
+	if flags.get("max_happiness") is not None:
+		res = [p for p in res if p.get("happiness", 0) <= flags.get("max_happiness")]
+	if flags.get("happiness"):
+		happiness_values = [int(v) for group in flags["happiness"] for v in group]
+		res = [p for p in res if p.get("happiness", 0) in happiness_values]
+	
 	if flags.get("hpiv"):
 		hp_values = [int(v) for group in flags["hpiv"] for v in group]
 		res = [p for p in res if p["ivs"]["hp"] in hp_values]
@@ -399,6 +407,7 @@ def apply_sort_limit(pokemons: List[Dict], flags) -> List[Dict]:
 			"hp": lambda p: p.get("current_hp", 0),
 			"exp": lambda p: p.get("exp", 0),
 			"growth": lambda p: p.get("growth_type", ""),
+			"happiness": lambda p: p.get("happiness", 0),
 		}
 		res.sort(key=keymap.get(flags.get("sort"), lambda p: p["id"]), reverse=bool(flags.get("reverse")))
 	if flags.get("limit") is not None and flags.get("limit") > 0:
@@ -467,7 +476,6 @@ def analyze_pokemons(pokemons: List[Dict]) -> Dict:
 	return stats
 
 class Pokemon(commands.Cog):
-	""" Comandos relacionado a Pokémon. """
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
 
@@ -495,6 +503,9 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--min_level", type=int)
 	@flags.add_flag("--max_level", type=int)
 	@flags.add_flag("--level", nargs="+", action="append")
+	@flags.add_flag("--min_happiness", type=int)
+	@flags.add_flag("--max_happiness", type=int)
+	@flags.add_flag("--happiness", nargs="+", action="append")
 	@flags.add_flag("--hpiv", nargs="+", action="append")
 	@flags.add_flag("--atkiv", nargs="+", action="append")
 	@flags.add_flag("--defiv", nargs="+", action="append")
@@ -574,6 +585,9 @@ class Pokemon(commands.Cog):
 			"  --min_level N           Seleciona apenas Pokémon com level >= N\n"
 			"  --max_level N           Seleciona apenas Pokémon com level <= N\n"
 			"  --level <N...>          Filtra por levels exatos (aceita vários)\n"
+			"  --min_happiness N       Seleciona apenas Pokémon com amizade >= N (0-255)\n"
+			"  --max_happiness N       Seleciona apenas Pokémon com amizade <= N (0-255)\n"
+			"  --happiness <N...>      Filtra por valores exatos de amizade\n"
 			"  --min_ev N              Seleciona apenas Pokémon com EV total >= N\n"
 			"  --max_ev N              Seleciona apenas Pokémon com EV total <= N\n\n"
 			"FILTRAGEM POR IV INDIVIDUAL\n"
@@ -610,7 +624,7 @@ class Pokemon(commands.Cog):
 			"  --move_count <N...>     Número exato de movimentos\n"
 			"  --background <tipo>     Background específico\n\n"
 			"ORDENAÇÃO\n"
-			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species | ev | hp | exp | growth\n"
+			"  --sort <campo>          Define critério de ordenação: iv | level | id | name | species | ev | hp | exp | growth | happiness\n"
 			"  --reverse               Inverte a ordem de ordenação\n"
 			"  --random                Embaralha a ordem (ignora sort)\n\n"
 			"PAGINAÇÃO E LIMITES\n"
@@ -622,7 +636,9 @@ class Pokemon(commands.Cog):
 			"  .pokemon --box --shiny\n"
 			"  .pokemon --species 25 133 --min_iv 85 --sort level --reverse\n"
 			"  .pokemon --type fire flying --region kalos\n"
-			"  --hexa_31 --shiny\n"
+			"  .pokemon --hexa_31 --shiny\n"
+			"  .pokemon --min_happiness 200 --sort happiness\n"
+			"  .pokemon --happiness 255 --favorite\n"
 			"  .pokemon --growth_type slow medium-slow\n"
 			"  .pokemon --exp_percent 90 95 100\n"
 			"  .pokemon --duplicates --sort species\n"
@@ -740,6 +756,9 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--min_level", type=int)
 	@flags.add_flag("--max_level", type=int)
 	@flags.add_flag("--level", nargs="+", action="append")
+	@flags.add_flag("--min_happiness", type=int)
+	@flags.add_flag("--max_happiness", type=int)
+	@flags.add_flag("--happiness", nargs="+", action="append")
 	@flags.add_flag("--hpiv", nargs="+", action="append")
 	@flags.add_flag("--atkiv", nargs="+", action="append")
 	@flags.add_flag("--defiv", nargs="+", action="append")
@@ -878,6 +897,9 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--min_level", type=int)
 	@flags.add_flag("--max_level", type=int)
 	@flags.add_flag("--level", nargs="+", action="append")
+	@flags.add_flag("--min_happiness", type=int)
+	@flags.add_flag("--max_happiness", type=int)
+	@flags.add_flag("--happiness", nargs="+", action="append")
 	@flags.add_flag("--hpiv", nargs="+", action="append")
 	@flags.add_flag("--atkiv", nargs="+", action="append")
 	@flags.add_flag("--defiv", nargs="+", action="append")
@@ -1017,6 +1039,9 @@ class Pokemon(commands.Cog):
 	@flags.add_flag("--min_level", type=int)
 	@flags.add_flag("--max_level", type=int)
 	@flags.add_flag("--level", nargs="+", action="append")
+	@flags.add_flag("--min_happiness", type=int)
+	@flags.add_flag("--max_happiness", type=int)
+	@flags.add_flag("--happiness", nargs="+", action="append")
 	@flags.add_flag("--hpiv", nargs="+", action="append")
 	@flags.add_flag("--atkiv", nargs="+", action="append")
 	@flags.add_flag("--defiv", nargs="+", action="append")
@@ -1184,5 +1209,3 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
-
-
