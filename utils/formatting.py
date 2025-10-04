@@ -1,5 +1,19 @@
 from utils.pokemon_emojis import get_app_emoji
 from typing import Optional
+from pokemon_sdk.constants import HAPPINESS_MAX
+
+def format_happiness_status(happiness: int) -> str:
+	current_friendship = happiness
+	percent = int((current_friendship / HAPPINESS_MAX) * 100)
+	if percent >= 200:
+		status = "Muito feliz"
+	elif percent >= 150:
+		status = "Feliz"
+	elif percent >= 100:
+		status = "Normal"
+	else:
+		status = "Triste"
+	return f"{percent}% ({status})"
 
 def fmt_name(s: str) -> str:
 	return s.replace("-", " ").title()
