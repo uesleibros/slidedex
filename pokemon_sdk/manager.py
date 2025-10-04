@@ -273,7 +273,7 @@ class PokemonManager:
 	
 	    growth_type: str = species.growth_rate.name
 	    pkm_name = poke.name
-		happiness: int = species.base_happiness
+	    happiness: int = species.base_happiness
 	
 	    final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
 	    final_nature = nature or random.choice(list(NATURES.keys()))
@@ -710,6 +710,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
