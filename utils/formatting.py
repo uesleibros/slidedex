@@ -13,7 +13,7 @@ def format_happiness_status(happiness: int) -> str:
 		status = "Normal"
 	else:
 		status = "Triste"
-	return f"{percent}% ({status})"
+	return f"{happiness}/{HAPPINESS_MAX} | {percent}% ({status})"
 
 def fmt_name(s: str) -> str:
 	return s.replace("-", " ").title()
@@ -62,3 +62,4 @@ def format_pokemon_display(
 		parts.append("❤️")
 
 	return " ".join(parts)
+
