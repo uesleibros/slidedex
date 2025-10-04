@@ -40,6 +40,17 @@ async def on_ready():
 	preload_textures()
 	print(f"{bot.user} online")
 
+@bot.event
+async def on_message(message: discord.Message):
+	if message.author.bot:
+		return
+	
+	if bot.user.mentioned_in(message) and not message.mention_everyone:
+		if message.content.strip() in [f'<@{bot.user.id}>', f'<@!{bot.user.id}>']:
+			await message.channel.send(f"Olá <{message.author.mention}>! Meu prefixo é `{bot.command_prefix}`\nUse `{bot.command_prefix}help` para ver todos os comandos!")
+	
+	await bot.process_commands(message)
+
 class HelpPaginator(discord.ui.View):
 	def __init__(self, embeds, author):
 		super().__init__(timeout=180)
