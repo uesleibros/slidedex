@@ -87,6 +87,8 @@ class EvolutionChoiceView(discord.ui.View):
             await interaction.edit_original_response(
                 content=f"<@{self.owner_id}> ❌ Erro ao evoluir: {e}"
             )
+        finally:
+            self.manager._release_lock(self.owner_id)
         
         self.stop()
     
@@ -108,6 +110,7 @@ class EvolutionChoiceView(discord.ui.View):
             view=None
         )
         
+        self.manager._release_lock(self.owner_id)
         self.stop()
     
     async def _block_callback(self, interaction: discord.Interaction):
@@ -130,6 +133,7 @@ class EvolutionChoiceView(discord.ui.View):
             view=None
         )
         
+        self.manager._release_lock(self.owner_id)
         self.stop()
     
     async def on_timeout(self):
@@ -143,6 +147,8 @@ class EvolutionChoiceView(discord.ui.View):
                 content=f"<@{self.owner_id}> Tempo esgotado! {current_name} não evoluiu. (Tentará novamente no próximo nível)",
                 view=None
             )
+            
+            self.manager._release_lock(self.owner_id)
 
 class MoveChoiceView(discord.ui.View):
     def __init__(
@@ -215,6 +221,7 @@ class MoveChoiceView(discord.ui.View):
                 view=None
             )
             
+            self.manager._release_lock(self.owner_id)
             self.stop()
         
         return callback
@@ -235,6 +242,7 @@ class MoveChoiceView(discord.ui.View):
             view=None
         )
         
+        self.manager._release_lock(self.owner_id)
         self.stop()
     
     async def on_timeout(self):
@@ -246,11 +254,26 @@ class MoveChoiceView(discord.ui.View):
                 content=f"<@{self.owner_id}> Tempo esgotado! {format_pokemon_display(self.pokemon, bold_name=True)} não aprendeu **{self.new_move_name}**.",
                 view=None
             )
+            
+            self.manager._release_lock(self.owner_id)
 
 class PokemonManager:
 	def __init__(self, toolkit):
 		self.tk = toolkit
 		self.service = PokeAPIService()
+		self._user_locks = {}
+
+	def _is_locked(self, owner_id: str) -> bool:
+		return self._user_locks.get(owner_id, False)
+	
+	def _acquire_lock(self, owner_id: str) -> bool:
+		if self._is_locked(owner_id):
+			return False
+		self._user_locks[owner_id] = True
+		return True
+	
+	def _release_lock(self, owner_id: str):
+		self._user_locks[owner_id] = False
 
 	async def _build_pokemon_data(
 	    self,
@@ -488,9 +511,13 @@ class PokemonManager:
 		pokemon_id: int,
 		message: Optional[discord.Message] = None
 	) -> Optional[Dict]:
+		if not self._acquire_lock(owner_id):
+			return None
+			
 		evolution_data = await self.check_evolution(owner_id, pokemon_id, trigger="level-up")
 		
 		if not evolution_data:
+			self._release_lock(owner_id)
 			return None
 		
 		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
@@ -516,7 +543,49 @@ class PokemonManager:
 			
 			return evolution_data
 		
+		self._release_lock(owner_id)
 		return evolution_data
+	
+	async def _handle_move_choice(
+		self,
+		message: discord.Message,
+		owner_id: str,
+		pokemon_id: int,
+		move_id: str,
+		pp_max: int,
+		pokemon: dict
+	):
+		if not self._acquire_lock(owner_id):
+			return
+			
+		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+		current_moves = pokemon.get("moves", [])
+		
+		if self.tk.has_move(owner_id, pokemon_id, move_id):
+			self._release_lock(owner_id)
+			return
+		
+		move_name = move_id.replace("-", " ").title()
+		
+		view = MoveChoiceView(
+			owner_id=owner_id,
+			pokemon_id=pokemon_id,
+			new_move_id=move_id,
+			new_move_name=move_name,
+			pp_max=pp_max,
+			current_moves=current_moves,
+			pokemon=pokemon,
+			manager=self
+		)
+		
+		content = (
+			f"<@{owner_id}> {format_pokemon_display(pokemon, bold_name=True)} quer aprender **{move_name}**!\n"
+			f"Mas já sabe 4 movimentos. Esquecer algum?\n"
+			f"-# Você tem até 1 minuto para decidir."
+		)
+		
+		sent_message = await message.channel.send(content=content, view=view)
+		view.message = sent_message
 	
 	async def process_level_up(
 	    self,
@@ -592,121 +661,3 @@ class PokemonManager:
 	        "levels_gained": levels_gained,
 	        "evolution": evolution_data
 	    }
-
-	async def _handle_move_choice(
-		self,
-		message: discord.Message,
-		owner_id: str,
-		pokemon_id: int,
-		new_move_id: str,
-		pp_max: int,
-		pokemon: Dict
-	) -> None:
-		new_move_name = new_move_id.replace("-", " ").title()
-		
-		current_moves = pokemon.get("moves", [])
-		
-		view = MoveChoiceView(
-			owner_id=owner_id,
-			pokemon_id=pokemon_id,
-			new_move_id=new_move_id,
-			new_move_name=new_move_name,
-			pp_max=pp_max,
-			current_moves=current_moves,
-			pokemon=pokemon,
-			manager=self
-		)
-		
-		content = f"<@{owner_id}> {format_pokemon_display(pokemon, bold_name=True)} Quer aprender **{new_move_name}**, mas já conhece 4 movimentos.\nEscolha um movimento para esquecer ou cancele para não aprender **{new_move_name}**.\n-# Você tem até 1 minuto para fazer sua escolha."
-		
-		sent_message = await message.channel.send(content=content, view=view)
-		view.message = sent_message
-
-	async def add_experience(
-	    self,
-	    owner_id: str,
-	    pokemon_id: int,
-	    exp_gain: int,
-	    notify_message: Optional[discord.Message] = None
-	) -> Dict:
-	    result = self.tk.add_exp(owner_id, pokemon_id, exp_gain)
-	    
-	    if result.get("max_level_reached") and result.get("old_level") < 100:
-	        if notify_message:
-	            pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-	            await notify_message.channel.send(
-	                f"🎉 {format_pokemon_display(pokemon, bold_name=True)} atingiu o **nível máximo 100**!"
-	            )
-	    
-	    levels_gained = result.get("levels_gained", [])
-	    
-	    if levels_gained:
-	        move_result = await self.process_level_up(owner_id, pokemon_id, levels_gained, notify_message)
-	        result["move_learning"] = move_result
-	    else:
-	        result["move_learning"] = {
-	            "learned": [],
-	            "needs_choice": [],
-	            "levels_gained": [],
-	            "evolution": None
-	        }
-	    
-	    return result
-
-	async def _send_level_up_notification(
-		self,
-		message: discord.Message,
-		exp_result: Dict,
-		move_result: Dict
-	) -> None:
-		pokemon = self.tk.get_pokemon(exp_result["owner_id"], exp_result["id"])
-		
-		lines = []
-		
-		for level in move_result.get("levels_gained", []):
-			lines.append(f"{format_pokemon_display(pokemon, bold_name=True)} Subiu para o nivel **{level}**!")
-		
-		if move_result.get("learned"):
-			lines.append("")
-			lines.append("Moves Aprendidos:")
-			for move_info in move_result["learned"]:
-				lines.append(f"  - {move_info['name']} (Nv. {move_info['level']})")
-		
-		if lines:
-			await message.channel.send("\n".join(lines))
-		
-	def get_party(self, user_id: str) -> List[Dict]:
-		return self.tk.get_user_pokemon(user_id, on_party=True)
-
-	def get_box(self, user_id: str) -> List[Dict]:
-		return self.tk.get_user_pokemon(user_id, on_party=False)
-
-	def list_all(self, user_id: str) -> List[Dict]:
-		return self.tk.list_pokemon_by_owner(user_id)
-
-	async def heal(self, owner_id: str, pokemon_id: int) -> Dict:
-		p = self.tk.get_pokemon(owner_id, pokemon_id)
-		poke = await self.service.get_pokemon(p["species_id"])
-		base_stats = self.service.get_base_stats(poke)
-		stats = calculate_stats(base_stats, p["ivs"], p["evs"], p["level"], p["nature"])
-
-		del poke
-		del base_stats
-		del p
-
-		return self.tk.set_current_hp(owner_id, pokemon_id, stats["hp"])
-
-	def move_to_party(self, owner_id: str, pokemon_id: int) -> Dict:
-		return self.tk.move_to_party(owner_id, pokemon_id)
-
-	def move_to_box(self, owner_id: str, pokemon_id: int) -> Dict:
-		return self.tk.move_to_box(owner_id, pokemon_id)
-
-	def set_moves(self, owner_id: str, pokemon_id: int, moves: List[Dict]) -> Dict:
-		return self.tk.set_moves(owner_id, pokemon_id, moves)
-
-	def iv_percent(self, p: Dict, decimals: int = 2) -> float:
-		return iv_percent(p["ivs"], decimals)
-
-	async def close(self):
-		await self.service.close()
