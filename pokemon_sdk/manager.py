@@ -681,7 +681,7 @@ class PokemonManager:
 	        move_result = await self.process_level_up(owner_id, pokemon_id, levels_gained, notify_message)
 	        result["move_learning"] = move_result
 			
-			if notify_message:
+	        if notify_message:
 				pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 				await self._send_level_up_notification(notify_message, result, move_result)
 	    else:
@@ -751,4 +751,5 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
