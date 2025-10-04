@@ -147,16 +147,59 @@ class MyHelpCommand(commands.HelpCommand):
 		await self.get_destination().send(embed=embed)
 
 	async def send_command_help(self, command):
-		embed = discord.Embed(
-			title=self.get_command_signature(command),
-			description=command.help or "Sem descrição",
-			color=discord.Color.pink()
-		)
+		help_text = command.help or "Sem descrição"
 		
-		if command.aliases:
-			embed.add_field(name="Aliases", value=", ".join([f"`{alias}`" for alias in command.aliases]), inline=False)
-		
-		await self.get_destination().send(embed=embed)
+		if len(help_text) > 4000:
+			embeds = []
+			chunks = []
+			current_chunk = ""
+			
+			for line in help_text.split('\n'):
+				if len(current_chunk) + len(line) + 1 > 4000:
+					chunks.append(current_chunk)
+					current_chunk = line + '\n'
+				else:
+					current_chunk += line + '\n'
+			
+			if current_chunk:
+				chunks.append(current_chunk)
+			
+			for i, chunk in enumerate(chunks):
+				embed = discord.Embed(
+					title=f"{self.get_command_signature(command)} (Página {i+1}/{len(chunks)})",
+					description=chunk,
+					color=discord.Color.pink()
+				)
+				
+				if i == 0 and command.aliases:
+					embed.add_field(
+						name="Aliases",
+						value=", ".join([f"`{alias}`" for alias in command.aliases]),
+						inline=False
+					)
+				
+				embeds.append(embed)
+			
+			if len(embeds) == 1:
+				await self.get_destination().send(embed=embeds[0])
+			else:
+				view = HelpPaginator(embeds, self.context.author)
+				await self.get_destination().send(embed=embeds[0], view=view)
+		else:
+			embed = discord.Embed(
+				title=self.get_command_signature(command),
+				description=help_text,
+				color=discord.Color.pink()
+			)
+			
+			if command.aliases:
+				embed.add_field(
+					name="Aliases",
+					value=", ".join([f"`{alias}`" for alias in command.aliases]),
+					inline=False
+				)
+			
+			await self.get_destination().send(embed=embed)
 
 	async def send_group_help(self, group):
 		embeds = []
@@ -166,23 +209,43 @@ class MyHelpCommand(commands.HelpCommand):
 		total_pages = (len(subcommands) + items_per_page - 1) // items_per_page if subcommands else 1
 		
 		for page in range(total_pages):
+			help_text = group.help or "Sem descrição"
+			
+			if len(help_text) > 2000:
+				help_text = help_text[:1997] + "..."
+			
 			embed = discord.Embed(
 				title=self.get_command_signature(group),
-				description=group.help or "Sem descrição",
+				description=help_text,
 				color=discord.Color.pink()
 			)
 			
 			if group.aliases:
-				embed.add_field(name="Aliases", value=", ".join([f"`{alias}`" for alias in group.aliases]), inline=False)
+				embed.add_field(
+					name="Aliases",
+					value=", ".join([f"`{alias}`" for alias in group.aliases]),
+					inline=False
+				)
 			
 			if subcommands:
 				start = page * items_per_page
 				end = start + items_per_page
 				page_subcommands = subcommands[start:end]
 				
+				subcommands_text = "\n".join([
+					f"`{self.get_command_signature(cmd)}`\n{cmd.short_doc or 'Sem descrição'}"
+					for cmd in page_subcommands
+				])
+				
+				if len(subcommands_text) > 1000:
+					subcommands_text = "\n".join([
+						f"`{self.get_command_signature(cmd)}`"
+						for cmd in page_subcommands
+					])
+				
 				embed.add_field(
 					name=f"Subcomandos (Página {page + 1}/{total_pages})",
-					value="\n".join([f"`{self.get_command_signature(cmd)}`\n{cmd.short_doc or 'Sem descrição'}" for cmd in page_subcommands]),
+					value=subcommands_text,
 					inline=False
 				)
 			
@@ -196,4 +259,3 @@ class MyHelpCommand(commands.HelpCommand):
 
 bot.help_command = MyHelpCommand()
 bot.run(str(TOKEN))
-
