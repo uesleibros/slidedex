@@ -10,9 +10,10 @@ from __main__ import toolkit, pm
 
 class Dev(commands.Cog):
     """ Comandos apenas para desenvolvedores. """
+    hidden = True
+    
     def __init__(self, bot):
         self.bot = bot
-        hidden = True
 
     def cleanup_code(self, content: str) -> str:
         if content.startswith("```") and content.endswith("```"):
@@ -103,4 +104,5 @@ class Dev(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Dev(bot))
+
 
