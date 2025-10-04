@@ -12,6 +12,8 @@ PARTY_LIMIT = 6
 MOVES_LIMIT = 4
 EV_PER_STAT_MAX = 255
 EV_TOTAL_MAX = 510
+HAPPINESS_MIN = 0
+HAPPINESS_MAX = 255
 
 class Toolkit:
 	__slots__ = ('path', '_lock', 'db', '_pk_index', 'NATURES', '_move_service')
@@ -130,6 +132,76 @@ class Toolkit:
 			total += v
 		if total > EV_TOTAL_MAX:
 			raise ValueError("EV total exceeds limit")
+
+	def _clamp_happiness(self, value: int) -> int:
+		return max(HAPPINESS_MIN, min(HAPPINESS_MAX, value))
+
+	def _has_soothe_bell(self, pokemon: Dict) -> bool:
+		return pokemon.get("held_item") == "soothe-bell"
+
+	def _apply_soothe_bell(self, gain: int, has_bell: bool) -> int:
+		if has_bell and gain > 0:
+			return int(gain * 1.5)
+		return gain
+
+	def _get_happiness_gain_level_up(self, current: int) -> int:
+		if current < 100:
+			return 5
+		elif current < 200:
+			return 3
+		else:
+			return 2
+
+	def _get_happiness_gain_vitamin(self, current: int) -> int:
+		if current < 100:
+			return 5
+		elif current < 200:
+			return 3
+		else:
+			return 2
+
+	def _get_happiness_gain_berry(self, current: int) -> int:
+		if current < 100:
+			return 10
+		elif current < 200:
+			return 5
+		else:
+			return 2
+
+	def _get_happiness_gain_battle(self, current: int) -> int:
+		if current < 100:
+			return 3
+		elif current < 200:
+			return 2
+		else:
+			return 1
+
+	def _get_happiness_loss_faint(self, current: int) -> int:
+		return 1
+
+	def _get_happiness_loss_energy_powder(self, current: int) -> int:
+		if current < 200:
+			return 5
+		else:
+			return 10
+
+	def _get_happiness_loss_heal_powder(self, current: int) -> int:
+		if current < 200:
+			return 5
+		else:
+			return 10
+
+	def _get_happiness_loss_energy_root(self, current: int) -> int:
+		if current < 200:
+			return 10
+		else:
+			return 15
+
+	def _get_happiness_loss_revival_herb(self, current: int) -> int:
+		if current < 200:
+			return 15
+		else:
+			return 20
 
 	def add_user(self, user_id: str, gender: str) -> Dict:
 		with self._lock:
@@ -298,7 +370,7 @@ class Toolkit:
 				"gender": gender,
 				"is_shiny": bool(shiny),
 				"growth_type": growth_type,
-				"happiness": happiness,
+				"happiness": self._clamp_happiness(int(happiness)),
 				"background": "lab",
 				"held_item": held_item,
 				"is_favorite": False,
@@ -366,6 +438,11 @@ class Toolkit:
 			if new_level > old_level:
 				for lvl in range(old_level + 1, min(new_level + 1, 101)):
 					levels_gained.append(lvl)
+					
+					current_happiness = p.get("happiness", 70)
+					gain = self._get_happiness_gain_level_up(current_happiness)
+					gain = self._apply_soothe_bell(gain, self._has_soothe_bell(p))
+					p["happiness"] = self._clamp_happiness(current_happiness + gain)
 				
 				old_max_hp = calculate_max_hp(
 					p["base_stats"]["hp"],
@@ -577,6 +654,7 @@ class Toolkit:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
 			p = self.db["pokemon"][idx]
 			p["owner_id"] = new_owner_id
+			p["happiness"] = 70
 			if p.get("on_party", False) and not self.can_add_to_party(new_owner_id):
 				p["on_party"] = False
 			self._reindex()
@@ -854,7 +932,128 @@ class Toolkit:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
 			return self.db["pokemon"][idx].get("evolution_blocked", False)
 
+	def get_happiness(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			return self.db["pokemon"][idx].get("happiness", 70)
 
+	def set_happiness(self, owner_id: str, pokemon_id: int, value: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["happiness"] = self._clamp_happiness(int(value))
+			self._save()
+			return self.db["pokemon"][idx]["happiness"]
 
+	def modify_happiness(self, owner_id: str, pokemon_id: int, amount: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			p["happiness"] = self._clamp_happiness(current + int(amount))
+			self._save()
+			return p["happiness"]
 
+	def increase_happiness_level_up(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			gain = self._get_happiness_gain_level_up(current)
+			gain = self._apply_soothe_bell(gain, self._has_soothe_bell(p))
+			p["happiness"] = self._clamp_happiness(current + gain)
+			self._save()
+			return p["happiness"]
 
+	def increase_happiness_vitamin(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			gain = self._get_happiness_gain_vitamin(current)
+			gain = self._apply_soothe_bell(gain, self._has_soothe_bell(p))
+			p["happiness"] = self._clamp_happiness(current + gain)
+			self._save()
+			return p["happiness"]
+
+	def increase_happiness_berry(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			gain = self._get_happiness_gain_berry(current)
+			gain = self._apply_soothe_bell(gain, self._has_soothe_bell(p))
+			p["happiness"] = self._clamp_happiness(current + gain)
+			self._save()
+			return p["happiness"]
+
+	def increase_happiness_walk(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			gain = 1
+			gain = self._apply_soothe_bell(gain, self._has_soothe_bell(p))
+			p["happiness"] = self._clamp_happiness(current + gain)
+			self._save()
+			return p["happiness"]
+
+	def increase_happiness_battle(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			gain = self._get_happiness_gain_battle(current)
+			gain = self._apply_soothe_bell(gain, self._has_soothe_bell(p))
+			p["happiness"] = self._clamp_happiness(current + gain)
+			self._save()
+			return p["happiness"]
+
+	def decrease_happiness_faint(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			loss = self._get_happiness_loss_faint(current)
+			p["happiness"] = self._clamp_happiness(current - loss)
+			self._save()
+			return p["happiness"]
+
+	def decrease_happiness_energy_powder(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			loss = self._get_happiness_loss_energy_powder(current)
+			p["happiness"] = self._clamp_happiness(current - loss)
+			self._save()
+			return p["happiness"]
+
+	def decrease_happiness_heal_powder(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			loss = self._get_happiness_loss_heal_powder(current)
+			p["happiness"] = self._clamp_happiness(current - loss)
+			self._save()
+			return p["happiness"]
+
+	def decrease_happiness_energy_root(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			loss = self._get_happiness_loss_energy_root(current)
+			p["happiness"] = self._clamp_happiness(current - loss)
+			self._save()
+			return p["happiness"]
+
+	def decrease_happiness_revival_herb(self, owner_id: str, pokemon_id: int) -> int:
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			current = p.get("happiness", 70)
+			loss = self._get_happiness_loss_revival_herb(current)
+			p["happiness"] = self._clamp_happiness(current - loss)
+			self._save()
+			return p["happiness"]
