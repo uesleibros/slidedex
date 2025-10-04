@@ -157,7 +157,24 @@ class MyHelpCommand(commands.HelpCommand):
 		await self.get_destination().send(embed=embed)
 
 	async def send_group_help(self, group):
-		await self.send_command_help(group)
+		embed = discord.Embed(
+			title=self.get_command_signature(group),
+			description=group.help or "Sem descrição",
+			color=discord.Color.pink()
+		)
+		
+		if group.aliases:
+			embed.add_field(name="Aliases", value=", ".join([f"`{alias}`" for alias in group.aliases]), inline=False)
+		
+		subcommands = [cmd for cmd in group.commands if not cmd.hidden]
+		if subcommands:
+			embed.add_field(
+				name="Subcomandos",
+				value="\n".join([f"`{self.get_command_signature(cmd)}`\n{cmd.short_doc or 'Sem descrição'}" for cmd in subcommands]),
+				inline=False
+			)
+		
+		await self.get_destination().send(embed=embed)
 
 bot.help_command = MyHelpCommand()
 bot.run(str(TOKEN))
