@@ -207,7 +207,7 @@ class WildBattle(BattleEngine):
 			color=discord.Color.green()
 		)
 		
-		embed.set_footer(text="Effex Engine v1.7 — Complete Edition")
+		embed.set_footer(text="Effex Engine v1.71 — alpha")
 		embed.set_image(url="attachment://battle.png")
 		return embed
 	
@@ -724,3 +724,4 @@ class WildBattleView(discord.ui.View):
 			return await interaction.response.send_message("Troque de Pokémon primeiro!", ephemeral=True)
 		
 		await interaction.response.edit_message(view=PokeballsView(self.battle))
+
