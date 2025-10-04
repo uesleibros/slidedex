@@ -1,18 +1,19 @@
-import discord
 import random
 import asyncio
-from typing import List, Dict, Any, Optional, Set, Tuple
-from .pokemon import BattlePokemon
-from .constants import BattleConstants
-from .messages import BattleMessages
-from .damage import DamageCalculator
-from .effects import EffectHandler
-from .status import StatusHandler
-from .helpers import MoveData, _normalize_move, _slug
-from .targeting import TargetingSystem, TargetType, BattleContext
+from __main__ import pm
+from typing import List, Dict, Any, Optional
+from utils.formatting import format_pokemon_display
+from data.effect_mapper import effect_mapper
+from ..pokemon import BattlePokemon
+from ..constants import BattleConstants
+from ..messages import BattleMessages
+from ..damage import DamageCalculator
+from ..effects import EffectHandler
+from ..status import StatusHandler
+from ..helpers import MoveData, _normalize_move, _slug, _hp_bar
+from ..targeting import TargetingSystem, BattleContext
 
 class BattleEngine:
-	
 	def __init__(self, battle_type: str = "single"):
 		self.ended = False
 		self.turn = 1
@@ -47,9 +48,6 @@ class BattleEngine:
 		return any(not p.fainted for p in team)
 	
 	def _generate_hp_display(self, pokemon: BattlePokemon, show_stages: bool = True) -> str:
-		from .helpers import _hp_bar
-		from utils.formatting import format_pokemon_display
-		
 		bar = _hp_bar(pokemon.current_hp, pokemon.stats["hp"])
 		hp_percent = (pokemon.current_hp / pokemon.stats["hp"] * 100) if pokemon.stats["hp"] > 0 else 0
 		base_display = (
@@ -150,9 +148,7 @@ class BattleEngine:
 		
 		return lines
 	
-	async def _fetch_move(self, move_id: str) -> MoveData:
-		from __main__ import pm
-		
+	async def _fetch_move(self, move_id: str) -> MoveData:		
 		key = _slug(move_id)
 		if not key:
 			raise ValueError("Invalid move_id")
@@ -164,7 +160,6 @@ class BattleEngine:
 		normalized = _normalize_move(move_data)
 		self.move_cache[key] = normalized
 		
-		from data.effect_mapper import effect_mapper
 		effect_entries = getattr(move_data, "effect_entries", [])
 		
 		for entry in effect_entries:

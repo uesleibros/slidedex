@@ -7,6 +7,7 @@ import asyncio
 from datetime import datetime, timedelta
 
 class BotStats(commands.Cog):
+	""" Comandos para ver as estatísticas do bot. """
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
 		self.start_time = time.time()

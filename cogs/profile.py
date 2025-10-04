@@ -8,6 +8,7 @@ from utils.canvas import compose_profile_async
 from helpers.checks import requires_account
 
 class Profile(commands.Cog):
+	""" Comandos relacionados a perfil. """
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
 

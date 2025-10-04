@@ -1,20 +1,19 @@
 import discord
-import random
 import asyncio
 from typing import List, Dict, Any, Optional, Set, Tuple
 from __main__ import pm, battle_tracker
 from utils.canvas import compose_battle_async
 from utils.preloaded import preloaded_textures
-from .pokemon import BattlePokemon
-from .status import StatusHandler
-from .capture import CaptureSystem
-from .helpers import SwitchView, MovesView
-from .pokeballs import PokeBallSystem, BallType
+from utils.formatting import format_pokemon_display
+from ..pokemon import BattlePokemon
+from ..status import StatusHandler
+from ..capture import CaptureSystem
+from ..helpers import SwitchView, MovesView, PokeballsView, MoveData, _slug
+from ..pokeballs import PokeBallSystem, BallType
+from ..rewards import BattleRewards
 from .engine import BattleEngine
-from .rewards import BattleRewards
 
 class WildBattle(BattleEngine):
-	
 	def __init__(
 		self,
 		player_party: List[Dict[str, Any]],
@@ -123,8 +122,6 @@ class WildBattle(BattleEngine):
 		return True
 	
 	async def _preload_move_data(self) -> None:
-		from .helpers import _slug
-		
 		move_ids: Set[str] = set()
 		for mv in self.wild.moves:
 			move_ids.add(_slug(mv["id"]))
@@ -260,7 +257,6 @@ class WildBattle(BattleEngine):
 			if enemy_move_id != "__struggle__":
 				enemy_move_data = await self._fetch_move(enemy_move_id)
 			else:
-				from .helpers import MoveData
 				enemy_move_data = MoveData(
 					"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
 				)
@@ -383,7 +379,6 @@ class WildBattle(BattleEngine):
 				if enemy_move_id != "__struggle__":
 					enemy_move_data = await self._fetch_move(enemy_move_id)
 				else:
-					from .helpers import MoveData
 					enemy_move_data = MoveData(
 						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
 					)
@@ -516,8 +511,6 @@ class WildBattle(BattleEngine):
 			ball_name = PokeBallSystem.get_ball_name(ball_type)
 			
 			if success:
-				from utils.formatting import format_pokemon_display
-
 				experience_distribution = await self._calculate_experience_distribution()
 				await self._distribute_evs()
 				
@@ -576,7 +569,6 @@ class WildBattle(BattleEngine):
 				if enemy_move_id != "__struggle__":
 					enemy_move_data = await self._fetch_move(enemy_move_id)
 				else:
-					from .helpers import MoveData
 					enemy_move_data = MoveData(
 						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
 					)
@@ -711,5 +703,4 @@ class WildBattleView(discord.ui.View):
 		if self.force_switch_mode or self.battle.player_active.fainted:
 			return await interaction.response.send_message("Troque de Pokémon primeiro!", ephemeral=True)
 		
-		from .helpers import PokeballsView
 		await interaction.response.edit_message(view=PokeballsView(self.battle))

@@ -264,59 +264,59 @@ class Toolkit:
 			return self._deepcopy(self.db["pokemon"][idx])
 
 	def add_pokemon(self, owner_id: str, species_id: int, ivs: Dict[str, int], nature: str, ability: str, gender: str, shiny: bool, types: List[str], region: str, is_legendary: bool, is_mythical: bool, growth_type: str, base_stats: Dict, level: int = 1, exp: int = 0, held_item: Optional[str] = None, moves: Optional[List[Dict]] = None, nickname: Optional[str] = None, name: Optional[str] = None, current_hp: Optional[int] = None, on_party: Optional[bool] = None) -> Dict:
-	    with self._lock:
-	        self._ensure_user(owner_id)
-	        self._validate_ivs(ivs)
-	        base_evs = {k: 0 for k in STAT_KEYS}
-	        auto_party = self.get_party_count(owner_id) < PARTY_LIMIT
-	        final_on_party = auto_party if on_party is None else (on_party and auto_party)
-	        user = self.db["users"][owner_id]
-	        user["last_pokemon_id"] += 1
-	        new_id = user["last_pokemon_id"]
-	        
-	        final_level = min(max(int(level), 1), 100)
-	        max_exp = self.get_exp_for_level(growth_type, 100)
-	        final_exp = min(int(exp), max_exp)
-	        
-	        pkmn = {
-	            "id": int(new_id),
-	            "species_id": int(species_id),
-	            "nickname": nickname,
-	            "name": name,
-	            "owner_id": owner_id,
-	            "level": final_level,
-	            "exp": final_exp,
-	            "ivs": ivs,
-	            "evs": base_evs,
-	            "nature": nature,
-	            "ability": ability,
-	            "types": types,
-	            "is_legendary": is_legendary,
-	            "is_mythical": is_mythical,
-	            "base_stats": base_stats,
-	            "region": region,
-	            "gender": gender,
-	            "is_shiny": bool(shiny),
-	            "growth_type": growth_type,
-	            "background": "lab",
-	            "held_item": held_item,
-	            "is_favorite": False,
-	            "caught_at": datetime.utcnow().isoformat(),
-	            "moves": [],
-	            "current_hp": current_hp if current_hp is None else int(current_hp),
-	            "on_party": final_on_party
-	        }
-	        if moves:
-	            if len(moves) > MOVES_LIMIT:
-	                raise ValueError("Too many moves")
-	            for m in moves:
-	                if not isinstance(m, dict) or "id" not in m or "pp" not in m or "pp_max" not in m:
-	                    raise ValueError("Invalid move shape")
-	            pkmn["moves"] = moves
-	        self.db["pokemon"].append(pkmn)
-	        self._pk_index[(owner_id, int(new_id))] = len(self.db["pokemon"]) - 1
-	        self._save()
-	        return self._deepcopy(pkmn)
+		with self._lock:
+			self._ensure_user(owner_id)
+			self._validate_ivs(ivs)
+			base_evs = {k: 0 for k in STAT_KEYS}
+			auto_party = self.get_party_count(owner_id) < PARTY_LIMIT
+			final_on_party = auto_party if on_party is None else (on_party and auto_party)
+			user = self.db["users"][owner_id]
+			user["last_pokemon_id"] += 1
+			new_id = user["last_pokemon_id"]
+			
+			final_level = min(max(int(level), 1), 100)
+			max_exp = self.get_exp_for_level(growth_type, 100)
+			final_exp = min(int(exp), max_exp)
+			
+			pkmn = {
+				"id": int(new_id),
+				"species_id": int(species_id),
+				"nickname": nickname,
+				"name": name,
+				"owner_id": owner_id,
+				"level": final_level,
+				"exp": final_exp,
+				"ivs": ivs,
+				"evs": base_evs,
+				"nature": nature,
+				"ability": ability,
+				"types": types,
+				"is_legendary": is_legendary,
+				"is_mythical": is_mythical,
+				"base_stats": base_stats,
+				"region": region,
+				"gender": gender,
+				"is_shiny": bool(shiny),
+				"growth_type": growth_type,
+				"background": "lab",
+				"held_item": held_item,
+				"is_favorite": False,
+				"caught_at": datetime.utcnow().isoformat(),
+				"moves": [],
+				"current_hp": current_hp if current_hp is None else int(current_hp),
+				"on_party": final_on_party
+			}
+			if moves:
+				if len(moves) > MOVES_LIMIT:
+					raise ValueError("Too many moves")
+				for m in moves:
+					if not isinstance(m, dict) or "id" not in m or "pp" not in m or "pp_max" not in m:
+						raise ValueError("Invalid move shape")
+				pkmn["moves"] = moves
+			self.db["pokemon"].append(pkmn)
+			self._pk_index[(owner_id, int(new_id))] = len(self.db["pokemon"]) - 1
+			self._save()
+			return self._deepcopy(pkmn)
 
 	def get_pokemon(self, owner_id: str, pokemon_id: int) -> Dict:
 		with self._lock:
@@ -329,74 +329,74 @@ class Toolkit:
 			return [self._deepcopy(p) for p in self.db["pokemon"] if p["owner_id"] == owner_id]
 
 	def set_level(self, owner_id: str, pokemon_id: int, level: int) -> int:
-	    with self._lock:
-	        idx = self._get_pokemon_index(owner_id, pokemon_id)
-	        self.db["pokemon"][idx]["level"] = min(int(level), 100)
-	        self._save()
-	        return self.db["pokemon"][idx]["level"]
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["level"] = min(int(level), 100)
+			self._save()
+			return self.db["pokemon"][idx]["level"]
 
 	def add_exp(self, owner_id: str, pokemon_id: int, exp_gain: int) -> Dict:
-	    with self._lock:
-	        from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
-	        
-	        idx = self._get_pokemon_index(owner_id, pokemon_id)
-	        p = self.db["pokemon"][idx]
-	        
-	        old_level = p["level"]
-	        growth_type = p.get("growth_type", GrowthRate.MEDIUM)
-	        max_exp = self.get_exp_for_level(growth_type, 100)
-	        
-	        if old_level >= 100:
-	            p["exp"] = max_exp
-	            p["level"] = 100
-	            self._save()
-	            
-	            result = self._deepcopy(p)
-	            result["levels_gained"] = []
-	            result["old_level"] = old_level
-	            result["max_level_reached"] = True
-	            return result
-	        
-	        p["exp"] = min(p["exp"] + int(exp_gain), max_exp)
-	        
-	        new_level = min(self.get_level_from_exp(growth_type, p["exp"]), 100)
-	        
-	        levels_gained = []
-	        if new_level > old_level:
-	            for lvl in range(old_level + 1, min(new_level + 1, 101)):
-	                levels_gained.append(lvl)
-	            
-	            old_max_hp = calculate_max_hp(
-	                p["base_stats"]["hp"],
-	                p["ivs"]["hp"],
-	                p["evs"]["hp"],
-	                old_level
-	            )
-	            
-	            new_max_hp = calculate_max_hp(
-	                p["base_stats"]["hp"],
-	                p["ivs"]["hp"],
-	                p["evs"]["hp"],
-	                new_level
-	            )
-	            
-	            current_hp = p.get("current_hp")
-	            if current_hp is None:
-	                current_hp = old_max_hp
-	            
-	            p["current_hp"] = adjust_hp_on_level_up(old_max_hp, new_max_hp, current_hp)
-	            p["level"] = new_level
-	            
-	            if new_level >= 100:
-	                p["exp"] = max_exp
-	        
-	        self._save()
-	        
-	        result = self._deepcopy(p)
-	        result["levels_gained"] = levels_gained
-	        result["old_level"] = old_level
-	        result["max_level_reached"] = new_level >= 100
-	        return result
+		with self._lock:
+			from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
+			
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			
+			old_level = p["level"]
+			growth_type = p.get("growth_type", GrowthRate.MEDIUM)
+			max_exp = self.get_exp_for_level(growth_type, 100)
+			
+			if old_level >= 100:
+				p["exp"] = max_exp
+				p["level"] = 100
+				self._save()
+				
+				result = self._deepcopy(p)
+				result["levels_gained"] = []
+				result["old_level"] = old_level
+				result["max_level_reached"] = True
+				return result
+			
+			p["exp"] = min(p["exp"] + int(exp_gain), max_exp)
+			
+			new_level = min(self.get_level_from_exp(growth_type, p["exp"]), 100)
+			
+			levels_gained = []
+			if new_level > old_level:
+				for lvl in range(old_level + 1, min(new_level + 1, 101)):
+					levels_gained.append(lvl)
+				
+				old_max_hp = calculate_max_hp(
+					p["base_stats"]["hp"],
+					p["ivs"]["hp"],
+					p["evs"]["hp"],
+					old_level
+				)
+				
+				new_max_hp = calculate_max_hp(
+					p["base_stats"]["hp"],
+					p["ivs"]["hp"],
+					p["evs"]["hp"],
+					new_level
+				)
+				
+				current_hp = p.get("current_hp")
+				if current_hp is None:
+					current_hp = old_max_hp
+				
+				p["current_hp"] = adjust_hp_on_level_up(old_max_hp, new_max_hp, current_hp)
+				p["level"] = new_level
+				
+				if new_level >= 100:
+					p["exp"] = max_exp
+			
+			self._save()
+			
+			result = self._deepcopy(p)
+			result["levels_gained"] = levels_gained
+			result["old_level"] = old_level
+			result["max_level_reached"] = new_level >= 100
+			return result
 
 	def calc_battle_exp(self, poke_level: int, enemy_level: int) -> int:
 		base = enemy_level * 10
@@ -502,42 +502,42 @@ class Toolkit:
 			return self._deepcopy(mv)
 
 	def can_learn_move(self, owner_id: str, pokemon_id: int) -> bool:
-	    with self._lock:
-	        idx = self._get_pokemon_index(owner_id, pokemon_id)
-	        p = self.db["pokemon"][idx]
-	        return len(p.get("moves", [])) < MOVES_LIMIT
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			return len(p.get("moves", [])) < MOVES_LIMIT
 
 	def learn_move(self, owner_id: str, pokemon_id: int, move_id: str, pp_max: int, replace_move_id: Optional[str] = None) -> List[Dict]:
-	    with self._lock:
-	        idx = self._get_pokemon_index(owner_id, pokemon_id)
-	        p = self.db["pokemon"][idx]
-	        
-	        if "moves" not in p:
-	            p["moves"] = []
-	        
-	        if replace_move_id:
-	            p["moves"] = [m for m in p["moves"] if m["id"] != replace_move_id]
-	        
-	        if any(m["id"] == move_id for m in p["moves"]):
-	            return self._deepcopy(p["moves"])
-	        
-	        if len(p["moves"]) >= MOVES_LIMIT:
-	            raise ValueError("Move slots full")
-	        
-	        p["moves"].append({
-	            "id": move_id,
-	            "pp": int(pp_max),
-	            "pp_max": int(pp_max)
-	        })
-	        
-	        self._save()
-	        return self._deepcopy(p["moves"])
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			p = self.db["pokemon"][idx]
+			
+			if "moves" not in p:
+				p["moves"] = []
+			
+			if replace_move_id:
+				p["moves"] = [m for m in p["moves"] if m["id"] != replace_move_id]
+			
+			if any(m["id"] == move_id for m in p["moves"]):
+				return self._deepcopy(p["moves"])
+			
+			if len(p["moves"]) >= MOVES_LIMIT:
+				raise ValueError("Move slots full")
+			
+			p["moves"].append({
+				"id": move_id,
+				"pp": int(pp_max),
+				"pp_max": int(pp_max)
+			})
+			
+			self._save()
+			return self._deepcopy(p["moves"])
 	
 	def has_move(self, owner_id: str, pokemon_id: int, move_id: str) -> bool:
-	    with self._lock:
-	        idx = self._get_pokemon_index(owner_id, pokemon_id)
-	        moves = self.db["pokemon"][idx].get("moves", [])
-	        return any(m["id"] == move_id for m in moves)
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			moves = self.db["pokemon"][idx].get("moves", [])
+			return any(m["id"] == move_id for m in moves)
 
 	def remove_move(self, owner_id: str, pokemon_id: int, move_id: str) -> List[Dict]:
 		with self._lock:
@@ -842,16 +842,16 @@ class Toolkit:
 			return results
 
 	def block_evolution(self, owner_id: str, pokemon_id: int, block: bool = True) -> bool:
-	    with self._lock:
-	        idx = self._get_pokemon_index(owner_id, pokemon_id)
-	        self.db["pokemon"][idx]["evolution_blocked"] = bool(block)
-	        self._save()
-	        return self.db["pokemon"][idx]["evolution_blocked"]
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			self.db["pokemon"][idx]["evolution_blocked"] = bool(block)
+			self._save()
+			return self.db["pokemon"][idx]["evolution_blocked"]
 	
 	def is_evolution_blocked(self, owner_id: str, pokemon_id: int) -> bool:
-	    with self._lock:
-	        idx = self._get_pokemon_index(owner_id, pokemon_id)
-	        return self.db["pokemon"][idx].get("evolution_blocked", False)
+		with self._lock:
+			idx = self._get_pokemon_index(owner_id, pokemon_id)
+			return self.db["pokemon"][idx].get("evolution_blocked", False)
 
 
 

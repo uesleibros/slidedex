@@ -19,6 +19,7 @@ async def _fmt_party(party):
 
 
 class Party(commands.Cog):
+	""" Comandos relacionados a party. """
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
 

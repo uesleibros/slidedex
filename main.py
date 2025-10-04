@@ -40,7 +40,113 @@ async def on_ready():
 	preload_textures()
 	print(f"{bot.user} online")
 
+class HelpPaginator(discord.ui.View):
+	def __init__(self, embeds, author):
+		super().__init__(timeout=180)
+		self.embeds = embeds
+		self.author = author
+		self.current = 0
+		self.update_buttons()
 
+	def update_buttons(self):
+		self.previous.disabled = self.current == 0
+		self.next.disabled = self.current == len(self.embeds) - 1
+
+	@discord.ui.button(emoji="◀️", style=discord.ButtonStyle.gray)
+	async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+		if interaction.user.id != self.author.id:
+			return await interaction.response.send_message("Você não pode usar isso!", ephemeral=True)
+		self.current -= 1
+		self.update_buttons()
+		await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
+
+	@discord.ui.button(emoji="▶️", style=discord.ButtonStyle.gray)
+	async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+		if interaction.user.id != self.author.id:
+			return await interaction.response.send_message("Você não pode usar isso!", ephemeral=True)
+		self.current += 1
+		self.update_buttons()
+		await interaction.response.edit_message(embed=self.embeds[self.current], view=self)
+
+class MyHelpCommand(commands.HelpCommand):
+	def get_command_signature(self, command):
+		try:
+			return f'{self.context.clean_prefix}{command.qualified_name} {command.signature}'
+		except AttributeError:
+			return f'{self.context.clean_prefix}{command.qualified_name}'
+
+	async def send_bot_help(self, mapping):
+		embeds = []
+		categories = {}
+		
+		for cog, cmds in mapping.items():
+			if cmds:
+				cog_name = cog.qualified_name if cog else "Sem Categoria"
+				categories[cog_name] = [cmd for cmd in cmds if not cmd.hidden]
+		
+		items_per_page = 5
+		cog_items = list(categories.items())
+		total_pages = (len(cog_items) + items_per_page - 1) // items_per_page
+		
+		for page in range(total_pages):
+			embed = discord.Embed(
+				title=f"Categorias de Comandos (Página {page + 1}/{total_pages})",
+				description=f"Use `{self.context.clean_prefix}help <comando>` para mais info.\nUse `{self.context.clean_prefix}help <categoria>` para mais info sobre uma categoria.",
+				color=discord.Color.pink()
+			)
+			
+			start = page * items_per_page
+			end = start + items_per_page
+			
+			for cog_name, cmds in cog_items[start:end]:
+				cog_obj = self.context.bot.get_cog(cog_name)
+				description = cog_obj.description if cog_obj and cog_obj.description else "Sem descrição"
+				commands_list = " ".join([cmd.name for cmd in cmds])
+				embed.add_field(
+					name=f"**{cog_name}**",
+					value=f"{description}\n`{commands_list}`",
+					inline=False
+				)
+			
+			embeds.append(embed)
+		
+		if len(embeds) == 1:
+			await self.get_destination().send(embed=embeds[0])
+		else:
+			view = HelpPaginator(embeds, self.context.author)
+			await self.get_destination().send(embed=embeds[0], view=view)
+
+	async def send_cog_help(self, cog):
+		embed = discord.Embed(
+			title=f"Categoria: {cog.qualified_name}",
+			description=cog.description or "Sem descrição",
+			color=discord.Color.pink()
+		)
+		
+		commands_list = [cmd for cmd in cog.get_commands() if not cmd.hidden]
+		if commands_list:
+			embed.add_field(
+				name="Comandos",
+				value="\n".join([f"`{self.get_command_signature(cmd)}`\n{cmd.short_doc or 'Sem descrição'}" for cmd in commands_list]),
+				inline=False
+			)
+		
+		await self.get_destination().send(embed=embed)
+
+	async def send_command_help(self, command):
+		embed = discord.Embed(
+			title=self.get_command_signature(command),
+			description=command.help or "Sem descrição",
+			color=discord.Color.pink()
+		)
+		
+		if command.aliases:
+			embed.add_field(name="Aliases", value=", ".join([f"`{alias}`" for alias in command.aliases]), inline=False)
+		
+		await self.get_destination().send(embed=embed)
+
+	async def send_group_help(self, group):
+		await self.send_command_help(group)
+
+bot.help_command = MyHelpCommand()
 bot.run(str(TOKEN))
-
-

@@ -9,6 +9,7 @@ from discord.ext import commands
 from __main__ import toolkit, pm
 
 class Dev(commands.Cog):
+    """ Comandos apenas para desenvolvedores. """
     def __init__(self, bot):
         self.bot = bot
 
