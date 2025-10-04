@@ -7,7 +7,7 @@ from utils.pokemon_emojis import load_application_emojis
 from utils.preloaded import preload_backgrounds, preload_info_backgrounds, preload_textures
 from utils.toolkit import Toolkit
 from utils.battling import BattleTracker
-from pokemon_sdk import PokemonManager
+from pokemon_sdk.manager import PokemonManager
 
 load_dotenv()
 TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
@@ -196,3 +196,4 @@ class MyHelpCommand(commands.HelpCommand):
 
 bot.help_command = MyHelpCommand()
 bot.run(str(TOKEN))
+
