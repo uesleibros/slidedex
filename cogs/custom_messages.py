@@ -33,7 +33,7 @@ class CustomMessages(commands.Cog):
 		footer = f"\n-# Total: {total} mensagem(ns)" + (f" | Mostrando 10 de {total}" if total > 10 else "")
 		
 		await ctx.send(
-			f"📝 **Mensagens Customizadas de {ctx.author.name}:**\n\n" + 
+			f"**Mensagens Customizadas de {ctx.author.name}:**\n\n" + 
 			"\n\n".join(lines) + 
 			footer
 		)
@@ -56,13 +56,13 @@ class CustomMessages(commands.Cog):
 		except KeyError:
 			events_sample = ", ".join([e.value.replace("_", "-") for e in list(MessageEvent)[:5]])
 			return await ctx.send(
-				f"❌ Evento `{event}` não existe!\n"
+				f"Evento `{event}` não existe!\n"
 				f"Eventos disponíveis: {events_sample}...\n"
 				"-# Use `.messages events` para ver todos."
 			)
 		
 		if len(message) > 1000:
-			return await ctx.send("❌ Mensagem muito longa! Máximo de 1000 caracteres.")
+			return await ctx.send("Mensagem muito longa! Máximo de 1000 caracteres.")
 		
 		self.message_system.set_message(uid, event_enum, message)
 		
@@ -73,7 +73,7 @@ class CustomMessages(commands.Cog):
 		vars_display = ", ".join(f"`{{{v}}}`" for v in variables[:8])
 		
 		await ctx.send(
-			f"✅ **Mensagem salva para `{event_enum.value.replace('_', '-')}`**\n\n"
+			f"**Mensagem salva para `{event_enum.value.replace('_', '-')}`**\n\n"
 			f"**Preview:** {preview[:300]}\n\n"
 			f"**Variáveis disponíveis:** {vars_display}{'...' if len(variables) > 8 else ''}\n"
 			"-# Use `.messages preview` para testar antes de salvar."
@@ -92,7 +92,7 @@ class CustomMessages(commands.Cog):
 		try:
 			event_enum = MessageEvent[event.upper().replace("-", "_")]
 		except KeyError:
-			return await ctx.send(f"❌ Evento `{event}` não existe! Use `.messages events` para ver todos.")
+			return await ctx.send(f"Evento `{event}` não existe! Use `.messages events` para ver todos.")
 		
 		example_context = self._create_example_context(event_enum)
 		result = self.message_system.preview_message(message, example_context)
@@ -119,18 +119,18 @@ class CustomMessages(commands.Cog):
 		try:
 			event_enum = MessageEvent[event.upper().replace("-", "_")]
 		except KeyError:
-			return await ctx.send(f"❌ Evento `{event}` não existe!")
+			return await ctx.send(f"Evento `{event}` não existe!")
 		
 		success = self.message_system.reset_message(uid, event_enum)
 		
 		if success:
 			default = CustomMessageSystem.DEFAULT_MESSAGES.get(event_enum, "")
 			await ctx.send(
-				f"✅ **Mensagem resetada para `{event_enum.value.replace('_', '-')}`**\n\n"
+				f"**Mensagem resetada para `{event_enum.value.replace('_', '-')}`**\n\n"
 				f"**Padrão:** {default}"
 			)
 		else:
-			await ctx.send(f"❌ Você não tinha uma mensagem customizada para `{event}`.")
+			await ctx.send(f"Você não tinha uma mensagem customizada para `{event}`.")
 
 	@messages_root.command(name="reset-all", aliases=["resetall", "clear"])
 	@requires_account()
@@ -145,7 +145,7 @@ class CustomMessages(commands.Cog):
 		if confirm != "CONFIRMAR":
 			total = len(messages)
 			return await ctx.send(
-				f"⚠️ **ATENÇÃO!** Isso vai deletar **{total} mensagem(ns) customizada(s)**!\n"
+				f"**ATENÇÃO!** Isso vai deletar **{total} mensagem(ns) customizada(s)**!\n"
 				"Esta ação não pode ser desfeita.\n\n"
 				"Para confirmar, use: `.messages reset-all CONFIRMAR`"
 			)
@@ -153,9 +153,9 @@ class CustomMessages(commands.Cog):
 		success = self.message_system.reset_all_messages(uid)
 		
 		if success:
-			await ctx.send("✅ **Todas as suas mensagens foram resetadas para o padrão.**")
+			await ctx.send("**Todas as suas mensagens foram resetadas para o padrão.**")
 		else:
-			await ctx.send("❌ Erro ao resetar mensagens.")
+			await ctx.send("Erro ao resetar mensagens.")
 
 	@messages_root.command(name="events", aliases=["list-events", "ev"])
 	@requires_account()
@@ -209,7 +209,7 @@ class CustomMessages(commands.Cog):
 		page = max(1, min(page, total_pages))
 		
 		await ctx.send(
-			f"📋 **Eventos Disponíveis** (Página {page}/{total_pages})\n\n"
+			f"**Eventos Disponíveis** (Página {page}/{total_pages})\n\n"
 			f"{pages[page-1]}\n\n"
 			f"-# Use `.messages events <número>` para ver outras páginas.\n"
 			f"-# Use `.messages set <evento> <mensagem>` para customizar."
@@ -220,7 +220,7 @@ class CustomMessages(commands.Cog):
 	async def messages_help(self, ctx: commands.Context, topic: Optional[str] = None):
 		if not topic:
 			return await ctx.send(
-				"📚 **Guia de Mensagens Customizadas**\n\n"
+				"**Guia de Mensagens Customizadas**\n\n"
 				"**Comandos:**\n"
 				"`.messages set <evento> <mensagem>` - Define mensagem\n"
 				"`.messages preview <evento> <mensagem>` - Testa mensagem\n"
