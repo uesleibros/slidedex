@@ -46,9 +46,10 @@ class MessageEvent(Enum):
 
 class MessageParser:
 	VARIABLE_PATTERN = r'\{([a-zA-Z_][a-zA-Z0-9_]*)\}'
-	CONDITIONAL_PATTERN = r'```math
-([^```]+)```(.*?)```math
-/\1```'
+	CONDITIONAL_PATTERN = re.compile(
+		r'```math\s*(.*?)\s*```(.*?)```math\s*/\1```', 
+		re.DOTALL
+	)
 	COMPARISON_PATTERN = r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*(=|!=|>=|<=|>|<|contains|in)\s*(.+)$'
 	
 	@staticmethod
