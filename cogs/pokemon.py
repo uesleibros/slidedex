@@ -40,7 +40,7 @@ class InfoView(discord.ui.View):
 		pokemon_id = self.all_pokemon_ids[self.current_index]
 		self.update_buttons()
 		
-		result = await self.cog._generate_info_embed(str(self.user_id), pokemon_id)
+		result = await generate_info_embed(str(self.user_id), pokemon_id)
 		if result:
 			embed, files = result
 			await interaction.response.edit_message(embed=embed, attachments=files, view=self)
@@ -1184,4 +1184,5 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
 
