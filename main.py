@@ -92,6 +92,8 @@ class MyHelpCommand(commands.HelpCommand):
 		
 		for cog, cmds in mapping.items():
 			if cmds:
+				if cog and getattr(cog, 'hidden', False):
+					continue
 				cog_name = cog.qualified_name if cog else "Sem Categoria"
 				categories[cog_name] = [cmd for cmd in cmds if not cmd.hidden]
 		
