@@ -3,7 +3,7 @@ import os
 import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
-from pokemon_sdk.constants import NATURES, STAT_KEYS
+from pokemon_sdk.constants import NATURES, STAT_KEYS, HAPPINESS_MAX
 from pokemon_sdk.calculations import calculate_max_hp
 from helpers.growth import GrowthRate
 import copy
@@ -11,7 +11,6 @@ import copy
 PARTY_LIMIT = 6
 MOVES_LIMIT = 4
 EV_PER_STAT_MAX = 255
-HAPPINESS_MAX = 255
 EV_TOTAL_MAX = 510
 
 class Toolkit:
@@ -854,6 +853,7 @@ class Toolkit:
 		with self._lock:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
 			return self.db["pokemon"][idx].get("evolution_blocked", False)
+
 
 
 
