@@ -6,7 +6,7 @@ from discord.ext import commands
 from pokemon_sdk.calculations import iv_percent
 from pokemon_sdk.calculations import calculate_stats
 from pokemon_sdk.constants import STAT_KEYS
-from utils.formatting import format_poke_id, format_pokemon_display
+from utils.formatting import format_poke_id, format_pokemon_display, format_happiness_status
 from helpers.flags import flags
 from helpers.paginator import Paginator
 from helpers.checks import requires_account, not_in_battle
@@ -123,7 +123,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 		f"**ID da Espécie:** #{user_pokemon.get('species_id')}",
 		f"**Nível:** {current_level}",
 		f"**Experiência:** {current_exp}/{exp_next_level} | Próximo: {exp_needed} XP ({exp_progress_percent}%)",
-		f"**Amizade:** {user_pokemon['happiness']}",
+		f"**Amizade:** {format_happiness_status(user_pokemon['happiness'])}",
 		f"**Natureza:** {user_pokemon['nature'].title()}",
 		f"**Tipo de Crescimento:** {user_pokemon['growth_type'].replace('-', ' ').title()}",
 		f"**Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
@@ -1184,3 +1184,4 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
