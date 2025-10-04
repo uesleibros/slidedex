@@ -70,10 +70,25 @@ class WildBattle(BattleEngine):
 			if state == "both_fainted_has_backup":
 				self.lines.append("")
 				self.lines.append("Ambos os Pokémon desmaiaram!")
+			
+			await self._apply_faint_happiness_penalty()
 			await self._handle_forced_switch()
 			return True
 		
 		return False
+	
+	async def _apply_faint_happiness_penalty(self) -> None:
+		if self.player_active.fainted:
+			pokemon_id = self.player_party_raw[self.active_player_idx]["id"]
+			pm.tk.decrease_happiness_faint(self.user_id, pokemon_id)
+	
+	async def _apply_battle_happiness_bonus(self) -> None:
+		for participant_index in self.battle_participants:
+			pokemon_data = self.player_party_raw[participant_index]
+			pokemon_battle = self.player_team[participant_index]
+			
+			if not pokemon_battle.fainted:
+				pm.tk.increase_happiness_battle(self.user_id, pokemon_data["id"])
 	
 	async def setup(self) -> bool:
 		w_api, w_spec = await asyncio.gather(
@@ -511,6 +526,8 @@ class WildBattle(BattleEngine):
 			ball_name = PokeBallSystem.get_ball_name(ball_type)
 			
 			if success:
+				await self._apply_battle_happiness_bonus()
+				
 				experience_distribution = await self._calculate_experience_distribution()
 				await self._distribute_evs()
 				
@@ -530,6 +547,7 @@ class WildBattle(BattleEngine):
 					base_stats=self.wild_raw["base_stats"],
 					exp=self.wild_raw.get("exp", 0),
 					growth_type=self.wild_raw.get("growth_type", "medium"),
+					happiness=70,
 					moves=self.wild_raw.get("moves", []),
 					nickname=self.wild_raw.get("nickname"),
 					name=self.wild_raw.get("name"),
@@ -611,6 +629,8 @@ class WildBattle(BattleEngine):
 				return False
 	
 	async def _handle_victory(self) -> None:
+		await self._apply_battle_happiness_bonus()
+		
 		await self._distribute_evs()
 		experience_distribution = await self._calculate_experience_distribution()
 		
