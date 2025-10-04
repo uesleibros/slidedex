@@ -655,7 +655,7 @@ class WildBattle(BattleEngine):
 		if self.actions_view:
 			self.actions_view.disable_all()
 		await self.refresh()
-		await self.interaction.channel.send(f"<@{self.user_id}> **Você perdeu!**")
+		await self.interaction.channel.send(f"<@{self.user_id}> **Você perdeu!**\nNa próxima, tente usar estratégias válidas.")
 		await self.cleanup()
 	
 	async def _handle_forced_switch(self) -> None:
