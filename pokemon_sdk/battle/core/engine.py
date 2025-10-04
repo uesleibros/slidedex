@@ -282,6 +282,31 @@ class BattleEngine:
 				]
 			return [BattleMessages.protected(target.display_name)]
 		
+		if effect_data.get("type") in ["two_turn_move", "fly", "dig", "dive", "bounce", "solar_beam"]:
+			move_name = effect_data.get("move_name", _slug(move_id))
+			
+			if user.volatile.get(f"{move_name}_charging"):
+				user.volatile[f"{move_name}_charging"] = False
+				user.volatile["semi_invulnerable"] = False
+			else:
+				user.volatile[f"{move_name}_charging"] = True
+				user.volatile["semi_invulnerable"] = True
+				user.volatile["two_turn_move"] = move_name
+				
+				messages = {
+					"fly": f"✈️ {user.display_name} voou para o alto!",
+					"dig": f"⛏️ {user.display_name} cavou!",
+					"dive": f"🌊 {user.display_name} mergulhou!",
+					"bounce": f"🎾 {user.display_name} saltou alto!",
+					"solar_beam": f"☀️ {user.display_name} está absorvendo luz!",
+					"razor_wind": f"💨 {user.display_name} criou um redemoinho!",
+					"skull_bash": f"💀 {user.display_name} abaixou a cabeça!",
+					"sky_attack": f"🦅 {user.display_name} está brilhando!",
+				}
+				
+				msg = messages.get(move_name, f"{user.display_name} está preparando!")
+				return [f"✨ {user.display_name} usou **{move_data.name}**!", f"   └─ {msg}"]
+		
 		if target.is_semi_invulnerable():
 			two_turn_move = target.volatile.get("two_turn_move", "")
 			
@@ -683,6 +708,29 @@ class BattleEngine:
 		for pokemon in participants:
 			if pokemon.fainted:
 				continue
+			
+			status_name = pokemon.status.get("name")
+			
+			if status_name == "poison":
+				damage = max(1, pokemon.stats["hp"] // 8)
+				actual = pokemon.take_damage(damage, ignore_substitute=True)
+				self.lines.append(
+					f"🧪 {pokemon.display_name} sofreu {actual} de dano do veneno!"
+				)
+			elif status_name == "toxic":
+				pokemon.status["counter"] = pokemon.status.get("counter", 0) + 1
+				counter = pokemon.status["counter"]
+				damage = max(1, (pokemon.stats["hp"] * counter) // 16)
+				actual = pokemon.take_damage(damage, ignore_substitute=True)
+				self.lines.append(
+					f"☠️ {pokemon.display_name} sofreu {actual} de dano do veneno agravado! (nível {counter})"
+				)
+			elif status_name == "burn":
+				damage = max(1, pokemon.stats["hp"] // 8)
+				actual = pokemon.take_damage(damage, ignore_substitute=True)
+				self.lines.append(
+					f"🔥 {pokemon.display_name} sofreu {actual} de dano da queimadura!"
+				)
 			
 			if pokemon.volatile.get("leech_seed"):
 				seeder = pokemon.volatile.get("leech_seed_by")
