@@ -87,8 +87,6 @@ class EvolutionChoiceView(discord.ui.View):
             await interaction.edit_original_response(
                 content=f"<@{self.owner_id}> ❌ Erro ao evoluir: {e}"
             )
-        finally:
-            self.manager._release_lock(self.owner_id)
         
         self.stop()
     
@@ -110,7 +108,6 @@ class EvolutionChoiceView(discord.ui.View):
             view=None
         )
         
-        self.manager._release_lock(self.owner_id)
         self.stop()
     
     async def _block_callback(self, interaction: discord.Interaction):
@@ -133,7 +130,6 @@ class EvolutionChoiceView(discord.ui.View):
             view=None
         )
         
-        self.manager._release_lock(self.owner_id)
         self.stop()
     
     async def on_timeout(self):
@@ -147,8 +143,6 @@ class EvolutionChoiceView(discord.ui.View):
                 content=f"<@{self.owner_id}> Tempo esgotado! {current_name} não evoluiu. (Tentará novamente no próximo nível)",
                 view=None
             )
-            
-            self.manager._release_lock(self.owner_id)
 
 class MoveChoiceView(discord.ui.View):
     def __init__(
@@ -221,7 +215,6 @@ class MoveChoiceView(discord.ui.View):
                 view=None
             )
             
-            self.manager._release_lock(self.owner_id)
             self.stop()
         
         return callback
@@ -242,7 +235,6 @@ class MoveChoiceView(discord.ui.View):
             view=None
         )
         
-        self.manager._release_lock(self.owner_id)
         self.stop()
     
     async def on_timeout(self):
@@ -254,26 +246,11 @@ class MoveChoiceView(discord.ui.View):
                 content=f"<@{self.owner_id}> Tempo esgotado! {format_pokemon_display(self.pokemon, bold_name=True)} não aprendeu **{self.new_move_name}**.",
                 view=None
             )
-            
-            self.manager._release_lock(self.owner_id)
 
 class PokemonManager:
 	def __init__(self, toolkit):
 		self.tk = toolkit
 		self.service = PokeAPIService()
-		self._user_locks = {}
-
-	def _is_locked(self, owner_id: str) -> bool:
-		return self._user_locks.get(owner_id, False)
-	
-	def _acquire_lock(self, owner_id: str) -> bool:
-		if self._is_locked(owner_id):
-			return False
-		self._user_locks[owner_id] = True
-		return True
-	
-	def _release_lock(self, owner_id: str):
-		self._user_locks[owner_id] = False
 
 	async def _build_pokemon_data(
 	    self,
@@ -511,13 +488,9 @@ class PokemonManager:
 		pokemon_id: int,
 		message: Optional[discord.Message] = None
 	) -> Optional[Dict]:
-		if not self._acquire_lock(owner_id):
-			return None
-			
 		evolution_data = await self.check_evolution(owner_id, pokemon_id, trigger="level-up")
 		
 		if not evolution_data:
-			self._release_lock(owner_id)
 			return None
 		
 		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
@@ -543,7 +516,6 @@ class PokemonManager:
 			
 			return evolution_data
 		
-		self._release_lock(owner_id)
 		return evolution_data
 	
 	async def process_level_up(
@@ -630,15 +602,6 @@ class PokemonManager:
 		pp_max: int,
 		pokemon: Dict
 	) -> None:
-		if not self._acquire_lock(owner_id):
-			return
-		
-		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-		
-		if self.tk.has_move(owner_id, pokemon_id, new_move_id):
-			self._release_lock(owner_id)
-			return
-		
 		new_move_name = new_move_id.replace("-", " ").title()
 		
 		current_moves = pokemon.get("moves", [])
