@@ -451,7 +451,7 @@ class Bag(commands.Cog):
 				await ctx.send("Poké Balls só podem ser usadas em batalhas selvagens.")
 				return
 			
-			from battle.pokeballs import PokeBallSystem
+			from pokemon_sdk.battle.pokeballs import PokeBallSystem
 			
 			ball_type = self._convert_ball_id_to_type(item_id)
 			ball_name = PokeBallSystem.get_ball_name(ball_type)
@@ -831,3 +831,4 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
 	await bot.add_cog(Bag(bot))
+
