@@ -9,10 +9,10 @@ from utils.formatting import format_pokemon_display
 from ..pokemon import BattlePokemon
 from ..status import StatusHandler
 from ..capture import CaptureSystem
-from ..helpers import SwitchView, MovesView, MoveData, _slug
+from ..helpers import SwitchView, MovesView, _slug
 from ..pokeballs import PokeBallSystem, BallType
 from ..rewards import BattleRewards
-from .engine import BattleEngine
+from .engine import BattleEngine, BattleState
 
 class WildBattle(BattleEngine):
 	def __init__(
@@ -43,54 +43,35 @@ class WildBattle(BattleEngine):
 	def player_active(self) -> BattlePokemon:
 		return self.player_team[self.active_player_idx]
 	
-	def _check_battle_state(self) -> Optional[str]:
+	def get_battle_state(self) -> BattleState:
 		wild_alive = not self.wild.fainted
 		player_alive = not self.player_active.fainted
 		has_backup = any(idx != self.active_player_idx and not p.fainted for idx, p in enumerate(self.player_team))
 		
 		if not wild_alive and not player_alive:
-			return "both_fainted_has_backup" if has_backup else "both_fainted_no_backup"
-		
+			return BattleState.BOTH_FAINTED_BACKUP if has_backup else BattleState.BOTH_FAINTED_NO_BACKUP
 		if not wild_alive:
-			return "wild_fainted"
-		
+			return BattleState.PLAYER_WIN
 		if not player_alive:
-			return "player_fainted_has_backup" if has_backup else "player_fainted_no_backup"
+			return BattleState.PLAYER_FAINTED_BACKUP if has_backup else BattleState.PLAYER_LOSS
 		
-		return "ongoing"
+		return BattleState.ONGOING
 	
-	async def _resolve_battle_state(self, state: str) -> bool:
-		if state == "wild_fainted":
+	async def handle_battle_end(self, state: BattleState) -> None:
+		if state == BattleState.PLAYER_WIN:
 			await self._handle_victory()
-			return True
-		
-		elif state == "player_fainted_no_backup" or state == "both_fainted_no_backup":
+		elif state in (BattleState.PLAYER_LOSS, BattleState.BOTH_FAINTED_NO_BACKUP):
 			await self._handle_defeat()
-			return True
-		
-		elif state == "player_fainted_has_backup" or state == "both_fainted_has_backup":
-			if state == "both_fainted_has_backup":
+		elif state in (BattleState.PLAYER_FAINTED_BACKUP, BattleState.BOTH_FAINTED_BACKUP):
+			if state == BattleState.BOTH_FAINTED_BACKUP:
 				self.lines.append("")
 				self.lines.append("Ambos os Pokémon desmaiaram!")
 			
-			await self._apply_faint_happiness_penalty()
-			await self._handle_forced_switch()
-			return True
-		
-		return False
-	
-	async def _apply_faint_happiness_penalty(self) -> None:
-		if self.player_active.fainted:
-			pokemon_id = self.player_party_raw[self.active_player_idx]["id"]
-			pm.tk.decrease_happiness_faint(self.user_id, pokemon_id)
-	
-	async def _apply_battle_happiness_bonus(self) -> None:
-		for participant_index in self.battle_participants:
-			pokemon_data = self.player_party_raw[participant_index]
-			pokemon_battle = self.player_team[participant_index]
+			if self.player_active.fainted:
+				pokemon_id = self.player_party_raw[self.active_player_idx]["id"]
+				pm.tk.decrease_happiness_faint(self.user_id, pokemon_id)
 			
-			if not pokemon_battle.fainted:
-				pm.tk.increase_happiness_battle(self.user_id, pokemon_data["id"])
+			await self._handle_forced_switch()
 	
 	async def setup(self) -> bool:
 		w_api, w_spec = await asyncio.gather(
@@ -131,14 +112,13 @@ class WildBattle(BattleEngine):
 			return False
 		
 		self.active_player_idx = first_available
-		
 		self.battle_context.team1 = [self.player_active]
 		self.battle_context.team2 = [self.wild]
 		
-		await self._preload_move_data()
+		await self._preload_all_moves()
 		return True
 	
-	async def _preload_move_data(self) -> None:
+	async def _preload_all_moves(self) -> None:
 		move_ids: Set[str] = set()
 		for mv in self.wild.moves:
 			move_ids.add(_slug(mv["id"]))
@@ -175,30 +155,8 @@ class WildBattle(BattleEngine):
 			""
 		]
 		
-		weather_icons = {"sun": "☀️", "rain": "🌧️", "hail": "❄️", "sandstorm": "🌪️"}
-		if self.weather["type"] and self.weather["turns"] > 0:
-			icon = weather_icons.get(self.weather["type"], "🌤️")
-			description_components.append(
-				f"{icon} {self.weather['type'].title()} ({self.weather['turns']} turnos)"
-			)
-		
-		field_status = []
-		if self.field.get("trick_room", 0) > 0:
-			field_status.append(f"🔄 Trick Room ({self.field['trick_room']})")
-		if self.field.get("gravity", 0) > 0:
-			field_status.append(f"⬇️ Gravity ({self.field['gravity']})")
-		if self.field.get("mud_sport", 0) > 0:
-			field_status.append(f"⚡ Mud Sport ({self.field['mud_sport']})")
-		if self.field.get("water_sport", 0) > 0:
-			field_status.append(f"🔥 Water Sport ({self.field['water_sport']})")
-		if self.field.get("spikes_player", 0) > 0:
-			field_status.append(f"⚠️ Spikes (Player: {self.field['spikes_player']})")
-		if self.field.get("spikes_wild", 0) > 0:
-			field_status.append(f"⚠️ Spikes (Wild: {self.field['spikes_wild']})")
-		
-		if field_status:
-			description_components.extend(field_status)
-			description_components.append("")
+		description_components.extend(self._format_weather_display())
+		description_components.extend(self._format_field_display())
 		
 		if self.lines:
 			description_components.extend(self.lines[-15:])
@@ -212,6 +170,39 @@ class WildBattle(BattleEngine):
 		embed.set_footer(text="Effex Engine v1.71 — alpha")
 		embed.set_image(url="attachment://battle.png")
 		return embed
+	
+	def _format_weather_display(self) -> List[str]:
+		weather_icons = {"sun": "☀️", "rain": "🌧️", "hail": "❄️", "sandstorm": "🌪️"}
+		lines = []
+		
+		if self.weather["type"] and self.weather["turns"] > 0:
+			icon = weather_icons.get(self.weather["type"], "🌤️")
+			lines.append(f"{icon} {self.weather['type'].title()} ({self.weather['turns']} turnos)")
+		
+		return lines
+	
+	def _format_field_display(self) -> List[str]:
+		field_status = []
+		field_map = {
+			"trick_room": ("🔄", "Trick Room"),
+			"gravity": ("⬇️", "Gravity"),
+			"mud_sport": ("⚡", "Mud Sport"),
+			"water_sport": ("🔥", "Water Sport")
+		}
+		
+		for key, (emoji, name) in field_map.items():
+			if self.field.get(key, 0) > 0:
+				field_status.append(f"{emoji} {name} ({self.field[key]})")
+		
+		if self.field.get("spikes_player", 0) > 0:
+			field_status.append(f"⚠️ Spikes (Player: {self.field['spikes_player']})")
+		if self.field.get("spikes_wild", 0) > 0:
+			field_status.append(f"⚠️ Spikes (Wild: {self.field['spikes_wild']})")
+		
+		if field_status:
+			field_status.append("")
+		
+		return field_status
 	
 	async def start(self) -> None:
 		self.battle_participants.add(self.active_player_idx)
@@ -233,11 +224,9 @@ class WildBattle(BattleEngine):
 	async def _save_battle_state(self) -> None:
 		for idx, pokemon in enumerate(self.player_team):
 			pokemon_id = self.player_party_raw[idx]["id"]
-			
 			pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
 			
 			current_pokemon = pm.tk.get_pokemon(self.user_id, pokemon_id)
-			
 			for battle_move in pokemon.moves:
 				for db_move in current_pokemon["moves"]:
 					if db_move["id"] == battle_move["id"]:
@@ -268,74 +257,20 @@ class WildBattle(BattleEngine):
 			self.player_active.clear_turn_volatiles()
 			self.wild.clear_turn_volatiles()
 			
-			player_move_data = await self._fetch_move(move_id)
 			enemy_move_id = self._select_ai_move(self.wild)
 			
-			if enemy_move_id != "__struggle__":
-				enemy_move_data = await self._fetch_move(enemy_move_id)
-			else:
-				enemy_move_data = MoveData(
-					"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
-				)
-			
-			turn_order = self._determine_turn_order(
-				player_move_data, self.player_active,
-				enemy_move_data, self.wild
+			await self.execute_battle_turn(
+				player_move_id=move_id,
+				enemy_move_id=enemy_move_id,
+				player=self.player_active,
+				enemy=self.wild
 			)
 			
-			for side in turn_order:
-				if side == "first":
-					if self.player_active.fainted:
-						continue
-					
-					self.lines.extend(
-						await self._execute_turn_action(True, move_id, player_move_data, self.player_active, self.wild)
-					)
-					
-					state = self._check_battle_state()
-					if state != "ongoing":
-						if await self._resolve_battle_state(state):
-							await self.refresh()
-							return
-				
-				else:
-					if self.wild.fainted:
-						continue
-					
-					if self.lines:
-						self.lines.append("")
-					
-					self.lines.extend(
-						await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
-					)
-					
-					state = self._check_battle_state()
-					if state != "ongoing":
-						if await self._resolve_battle_state(state):
-							await self.refresh()
-							return
-			
-			end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-			if end_turn_effects:
-				self.lines.append("")
-				self.lines.extend(end_turn_effects)
-			
-			state = self._check_battle_state()
-			if state != "ongoing":
-				if await self._resolve_battle_state(state):
-					await self.refresh()
-					return
-			
-			self.lines.append("")
-			await self._process_end_of_turn([self.player_active, self.wild])
-			await self._process_weather_effects([self.player_active, self.wild])
-			await self._process_field_effects()
-			
-			state = self._check_battle_state()
-			if state != "ongoing":
-				if await self._resolve_battle_state(state):
-					await self.refresh()
-					return
+			state = self.get_battle_state()
+			if state != BattleState.ONGOING:
+				await self.handle_battle_end(state)
+				await self.refresh()
+				return
 			
 			self.turn += 1
 			await self.refresh()
@@ -350,11 +285,10 @@ class WildBattle(BattleEngine):
 			self.lines = []
 			old_name = self.player_active.display_name
 			
+			effects_to_pass = None
 			if self.player_active.volatile.get("baton_pass_active"):
 				effects_to_pass = self.player_active.volatile.get("baton_pass_effects", {})
 				self.player_active.volatile["baton_pass_active"] = False
-			else:
-				effects_to_pass = None
 			
 			self.active_player_idx = new_index
 			self.battle_participants.add(new_index)
@@ -383,54 +317,23 @@ class WildBattle(BattleEngine):
 			if self.actions_view:
 				self.actions_view.force_switch_mode = False
 			
-			state = self._check_battle_state()
-			if state != "ongoing":
-				if await self._resolve_battle_state(state):
-					await self.refresh()
-					return
+			state = self.get_battle_state()
+			if state != BattleState.ONGOING:
+				await self.handle_battle_end(state)
+				await self.refresh()
+				return
 			
 			if consume_turn:
 				self.lines.append("")
 				enemy_move_id = self._select_ai_move(self.wild)
 				
-				if enemy_move_id != "__struggle__":
-					enemy_move_data = await self._fetch_move(enemy_move_id)
-				else:
-					enemy_move_data = MoveData(
-						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
-					)
+				await self.execute_enemy_turn(enemy_move_id, self.wild, self.player_active)
 				
-				self.lines.extend(
-					await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
-				)
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return
-				
-				end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-				if end_turn_effects:
-					self.lines.append("")
-					self.lines.extend(end_turn_effects)
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return
-				
-				self.lines.append("")
-				await self._process_end_of_turn([self.player_active, self.wild])
-				await self._process_weather_effects([self.player_active, self.wild])
-				await self._process_field_effects()
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return
+				state = self.get_battle_state()
+				if state != BattleState.ONGOING:
+					await self.handle_battle_end(state)
+					await self.refresh()
+					return
 				
 				self.turn += 1
 			
@@ -474,119 +377,20 @@ class WildBattle(BattleEngine):
 				await self.cleanup()
 				return True
 			else:
-				self.lines = ["❌ Não conseguiu fugir!"]
-				self.lines.append("")
+				self.lines = ["❌ Não conseguiu fugir!", ""]
 				
 				enemy_move_id = self._select_ai_move(self.wild)
+				await self.execute_enemy_turn(enemy_move_id, self.wild, self.player_active)
 				
-				if enemy_move_id != "__struggle__":
-					enemy_move_data = await self._fetch_move(enemy_move_id)
-				else:
-					enemy_move_data = MoveData(
-						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
-					)
-				
-				self.lines.extend(
-					await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
-				)
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return False
-				
-				end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-				if end_turn_effects:
-					self.lines.append("")
-					self.lines.extend(end_turn_effects)
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return False
-				
-				self.lines.append("")
-				await self._process_end_of_turn([self.player_active, self.wild])
-				await self._process_weather_effects([self.player_active, self.wild])
-				await self._process_field_effects()
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return False
+				state = self.get_battle_state()
+				if state != BattleState.ONGOING:
+					await self.handle_battle_end(state)
+					await self.refresh()
+					return False
 				
 				self.turn += 1
 				await self.refresh()
 				return False
-	
-	async def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
-		ev_yield = BattleRewards.calculate_ev_yield(self.wild)
-		
-		distribution = []
-		for participant_index in self.battle_participants:
-			pokemon_data = self.player_party_raw[participant_index]
-			pokemon_battle = self.player_team[participant_index]
-			pokemon_name = pokemon_battle.display_name
-			
-			has_macho_brace = pokemon_battle.volatile.get("held_item") == "macho_brace"
-			
-			evs_to_give = BattleRewards.apply_ev_modifiers(
-				ev_yield,
-				has_macho_brace=has_macho_brace
-			)
-			
-			try:
-				pm.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
-				distribution.append((participant_index, pokemon_name, evs_to_give))
-			except ValueError:
-				pass
-		
-		return distribution
-	
-	async def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
-		base_exp = BattleRewards.calculate_base_experience(
-			self.wild,
-			is_trainer_battle=False
-		)
-		
-		participant_count = len(self.battle_participants)
-		if participant_count == 0:
-			return []
-		
-		distribution = []
-		max_level_skipped = 0
-		
-		for participant_index in self.battle_participants:
-			pokemon_data = self.player_party_raw[participant_index]
-			pokemon_battle = self.player_team[participant_index]
-			
-			if pokemon_data["level"] >= 100:
-				max_level_skipped += 1
-				continue
-			
-			has_lucky_egg = pokemon_battle.volatile.get("held_item") == "lucky_egg"
-			
-			exp_to_give = BattleRewards.apply_exp_modifiers(
-				base_exp,
-				participant_count,
-				has_lucky_egg=has_lucky_egg
-			)
-			
-			await pm.add_experience(
-				self.user_id,
-				pokemon_data["id"],
-				exp_to_give,
-				notify_message=self.message
-			)
-			
-			distribution.append((participant_index, pokemon_battle.display_name, exp_to_give))
-		
-		self._max_level_skipped = max_level_skipped
-		
-		return distribution
 	
 	async def attempt_capture(self, ball_type: str = BallType.POKE_BALL) -> bool:
 		async with self.lock:
@@ -616,7 +420,7 @@ class WildBattle(BattleEngine):
 			if success:
 				await self._apply_battle_happiness_bonus()
 				
-				experience_distribution = await self._calculate_experience_distribution()
+				exp_distribution = await self._calculate_experience_distribution()
 				await self._distribute_evs()
 				
 				pm.tk.add_pokemon(
@@ -646,18 +450,17 @@ class WildBattle(BattleEngine):
 				self.ended = True
 				
 				bonus_text = f" (Bônus {modifier:.1f}x)" if modifier > 1.0 else ""
-				
 				max_level_skipped = getattr(self, '_max_level_skipped', 0)
-				exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
+				exp_lines = BattleRewards.format_experience_gains(exp_distribution, max_level_skipped)
 				
 				if self.actions_view:
 					self.actions_view.disable_all()
 				
 				await self.refresh()
 				
-				total_experience = sum(xp for _, _, xp in experience_distribution)
+				total_exp = sum(xp for _, _, xp in exp_distribution)
 				await self.interaction.channel.send(
-					f"{format_pokemon_display(self.wild_raw, bold_name=True)} foi adicionado à sua Pokédex e recebeu <:CometShard:1424200074463805551> **+{total_experience} de XP!**\n"
+					f"{format_pokemon_display(self.wild_raw, bold_name=True)} foi adicionado à sua Pokédex e recebeu <:CometShard:1424200074463805551> **+{total_exp} de XP!**\n"
 					f"{ball_emoji} Capturado com {ball_name}!{bonus_text}\n"
 					f"{'\n'.join(exp_lines)}"
 				)
@@ -671,70 +474,100 @@ class WildBattle(BattleEngine):
 				self.lines.append("")
 				
 				enemy_move_id = self._select_ai_move(self.wild)
+				await self.execute_enemy_turn(enemy_move_id, self.wild, self.player_active)
 				
-				if enemy_move_id != "__struggle__":
-					enemy_move_data = await self._fetch_move(enemy_move_id)
-				else:
-					enemy_move_data = MoveData(
-						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
-					)
-				
-				self.lines.extend(
-					await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
-				)
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return False
-				
-				end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
-				if end_turn_effects:
-					self.lines.append("")
-					self.lines.extend(end_turn_effects)
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return False
-				
-				self.lines.append("")
-				await self._process_end_of_turn([self.player_active, self.wild])
-				await self._process_weather_effects([self.player_active, self.wild])
-				await self._process_field_effects()
-				
-				state = self._check_battle_state()
-				if state != "ongoing":
-					if await self._resolve_battle_state(state):
-						await self.refresh()
-						return False
+				state = self.get_battle_state()
+				if state != BattleState.ONGOING:
+					await self.handle_battle_end(state)
+					await self.refresh()
+					return False
 				
 				self.turn += 1
-				
 				await self.refresh()
 				return False
 	
+	async def _apply_battle_happiness_bonus(self) -> None:
+		for participant_index in self.battle_participants:
+			pokemon_data = self.player_party_raw[participant_index]
+			pokemon_battle = self.player_team[participant_index]
+			
+			if not pokemon_battle.fainted:
+				pm.tk.increase_happiness_battle(self.user_id, pokemon_data["id"])
+	
+	async def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
+		ev_yield = BattleRewards.calculate_ev_yield(self.wild)
+		distribution = []
+		
+		for participant_index in self.battle_participants:
+			pokemon_data = self.player_party_raw[participant_index]
+			pokemon_battle = self.player_team[participant_index]
+			
+			has_macho_brace = pokemon_battle.volatile.get("held_item") == "macho_brace"
+			evs_to_give = BattleRewards.apply_ev_modifiers(ev_yield, has_macho_brace=has_macho_brace)
+			
+			try:
+				pm.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
+				distribution.append((participant_index, pokemon_battle.display_name, evs_to_give))
+			except ValueError:
+				pass
+		
+		return distribution
+	
+	async def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
+		base_exp = BattleRewards.calculate_base_experience(self.wild, is_trainer_battle=False)
+		participant_count = len(self.battle_participants)
+		
+		if participant_count == 0:
+			return []
+		
+		distribution = []
+		max_level_skipped = 0
+		
+		for participant_index in self.battle_participants:
+			pokemon_data = self.player_party_raw[participant_index]
+			pokemon_battle = self.player_team[participant_index]
+			
+			if pokemon_data["level"] >= 100:
+				max_level_skipped += 1
+				continue
+			
+			has_lucky_egg = pokemon_battle.volatile.get("held_item") == "lucky_egg"
+			exp_to_give = BattleRewards.apply_exp_modifiers(
+				base_exp,
+				participant_count,
+				has_lucky_egg=has_lucky_egg
+			)
+			
+			await pm.add_experience(
+				self.user_id,
+				pokemon_data["id"],
+				exp_to_give,
+				notify_message=self.message
+			)
+			
+			distribution.append((participant_index, pokemon_battle.display_name, exp_to_give))
+		
+		self._max_level_skipped = max_level_skipped
+		return distribution
+	
 	async def _handle_victory(self) -> None:
 		await self._apply_battle_happiness_bonus()
-		
 		await self._distribute_evs()
-		experience_distribution = await self._calculate_experience_distribution()
+		exp_distribution = await self._calculate_experience_distribution()
 		
 		self.ended = True
 		
 		max_level_skipped = getattr(self, '_max_level_skipped', 0)
-		exp_lines = BattleRewards.format_experience_gains(experience_distribution, max_level_skipped)
+		exp_lines = BattleRewards.format_experience_gains(exp_distribution, max_level_skipped)
 		
 		if self.actions_view:
 			self.actions_view.disable_all()
 		
 		await self.refresh()
 		
-		total_experience = sum(xp for _, _, xp in experience_distribution)
+		total_exp = sum(xp for _, _, xp in exp_distribution)
 		await self.interaction.channel.send(
-			f"<:OhBrother:1424196500581257339> **Você venceu!** e recebeu <:CometShard:1424200074463805551> **+{total_experience} de XP!**\n{'\n'.join(exp_lines)}"
+			f"<:OhBrother:1424196500581257339> **Você venceu!** e recebeu <:CometShard:1424200074463805551> **+{total_exp} de XP!**\n{'\n'.join(exp_lines)}"
 		)
 		await self.cleanup()
 	
@@ -772,13 +605,10 @@ class WildBattleView(discord.ui.View):
 		if not self.battle.ended:
 			self.battle.ended = True
 			self.disable_all()
-			
 			await self.battle.cleanup()
 			
 			if self.battle.message:
-				await self.battle.message.reply(
-					content="Batalha Expirada!\nA batalha foi encerrada por inatividade.", 
-				)
+				await self.battle.message.reply(content="Batalha Expirada!\nA batalha foi encerrada por inatividade.")
 	
 	def disable_all(self) -> None:
 		for item in self.children:
