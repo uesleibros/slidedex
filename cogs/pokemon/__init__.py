@@ -706,18 +706,6 @@ class Pokemon(commands.Cog):
 		
 		await message.edit(content=result_text, view=None)
 
-	@commands.command(name="heal")
-	@requires_account()
-	@not_in_battle()
-	async def heal_party_command(self, ctx: commands.Context) -> None:
-		user_id: str = str(ctx.author.id)
-		party = toolkit.get_user_party(user_id)
-		if not party:
-			return await ctx.send("Seu time está vazio.")
-		
-		toolkit.heal_party(user_id)
-		await ctx.send("Todos os pokémon do seu time estão curados (HP e PP).")
-
 	@commands.cooldown(3, 5, commands.BucketType.user)
 	@commands.command(name="info", aliases=["i", "inf"])
 	async def info_command(self, ctx: commands.Context, user: Optional[discord.Member] = None, pokemon_id: Optional[int] = None) -> None:
