@@ -441,256 +441,309 @@ class Bag(commands.Cog):
 	) -> None:
 		uid = str(ctx.author.id)
 		
-		if item_id in POKEBALLS:
-			if not hasattr(battle, 'attempt_capture'):
-				await ctx.send("Poké Balls só podem ser usadas em batalhas selvagens.")
+		async with battle.lock:
+			if battle.ended:
+				await ctx.send("A batalha já terminou!")
 				return
 			
-			from pokemon_sdk.battle.pokeballs import PokeBallSystem
-			
-			ball_type = self._convert_ball_id_to_type(item_id)
-			ball_name = PokeBallSystem.get_ball_name(ball_type)
-			ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
-			
-			if not toolkit.has_item(uid, item_id, 1):
-				await ctx.send(f"Você não tem {ball_emoji} **{ball_name}**!")
+			if battle.actions_view and battle.actions_view.force_switch_mode:
+				await ctx.send("Você precisa trocar de Pokémon primeiro!")
 				return
 			
-			toolkit.remove_item(uid, item_id, 1)
-			battle.ball_type = ball_type
-			
-			await ctx.send(f"{ball_emoji} Você lançou uma **{ball_name}**!")
-			await battle.attempt_capture(ball_type)
-			return
-		
-		if item_id in ESCAPE_ITEMS:
-			toolkit.remove_item(uid, item_id, 1)
-			battle.ended = True
-			if battle.actions_view:
-				battle.actions_view.disable_all()
-			
-			await battle.refresh()
-			await battle.cleanup()
-			item_name = await pm.get_item_name(item_id)
-			await ctx.send(f"**{item_name}** usado! Você fugiu da batalha!")
-			return
-		
-		if item_id in BATTLE_ITEMS:
-			if not party_pos:
-				await ctx.send(f"Especifique o Pokémon: `.bag use {item_id} <party_position>`")
-				return
-			
-			stat_boost_map = {
-				"x-attack": ("atk", 2),
-				"x-defense": ("def", 2),
-				"x-speed": ("speed", 2),
-				"x-accuracy": ("accuracy", 2),
-				"x-special": ("sp_atk", 2),
-				"x-sp-atk": ("sp_atk", 2),
-				"x-sp-def": ("sp_def", 2),
-				"dire-hit": ("crit_stage", 2),
-				"guard-spec": ("guard_spec", 5)
-			}
-			
-			stat, stages = stat_boost_map.get(item_id, (None, 0))
-			if not stat:
-				await ctx.send(f"Item `{item_id}` não reconhecido.")
-				return
-			
-			party = toolkit.get_user_party(uid)
-			if party_pos > len(party) or party_pos < 1:
-				await ctx.send(f"Posições válidas: 1 a {len(party)}.")
-				return
-			
-			target_idx = party_pos - 1
-			
-			if target_idx != battle.active_player_idx:
-				await ctx.send("Você só pode usar itens de batalha no Pokémon ativo.")
-				return
-			
-			toolkit.remove_item(uid, item_id, 1)
-			
-			if stat == "guard_spec":
-				battle.player_active.volatile["mist"] = stages
-				message = f"**Guard Spec** usado! {battle.player_active.display_name} está protegido contra mudanças de status!"
-			elif stat == "crit_stage":
-				battle.player_active.volatile["crit_stage"] = battle.player_active.volatile.get("crit_stage", 0) + stages
-				message = f"**Dire Hit** usado! Taxa de crítico de {battle.player_active.display_name} aumentou!"
-			else:
-				current_stage = battle.player_active.stages.get(stat, 0)
-				new_stage = min(6, current_stage + stages)
-				battle.player_active.stages[stat] = new_stage
-				actual_boost = new_stage - current_stage
-				
-				stat_names = {
-					"atk": "Ataque",
-					"def": "Defesa",
-					"speed": "Velocidade",
-					"accuracy": "Precisão",
-					"sp_atk": "Ataque Especial",
-					"sp_def": "Defesa Especial"
-				}
-				stat_name = stat_names.get(stat, stat)
-				message = f"**{item_id.replace('-', ' ').title()}** usado! {stat_name} de {battle.player_active.display_name} aumentou em {actual_boost} estágio(s)!"
-			
-			await ctx.send(message)
-			return
-		
-		if item_id in HEALING_ITEMS or item_id in REVIVE_ITEMS or item_id in BERRIES or item_id in PP_RECOVERY:
-			if not party_pos:
-				await ctx.send(f"Especifique o Pokémon: `.bag use {item_id} <party_position>`")
-				return
-			
-			party = toolkit.get_user_party(uid)
-			if party_pos > len(party) or party_pos < 1:
-				await ctx.send(f"Posições válidas: 1 a {len(party)}.")
-				return
-			
-			target_idx = party_pos - 1
-			pokemon = party[target_idx]
-			pokemon_id = pokemon["id"]
-			
-			if item_id in REVIVE_ITEMS:
-				if not pokemon.get("current_hp", 1) <= 0:
-					await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} não está desmaiado.")
+			if item_id in POKEBALLS:
+				if not hasattr(battle, 'attempt_capture'):
+					await ctx.send("Poké Balls só podem ser usadas em batalhas selvagens.")
 					return
 				
-				result = await pm.use_revive_item(uid, pokemon_id, item_id)
+				from pokemon_sdk.battle.pokeballs import PokeBallSystem
 				
-				battle_pokemon = battle.player_team[target_idx]
-				battle_pokemon.current_hp = result['restored_hp']
+				ball_type = self._convert_ball_id_to_type(item_id)
+				ball_name = PokeBallSystem.get_ball_name(ball_type)
+				ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
 				
-				item_name = await pm.get_item_name(item_id)
-				await ctx.send(f"**{item_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} foi revivido com {result['restored_hp']} HP!")
-				await battle.refresh()
-				return
-			
-			if item_id in HEALING_ITEMS:
-				result = await pm.use_healing_item(uid, pokemon_id, item_id)
-				
-				battle_pokemon = battle.player_team[target_idx]
-				battle_pokemon.current_hp = result['current_hp']
-				
-				item_name = await pm.get_item_name(item_id)
-				hp_percent = (result['current_hp'] / result['max_hp']) * 100
-				await ctx.send(f"**{item_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou {result['healed']} HP! ({result['current_hp']}/{result['max_hp']} - {hp_percent:.1f}%)")
-				await battle.refresh()
-				return
-			
-			if item_id in BERRIES:
-				berry_effects = {
-					"oran-berry": {"type": "heal", "amount": 10},
-					"sitrus-berry": {"type": "heal", "percent": 0.25},
-					"leppa-berry": {"type": "pp", "amount": 10}
-				}
-				
-				effect = berry_effects.get(item_id)
-				if not effect:
-					await ctx.send("Esta berry ainda não está implementada em batalha.")
+				if not toolkit.has_item(uid, item_id, 1):
+					await ctx.send(f"Você não tem {ball_emoji} **{ball_name}**!")
 					return
 				
-				if effect["type"] == "heal":
-					from pokemon_sdk.calculations import calculate_max_hp
+				toolkit.remove_item(uid, item_id, 1)
+				battle.ball_type = ball_type
+				
+				await ctx.send(f"{ball_emoji} Você lançou uma **{ball_name}**!")
+				await battle.attempt_capture(ball_type)
+				return
+			
+			if item_id in ESCAPE_ITEMS:
+				toolkit.remove_item(uid, item_id, 1)
+				battle.ended = True
+				if battle.actions_view:
+					battle.actions_view.disable_all()
+				
+				await battle.refresh()
+				await battle.cleanup()
+				item_name = await pm.get_item_name(item_id)
+				await ctx.send(f"**{item_name}** usado! Você fugiu da batalha!")
+				return
+			
+			if item_id in BATTLE_ITEMS:
+				if not party_pos:
+					await ctx.send(f"Especifique o Pokémon: `.bag use {item_id} <party_position>`")
+					return
+				
+				stat_boost_map = {
+					"x-attack": ("atk", 2),
+					"x-defense": ("def", 2),
+					"x-speed": ("speed", 2),
+					"x-accuracy": ("accuracy", 2),
+					"x-special": ("sp_atk", 2),
+					"x-sp-atk": ("sp_atk", 2),
+					"x-sp-def": ("sp_def", 2),
+					"dire-hit": ("crit_stage", 2),
+					"guard-spec": ("guard_spec", 5)
+				}
+				
+				stat, stages = stat_boost_map.get(item_id, (None, 0))
+				if not stat:
+					await ctx.send(f"Item `{item_id}` não reconhecido.")
+					return
+				
+				party = toolkit.get_user_party(uid)
+				if party_pos > len(party) or party_pos < 1:
+					await ctx.send(f"Posições válidas: 1 a {len(party)}.")
+					return
+				
+				target_idx = party_pos - 1
+				
+				if target_idx != battle.active_player_idx:
+					await ctx.send("Você só pode usar itens de batalha no Pokémon ativo.")
+					return
+				
+				if battle.player_active.fainted:
+					await ctx.send("Seu Pokémon está desmaiado!")
+					return
+				
+				battle.lines = []
+				toolkit.remove_item(uid, item_id, 1)
+				
+				if stat == "guard_spec":
+					battle.player_active.volatile["mist"] = stages
+					message = f"**Guard Spec** usado! {battle.player_active.display_name} está protegido contra mudanças de status!"
+				elif stat == "crit_stage":
+					battle.player_active.volatile["crit_stage"] = battle.player_active.volatile.get("crit_stage", 0) + stages
+					message = f"**Dire Hit** usado! Taxa de crítico de {battle.player_active.display_name} aumentou!"
+				else:
+					current_stage = battle.player_active.stages.get(stat, 0)
+					new_stage = min(6, current_stage + stages)
+					battle.player_active.stages[stat] = new_stage
+					actual_boost = new_stage - current_stage
 					
-					max_hp = calculate_max_hp(
-						pokemon["base_stats"]["hp"],
-						pokemon["ivs"]["hp"],
-						pokemon["evs"]["hp"],
-						pokemon["level"]
-					)
-					current_hp = pokemon.get("current_hp", max_hp)
-					
-					if current_hp >= max_hp:
-						await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} já está com HP cheio.")
-						return
-					
-					if "amount" in effect:
-						heal_amount = effect["amount"]
-					else:
-						heal_amount = int(max_hp * effect["percent"])
-					
-					new_hp = min(current_hp + heal_amount, max_hp)
-					healed = new_hp - current_hp
-					
-					toolkit.set_current_hp(uid, pokemon_id, new_hp)
-					toolkit.remove_item(uid, item_id, 1)
-					toolkit.increase_happiness_berry(uid, pokemon_id)
-					
-					battle_pokemon = battle.player_team[target_idx]
-					battle_pokemon.current_hp = new_hp
-					
-					berry_name = await pm.get_item_name(item_id)
-					hp_percent = (new_hp / max_hp) * 100
-					await ctx.send(f"**{berry_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou {healed} HP! ({new_hp}/{max_hp} - {hp_percent:.1f}%)")
+					stat_names = {
+						"atk": "Ataque",
+						"def": "Defesa",
+						"speed": "Velocidade",
+						"accuracy": "Precisão",
+						"sp_atk": "Ataque Especial",
+						"sp_def": "Defesa Especial"
+					}
+					stat_name = stat_names.get(stat, stat)
+					message = f"**{item_id.replace('-', ' ').title()}** usado! {stat_name} de {battle.player_active.display_name} aumentou em {actual_boost} estágio(s)!"
+				
+				battle.lines.append(message)
+				battle.lines.append("")
+				
+				enemy_move_id = battle._select_ai_move(battle.wild)
+				await battle.execute_enemy_turn(enemy_move_id, battle.wild, battle.player_active)
+				
+				state = battle.get_battle_state()
+				if state != battle.BattleState.ONGOING:
+					await battle.handle_battle_end(state)
 					await battle.refresh()
 					return
 				
-				elif effect["type"] == "pp":
+				battle.turn += 1
+				await battle.refresh()
+				return
+			
+			if item_id in HEALING_ITEMS or item_id in REVIVE_ITEMS or item_id in BERRIES or item_id in PP_RECOVERY:
+				if not party_pos:
+					await ctx.send(f"Especifique o Pokémon: `.bag use {item_id} <party_position>`")
+					return
+				
+				party = toolkit.get_user_party(uid)
+				if party_pos > len(party) or party_pos < 1:
+					await ctx.send(f"Posições válidas: 1 a {len(party)}.")
+					return
+				
+				target_idx = party_pos - 1
+				pokemon = party[target_idx]
+				pokemon_id = pokemon["id"]
+				
+				if item_id in REVIVE_ITEMS:
+					if not pokemon.get("current_hp", 1) <= 0:
+						await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} não está desmaiado.")
+						return
+					
+					battle.lines = []
+					result = await pm.use_revive_item(uid, pokemon_id, item_id)
+					
+					battle_pokemon = battle.player_team[target_idx]
+					battle_pokemon.current_hp = result['restored_hp']
+					
+					item_name = await pm.get_item_name(item_id)
+					battle.lines.append(f"**{item_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} foi revivido com {result['restored_hp']} HP!")
+					battle.lines.append("")
+					
+					enemy_move_id = battle._select_ai_move(battle.wild)
+					await battle.execute_enemy_turn(enemy_move_id, battle.wild, battle.player_active)
+					
+					state = battle.get_battle_state()
+					if state != battle.BattleState.ONGOING:
+						await battle.handle_battle_end(state)
+						await battle.refresh()
+						return
+					
+					battle.turn += 1
+					await battle.refresh()
+					return
+				
+				if pokemon.get("current_hp", 0) <= 0:
+					await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} está desmaiado! Use um Revive.")
+					return
+				
+				battle.lines = []
+				
+				if item_id in HEALING_ITEMS:
+					result = await pm.use_healing_item(uid, pokemon_id, item_id)
+					
+					battle_pokemon = battle.player_team[target_idx]
+					battle_pokemon.current_hp = result['current_hp']
+					
+					item_name = await pm.get_item_name(item_id)
+					hp_percent = (result['current_hp'] / result['max_hp']) * 100
+					battle.lines.append(f"**{item_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou {result['healed']} HP! ({result['current_hp']}/{result['max_hp']} - {hp_percent:.1f}%)")
+				
+				elif item_id in BERRIES:
+					berry_effects = {
+						"oran-berry": {"type": "heal", "amount": 10},
+						"sitrus-berry": {"type": "heal", "percent": 0.25},
+						"leppa-berry": {"type": "pp", "amount": 10}
+					}
+					
+					effect = berry_effects.get(item_id)
+					if not effect:
+						await ctx.send("Esta berry ainda não está implementada em batalha.")
+						return
+					
+					if effect["type"] == "heal":
+						from pokemon_sdk.calculations import calculate_max_hp
+						
+						max_hp = calculate_max_hp(
+							pokemon["base_stats"]["hp"],
+							pokemon["ivs"]["hp"],
+							pokemon["evs"]["hp"],
+							pokemon["level"]
+						)
+						current_hp = pokemon.get("current_hp", max_hp)
+						
+						if current_hp >= max_hp:
+							await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} já está com HP cheio.")
+							return
+						
+						if "amount" in effect:
+							heal_amount = effect["amount"]
+						else:
+							heal_amount = int(max_hp * effect["percent"])
+						
+						new_hp = min(current_hp + heal_amount, max_hp)
+						healed = new_hp - current_hp
+						
+						toolkit.set_current_hp(uid, pokemon_id, new_hp)
+						toolkit.remove_item(uid, item_id, 1)
+						toolkit.increase_happiness_berry(uid, pokemon_id)
+						
+						battle_pokemon = battle.player_team[target_idx]
+						battle_pokemon.current_hp = new_hp
+						
+						berry_name = await pm.get_item_name(item_id)
+						hp_percent = (new_hp / max_hp) * 100
+						battle.lines.append(f"**{berry_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou {healed} HP! ({new_hp}/{max_hp} - {hp_percent:.1f}%)")
+					
+					elif effect["type"] == "pp":
+						moves = pokemon.get("moves", [])
+						if not moves:
+							await ctx.send("Este Pokémon não tem movimentos.")
+							return
+						
+						restored_any = False
+						for move in moves:
+							if move["pp"] < move["pp_max"]:
+								move["pp"] = min(move["pp"] + effect["amount"], move["pp_max"])
+								restored_any = True
+						
+						if not restored_any:
+							await ctx.send("Todos os movimentos já estão com PP máximo.")
+							return
+						
+						toolkit.set_moves(uid, pokemon_id, moves)
+						toolkit.remove_item(uid, item_id, 1)
+						toolkit.increase_happiness_berry(uid, pokemon_id)
+						
+						battle_pokemon = battle.player_team[target_idx]
+						battle_pokemon.moves = moves
+						
+						berry_name = await pm.get_item_name(item_id)
+						battle.lines.append(f"**{berry_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou PP!")
+				
+				elif item_id in PP_RECOVERY:
 					moves = pokemon.get("moves", [])
 					if not moves:
 						await ctx.send("Este Pokémon não tem movimentos.")
 						return
 					
-					restored_any = False
-					for move in moves:
-						if move["pp"] < move["pp_max"]:
-							move["pp"] = min(move["pp"] + effect["amount"], move["pp_max"])
-							restored_any = True
+					recovery_map = {
+						"ether": 10,
+						"max-ether": 999999,
+						"elixir": 10,
+						"max-elixir": 999999
+					}
 					
-					if not restored_any:
+					recovery = recovery_map.get(item_id, 0)
+					is_elixir = "elixir" in item_id
+					
+					updated = False
+					for move in moves:
+						if is_elixir or move["pp"] < move["pp_max"]:
+							move["pp"] = min(move["pp"] + recovery, move["pp_max"])
+							updated = True
+					
+					if not updated:
 						await ctx.send("Todos os movimentos já estão com PP máximo.")
 						return
 					
 					toolkit.set_moves(uid, pokemon_id, moves)
 					toolkit.remove_item(uid, item_id, 1)
-					toolkit.increase_happiness_berry(uid, pokemon_id)
 					
 					battle_pokemon = battle.player_team[target_idx]
 					battle_pokemon.moves = moves
 					
-					berry_name = await pm.get_item_name(item_id)
-					await ctx.send(f"**{berry_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou PP!")
+					item_name = await pm.get_item_name(item_id)
+					battle.lines.append(f"**{item_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou PP!")
+				
+				battle.lines.append("")
+				
+				enemy_move_id = battle._select_ai_move(battle.wild)
+				await battle.execute_enemy_turn(enemy_move_id, battle.wild, battle.player_active)
+				
+				state = battle.get_battle_state()
+				if state != battle.BattleState.ONGOING:
+					await battle.handle_battle_end(state)
 					await battle.refresh()
 					return
-			
-			if item_id in PP_RECOVERY:
-				moves = pokemon.get("moves", [])
-				if not moves:
-					await ctx.send("Este Pokémon não tem movimentos.")
-					return
 				
-				recovery_map = {
-					"ether": 10,
-					"max-ether": 999999,
-					"elixir": 10,
-					"max-elixir": 999999
-				}
-				
-				recovery = recovery_map.get(item_id, 0)
-				is_elixir = "elixir" in item_id
-				
-				updated = False
-				for move in moves:
-					if is_elixir or move["pp"] < move["pp_max"]:
-						move["pp"] = min(move["pp"] + recovery, move["pp_max"])
-						updated = True
-				
-				if not updated:
-					await ctx.send("Todos os movimentos já estão com PP máximo.")
-					return
-				
-				toolkit.set_moves(uid, pokemon_id, moves)
-				toolkit.remove_item(uid, item_id, 1)
-				
-				battle_pokemon = battle.player_team[target_idx]
-				battle_pokemon.moves = moves
-				
-				item_name = await pm.get_item_name(item_id)
-				await ctx.send(f"**{item_name}** usado! {format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou PP!")
+				battle.turn += 1
 				await battle.refresh()
 				return
-		
-		await ctx.send(f"Item `{item_id}` não pode ser usado em batalha.")
+			
+			await ctx.send(f"Item `{item_id}` não pode ser usado em batalha.")
 
 	@bag_root.command(name="use")
 	@requires_account()
@@ -828,7 +881,3 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
 	await bot.add_cog(Bag(bot))
-
-
-
-
