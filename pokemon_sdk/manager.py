@@ -1218,3 +1218,4 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
