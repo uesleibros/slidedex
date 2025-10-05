@@ -7,8 +7,9 @@ from helpers.checks import requires_account
 from utils.formatting import format_pokemon_display
 from pokemon_sdk.constants import (
 	CATEGORY_NAMES, CATEGORY_ORDER, HEALING_ITEMS, REVIVE_ITEMS, VITAMINS, PP_RECOVERY, PP_BOOST, 
-	EVOLUTION_STONES, BERRIES, POKEBALLS, BATTLE_USABLE_ITEMS
+	EVOLUTION_STONES, BERRIES, POKEBALLS
 )
+from .constants import ITEM_EMOJIS
 from __main__ import toolkit, pm, battle_tracker
 
 STATUS_HEALERS = ["antidote", "parlyz-heal", "awakening", "burn-heal", "ice-heal", "full-heal"]
@@ -29,12 +30,6 @@ class Bag(commands.Cog):
 			return "tms_hms"
 		else:
 			return "items"
-	
-	def _convert_ball_id_to_type(self, item_id: str) -> str:
-		return item_id.replace("-", "_")
-	
-	def _convert_ball_type_to_id(self, ball_type: str) -> str:
-		return ball_type.replace("_", "-")
 
 	async def _generate_bag_embed(
 		self,
@@ -65,7 +60,7 @@ class Bag(commands.Cog):
 				description_lines.append(f"**{category_name}**")
 			
 			item_name = item["item_id"].replace("-", " ").title()
-			description_lines.append(f"`{item['item_id']}`　{item_name}{item['quantity']:>4}x")
+			description_lines.append(f"`{item['item_id']}`　{ITEM_EMOJIS.get(item['item_id'], '')} {item_name}{item['quantity']:>4}x")
 		
 		embed.description = "\n".join(description_lines)
 		embed.set_footer(text=f"Página {current_page + 1} • {total} tipos de itens")
@@ -132,30 +127,24 @@ class Bag(commands.Cog):
 			await ctx.send("A quantidade deve ser maior que 0.")
 			return
 		
-		if quantity > 99:
+		if quantity > 999:
 			await ctx.send("Você pode adicionar no máximo 99 itens por vez.")
 			return
 		
 		try:
-			is_valid = await pm.validate_item(item_id)
-			
-			if not is_valid:
-				await ctx.send(f"Item `{item_id}` não encontrado no Banco de Dados.")
-				return
-			
 			current_qty = toolkit.get_item_quantity(uid, item_id) if hasattr(toolkit, 'get_item_quantity') else 0
 			
 			if current_qty + quantity > 999:
 				await ctx.send(f"Limite máximo de 999 unidades do mesmo item. Você tem {current_qty}x.")
 				return
 			
-			new_qty = toolkit.add_item(uid, item_id, quantity)
-			
-			item_name = await pm.get_item_name(item_id)
+			result = await pm.give_item(uid, item_id, quantity)
 			category = await pm.get_item_category(item_id)
 			
-			await ctx.send(f"**Item Adicionado**\n**{item_name}** x{quantity}\nQuantidade Total: {new_qty}x\nCategoria: {CATEGORY_NAMES.get(category, category)}")
+			await ctx.send(f"**Item Adicionado**\n{ITEM_EMOJIS.get(item_id, '')} **{result['name']}** x{quantity}\nQuantidade Total: {result['quantity']}x\nCategoria: {CATEGORY_NAMES.get(category, category)}")
 			
+		except ValueError as e:
+			await ctx.send(str(e))
 		except Exception as e:
 			await ctx.send(f"Erro ao adicionar item: {e}")
 
@@ -181,7 +170,7 @@ class Bag(commands.Cog):
 			
 			item_name = await pm.get_item_name(item_id)
 			
-			await ctx.send(f"**Item Removido**\n**{item_name}** x{quantity}\nQuantidade Restante: {new_qty}x")
+			await ctx.send(f"**Item Removido**\n{ITEM_EMOJIS.get(item_id, '')} **{item_name}** x{quantity}\nQuantidade Restante: {new_qty}x")
 			
 		except Exception as e:
 			await ctx.send(f"Erro ao remover item: {e}")
@@ -447,19 +436,18 @@ class Bag(commands.Cog):
 			
 			from pokemon_sdk.battle.pokeballs import PokeBallSystem
 			
-			ball_type = self._convert_ball_id_to_type(item_id)
-			ball_name = PokeBallSystem.get_ball_name(ball_type)
-			ball_emoji = PokeBallSystem.get_ball_emoji(ball_type)
+			ball_name = PokeBallSystem.get_ball_name(item_id)
+			ball_emoji = PokeBallSystem.get_ball_emoji(item_id)
 			
 			if not toolkit.has_item(uid, item_id, 1):
 				await ctx.send(f"Você não tem {ball_emoji} **{ball_name}**!")
 				return
 			
 			toolkit.remove_item(uid, item_id, 1)
-			battle.ball_type = ball_type
+			battle.ball_type = item_id
 			
 			await ctx.send(f"{ball_emoji} Você lançou uma **{ball_name}**!")
-			await battle.attempt_capture(ball_type)
+			await battle.attempt_capture(item_id)
 			return
 		
 		if item_id in ESCAPE_ITEMS:

@@ -169,7 +169,7 @@ class MoveChoiceView(discord.ui.View):
 		self.pokemon = pokemon
 		self.manager = manager
 		self.answered = False
-		self.message = None
+		self.message: Optional[discord.Message] = None
 		
 		for idx, move in enumerate(current_moves):
 			move_id = move["id"]
@@ -259,7 +259,6 @@ class PokemonManager:
 		self.tk = toolkit
 		self.service = PokeAPIService()
 		self._user_locks = {}
-		self._item_cache = {}
 		self.brazil_tz = pytz.timezone('America/Sao_Paulo')
 
 	def _is_locked(self, owner_id: str) -> bool:
@@ -284,12 +283,8 @@ class PokemonManager:
 			return "night"
 
 	async def get_item(self, item_id: str) -> Optional[aiopoke.Item]:
-		if item_id in self._item_cache:
-			return self._item_cache[item_id]
-		
 		try:
 			item = await self.service.client.get_item(item_id)
-			self._item_cache[item_id] = item
 			return item
 		except:
 			return None
@@ -409,6 +404,22 @@ class PokemonManager:
 		
 		if not is_valid:
 			raise ValueError(f"Item '{item_id}' não encontrado na PokeAPI")
+		
+		item = await self.get_item(item_id)
+		
+		if not item:
+			raise ValueError(f"Item '{item_id}' não encontrado")
+		
+		if hasattr(item, 'flavor_text_entries') and item.flavor_text_entries:
+			is_gen3_or_earlier = False
+			
+			for flavor in item.flavor_text_entries:
+				if flavor.version_group.name in VERSION_GROUPS:
+					is_gen3_or_earlier = True
+					break
+			
+			if not is_gen3_or_earlier:
+				raise ValueError(f"Item '{item_id}' não está disponível na Gen 3")
 		
 		new_quantity = self.tk.add_item(user_id, item_id, quantity)
 		
