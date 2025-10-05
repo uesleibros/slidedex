@@ -2,6 +2,8 @@ import discord
 import random
 import aiopoke
 from typing import List, Optional, Dict
+from datetime import datetime
+import pytz
 from utils.formatting import format_pokemon_display
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
@@ -258,6 +260,7 @@ class PokemonManager:
 		self.service = PokeAPIService()
 		self._user_locks = {}
 		self._item_cache = {}
+		self.brazil_tz = pytz.timezone('America/Sao_Paulo')
 
 	def _is_locked(self, owner_id: str) -> bool:
 		return self._user_locks.get(owner_id, False)
@@ -270,6 +273,15 @@ class PokemonManager:
 	
 	def _release_lock(self, owner_id: str):
 		self._user_locks[owner_id] = False
+
+	def _get_current_time_of_day(self) -> str:
+		current_time = datetime.now(self.brazil_tz)
+		hour = current_time.hour
+		
+		if 6 <= hour < 18:
+			return "day"
+		else:
+			return "night"
 
 	async def get_item(self, item_id: str) -> Optional[aiopoke.Item]:
 		if item_id in self._item_cache:
@@ -828,6 +840,8 @@ class PokemonManager:
 		if not current_link or not current_link.evolves_to:
 			return None
 		
+		current_time_of_day = self._get_current_time_of_day()
+		
 		for evolution in current_link.evolves_to:
 			for detail in evolution.evolution_details:
 				if detail.trigger.name != trigger:
@@ -843,7 +857,8 @@ class PokemonManager:
 							continue
 					
 					if detail.time_of_day and detail.time_of_day not in ["", None]:
-						continue
+						if detail.time_of_day != current_time_of_day:
+							continue
 					
 					if detail.known_move:
 						has_move = False
@@ -879,7 +894,8 @@ class PokemonManager:
 					"min_happiness": detail.min_happiness if detail.min_happiness else None,
 					"min_affection": detail.min_affection if detail.min_affection else None,
 					"known_move": detail.known_move.name if detail.known_move else None,
-					"held_item": detail.held_item.name if detail.held_item else None
+					"held_item": detail.held_item.name if detail.held_item else None,
+					"time_of_day": detail.time_of_day if detail.time_of_day else None
 				}
 		
 		return None
@@ -961,12 +977,15 @@ class PokemonManager:
 				manager=self
 			)
 			
-			happiness_info = ""
+			extra_info = ""
 			if evolution_data.get("min_happiness"):
-				happiness_info = f" (Felicidade: {pokemon.get('happiness', 0)}/{evolution_data['min_happiness']})"
+				extra_info += f" (Felicidade: {pokemon.get('happiness', 0)}/{evolution_data['min_happiness']})"
+			if evolution_data.get("time_of_day"):
+				time_text = "Dia" if evolution_data["time_of_day"] == "day" else "Noite"
+				extra_info += f" ({time_text})"
 			
 			content = (
-				f"<@{owner_id}> {format_pokemon_display(pokemon, bold_name=True)} pode evoluir para **{evolution_data['name']}**!{happiness_info}\n"
+				f"<@{owner_id}> {format_pokemon_display(pokemon, bold_name=True)} pode evoluir para **{evolution_data['name']}**!{extra_info}\n"
 				f"Você quer evoluir?\n"
 				f"-# Você tem até 1 minuto para decidir."
 			)
