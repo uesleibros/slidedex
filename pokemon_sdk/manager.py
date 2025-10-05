@@ -837,15 +837,35 @@ class PokemonManager:
 					if detail.min_level and pokemon["level"] < detail.min_level:
 						continue
 					
-					if detail.min_happiness and pokemon.get("happiness", 0) < detail.min_happiness:
-						continue
+					if detail.min_happiness:
+						current_happiness = pokemon.get("happiness", 0)
+						if current_happiness < detail.min_happiness:
+							continue
 					
 					if detail.time_of_day and detail.time_of_day not in ["", None]:
+						continue
+					
+					if detail.known_move:
+						has_move = False
+						known_move_id = detail.known_move.name
+						for move in pokemon.get("moves", []):
+							if move.get("id") == known_move_id:
+								has_move = True
+								break
+						if not has_move:
+							continue
+					
+					if detail.min_affection and pokemon.get("happiness", 0) < detail.min_affection:
 						continue
 				
 				elif trigger == "use-item":
 					if not detail.item:
 						continue
+				
+				elif trigger == "trade":
+					if detail.held_item:
+						if pokemon.get("held_item") != detail.held_item.name:
+							continue
 				
 				evolution_species_id = int(evolution.species.url.split('/')[-2])
 				evolution_name = evolution.species.name.title()
@@ -856,7 +876,10 @@ class PokemonManager:
 					"trigger": detail.trigger.name,
 					"min_level": detail.min_level if detail.min_level else None,
 					"item": detail.item.name if detail.item else None,
-					"min_happiness": detail.min_happiness if detail.min_happiness else None
+					"min_happiness": detail.min_happiness if detail.min_happiness else None,
+					"min_affection": detail.min_affection if detail.min_affection else None,
+					"known_move": detail.known_move.name if detail.known_move else None,
+					"held_item": detail.held_item.name if detail.held_item else None
 				}
 		
 		return None
@@ -938,8 +961,12 @@ class PokemonManager:
 				manager=self
 			)
 			
+			happiness_info = ""
+			if evolution_data.get("min_happiness"):
+				happiness_info = f" (Felicidade: {pokemon.get('happiness', 0)}/{evolution_data['min_happiness']})"
+			
 			content = (
-				f"<@{owner_id}> {format_pokemon_display(pokemon, bold_name=True)} pode evoluir para **{evolution_data['name']}**!\n"
+				f"<@{owner_id}> {format_pokemon_display(pokemon, bold_name=True)} pode evoluir para **{evolution_data['name']}**!{happiness_info}\n"
 				f"Você quer evoluir?\n"
 				f"-# Você tem até 1 minuto para decidir."
 			)
