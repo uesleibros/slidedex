@@ -29,11 +29,11 @@ def format_nature_info(nature: str) -> str:
 def format_happiness_status(happiness: int) -> str:
 	current_friendship = happiness
 	percent = int((current_friendship / HAPPINESS_MAX) * 100)
-	if percent >= 200:
+	if percent >= 80:
 		status = "Muito feliz"
-	elif percent >= 150:
+	elif percent >= 60:
 		status = "Feliz"
-	elif percent >= 100:
+	elif percent >= 40:
 		status = "Normal"
 	else:
 		status = "Triste"
@@ -86,4 +86,5 @@ def format_pokemon_display(
 		parts.append("❤️")
 
 	return " ".join(parts)
+
 
