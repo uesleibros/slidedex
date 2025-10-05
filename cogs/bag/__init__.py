@@ -296,12 +296,8 @@ class Bag(commands.Cog):
 			await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} já está no nível máximo (100).")
 			return
 		
-		result = await pm.use_rare_candy(uid, pokemon_id, ctx.message)
+		await pm.use_rare_candy(uid, pokemon_id, ctx.message)
 		
-		pokemon = toolkit.get_pokemon(uid, pokemon_id)
-		
-		await ctx.send(f"**Rare Candy Usado**\n{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} subiu de nível!\nNível Anterior: {result.get('old_level', '?')}\nNovo Nível: {pokemon['level']}")
-
 	async def _use_vitamin(self, ctx: commands.Context, uid: str, pokemon_id: int, item_id: str, pokemon: dict) -> None:
 		vitamin_map = {
 			"hp-up": "hp",
@@ -831,4 +827,5 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
 	await bot.add_cog(Bag(bot))
+
 
