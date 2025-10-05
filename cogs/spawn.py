@@ -11,17 +11,13 @@ from pokemon_sdk.constants import SHINY_ROLL
 from helpers.checks import requires_account
 
 class BattleView(discord.ui.View):
-	def __init__(self, author: discord.Member, wild_data: dict, timeout: float = 60.0):
+	def __init__(self, wild_data: dict, timeout: float = 60.0):
 		super().__init__(timeout=timeout)
-		self.author = author
 		self.wild_data = wild_data
 
 	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="⚔️")
 	async def battle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-		if interaction.user.id != self.author.id:
-			return await interaction.response.send_message("Você não pode iniciar essa batalha!", ephemeral=True)
-
-		author_id = str(self.author.id)
+		author_id = str(interaction.user.id)
 		
 		if battle_tracker.is_battling(author_id):
 			return await interaction.response.send_message("Você não pode ir para uma batalha enquanto já está em outra.", ephemeral=True)
@@ -119,7 +115,7 @@ class Spawn(commands.Cog):
 		)
 		embed.set_image(url="attachment://spawn.png")
 
-		await ctx.send(embed=embed, file=discord.File(fp=buffer, filename="spawn.png"), view=BattleView(ctx.author, wild))
+		await ctx.send(embed=embed, file=discord.File(fp=buffer, filename="spawn.png"), view=BattleView(wild))
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
