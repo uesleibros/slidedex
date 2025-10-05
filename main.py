@@ -2,6 +2,7 @@ import os
 import discord
 from typing import Optional
 from discord.ext import commands
+from discord.ext.flags import ArgumentParsingError
 from dotenv import load_dotenv
 from utils.pokemon_emojis import load_application_emojis
 from utils.preloaded import preload_backgrounds, preload_info_backgrounds, preload_textures
@@ -14,6 +15,7 @@ TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
 toolkit = Toolkit()
@@ -28,12 +30,21 @@ async def on_ready():
 
 	for root, _, files in os.walk("./cogs"):
 		for filename in files:
-			if filename.endswith(".py") and filename != "__init__.py":
+			if filename.endswith(".py"):
 				rel_path = os.path.relpath(os.path.join(root, filename), "./cogs")
 				module = "cogs." + rel_path.replace(os.sep, ".")[:-3]
-
-				await bot.load_extension(module)
-				print(f"📂 Cog carregada: {module}")
+				
+				if filename == "__init__.py":
+					module = module.rsplit(".", 1)[0]
+					
+					if module == "cogs":
+						continue
+					
+					await bot.load_extension(module)
+					print(f"📂 Cog carregada: {module}")
+				elif "__init__.py" not in files:
+					await bot.load_extension(module)
+					print(f"📂 Cog carregada: {module}")
 
 	preload_backgrounds()
 	preload_info_backgrounds()
@@ -50,6 +61,41 @@ async def on_message(message: discord.Message):
 			await message.channel.send(f"Olá {message.author.mention}! Meu prefixo é `{bot.command_prefix}`\nUse `{bot.command_prefix}help` para ver todos os comandos!")
 	
 	await bot.process_commands(message)
+
+@bot.event
+async def on_command_error(ctx: commands.Context, error: commands.CommandError):
+	if isinstance(error, ArgumentParsingError):
+		await ctx.send(f"Erro nos argumentos: {str(error)}\n-# Use `.help {ctx.command.qualified_name}` para ver o uso correto.")
+		return
+	
+	if isinstance(error, commands.CommandNotFound):
+		return
+	
+	if isinstance(error, commands.MissingRequiredArgument):
+		await ctx.send(f"Argumento obrigatório faltando: `{error.param.name}`\n-# Use `.help {ctx.command.qualified_name}` para ver o uso correto.")
+		return
+	
+	if isinstance(error, commands.BadArgument):
+		await ctx.send(f"Argumento inválido: {str(error)}")
+		return
+	
+	if isinstance(error, commands.CommandOnCooldown):
+		await ctx.send(f"Calma! Tente novamente em **{error.retry_after:.1f}s**")
+		return
+	
+	if isinstance(error, commands.MissingPermissions):
+		await ctx.send(f"Você não tem permissão para usar este comando!")
+		return
+	
+	if isinstance(error, commands.BotMissingPermissions):
+		await ctx.send(f"Eu não tenho permissão para executar este comando!")
+		return
+	
+	if isinstance(error, commands.CheckFailure):
+		await ctx.send(f"Você não pode usar este comando agora.")
+		return
+	
+	raise error
 
 class HelpPaginator(discord.ui.View):
 	def __init__(self, embeds, author):

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Optional, Tuple
 from .pokemon import BattlePokemon
 
 class BattleRewards:
@@ -76,7 +76,7 @@ class BattleRewards:
 	def apply_ev_modifiers(
 		base_evs: Dict[str, int],
 		has_macho_brace: bool = False,
-		has_power_item: str = None
+		has_power_item: Optional[str] = None
 	) -> Dict[str, int]:
 		modified_evs = base_evs.copy()
 		
@@ -112,9 +112,9 @@ class BattleRewards:
 			return lines
 		
 		if len(distribution) > 1:
-			lines.append(f"⭐ **XP Distribuído** ({len(distribution)} participantes):")
+			lines.append(f"<:CometShard:1424200074463805551> **XP Distribuído** ({len(distribution)} participantes):")
 		else:
-			lines.append("⭐ **XP Ganho:**")
+			lines.append("<:CometShard:1424200074463805551> **XP Ganho:**")
 		
 		for index, pokemon_name, experience in distribution:
 			lines.append(f"  • {pokemon_name} +{experience} XP")
@@ -136,7 +136,7 @@ class BattleRewards:
 		
 		lines.append("💪 **EVs Ganhos:**")
 		
-		for index, pokemon_name, evs in distribution:
+		for _, pokemon_name, evs in distribution:
 			ev_parts = [f"{stat.upper()}: +{value}" for stat, value in evs.items() if value > 0]
 			if ev_parts:
 				lines.append(f"  • {pokemon_name} [{', '.join(ev_parts)}]")

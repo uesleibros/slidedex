@@ -1,6 +1,6 @@
 import discord
 import aiopoke
-from typing import List
+from typing import List, Optional
 from __main__ import pm
 from discord.ext import commands
 from utils.preloaded import preloaded_textures
@@ -14,12 +14,12 @@ class Profile(commands.Cog):
 
 	@commands.command(name="profile", aliases=["pf", "prof", "pfl"])
 	@requires_account()
-	async def profile_command(self, ctx: commands.Context) -> None:
-		user_id: str = str(ctx.author.id)
-		user = pm.tk.get_user(user_id)
+	async def profile_command(self, ctx: commands.Context, user: Optional[discord.Member]) -> None:
+		user = ctx.author if not user else user
+		user_info = pm.tk.get_user(str(user.id))
 
-		user_party = pm.tk.get_user_party(user_id)
-		user_pokemon = pm.tk.get_user_pokemon(user_id)
+		user_party = pm.tk.get_user_party(str(user.id))
+		user_pokemon = pm.tk.get_user_pokemon(str(user.id))
 		party_sprites: List[bytes] = []
 
 		for poke in user_party:
@@ -34,10 +34,10 @@ class Profile(commands.Cog):
 		img_file = discord.File(buf, filename="profile.png")
 
 		embed = discord.Embed(
-			title=f"Perfil de {ctx.author.name}"
+			title=f"Perfil de {user.display_name}"
 		)
 
-		embed.add_field(name="Dinheiro", value=f"${user['money']}")
+		embed.add_field(name="Dinheiro", value=f"${user_info['money']}")
 		embed.add_field(name="Pokémon", value=f"{len(user_pokemon)}")
 
 		del user_pokemon

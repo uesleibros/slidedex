@@ -67,8 +67,76 @@ STAT_ALIASES = {
 	"speed": ["speed","spe"]
 }
 
+STAT_LABELS = {
+	"hp": "HP",
+	"attack": "Ataque",
+	"defense": "Defesa",
+	"special-attack": "Sp. Atk",
+	"special-defense": "Sp. Def",
+	"speed": "Velocidade",
+}
+
 VERSION_GROUPS = ("firered-leafgreen", "emerald", "ruby-sapphire")
 STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 
 SHINY_ROLL = 8192
 HAPPINESS_MAX = 255
+
+CATEGORY_NAMES = {
+	"items": "Itens",
+	"pokeballs": "Poké Balls",
+	"berries": "Berries",
+	"tms_hms": "TMs & HMs",
+	"key_items": "Itens Chave"
+}
+
+CATEGORY_ORDER = ["items", "pokeballs", "berries", "tms_hms", "key_items"]
+
+HEALING_ITEMS = [
+	"potion", "super-potion", "hyper-potion", "max-potion",
+	"full-restore", "fresh-water", "soda-pop", "lemonade",
+	"moomoo-milk", "energy-powder", "energy-root", "berry-juice",
+	"sweet-heart"
+]
+
+REVIVE_ITEMS = ["revive", "max-revive", "revival-herb"]
+
+VITAMINS = ["hp-up", "protein", "iron", "carbos", "calcium", "zinc"]
+
+PP_RECOVERY = ["ether", "max-ether", "elixir", "max-elixir"]
+
+PP_BOOST = ["pp-up", "pp-max"]
+
+EVOLUTION_STONES = [
+	"fire-stone", "water-stone", "thunder-stone", "leaf-stone",
+	"moon-stone", "sun-stone", "shiny-stone", "dusk-stone",
+	"dawn-stone", "ice-stone"
+]
+
+BERRIES = [
+	"oran-berry", "sitrus-berry", "pecha-berry", "cheri-berry",
+	"chesto-berry", "rawst-berry", "aspear-berry", "persim-berry",
+	"lum-berry", "leppa-berry", "aguav-berry", "figy-berry",
+	"iapapa-berry", "mago-berry", "wiki-berry", "enigma-berry",
+	"liechi-berry", "ganlon-berry", "salac-berry", "petaya-berry",
+	"apicot-berry", "lansat-berry", "starf-berry", "pomeg-berry",
+	"kelpsy-berry", "qualot-berry", "hondew-berry", "grepa-berry",
+	"tamato-berry", "cornn-berry", "magost-berry", "rabuta-berry",
+	"nomel-berry", "spelon-berry", "pamtre-berry", "watmel-berry",
+	"durin-berry", "belue-berry", "occa-berry", "passho-berry",
+	"wacan-berry", "rindo-berry", "yache-berry", "chople-berry",
+	"kebia-berry", "shuca-berry", "coba-berry", "payapa-berry",
+	"tanga-berry", "charti-berry", "kasib-berry", "haban-berry",
+	"colbur-berry", "babiri-berry", "chilan-berry", "roseli-berry"
+]
+
+POKEBALLS = [
+	"poke-ball", "great-ball", "ultra-ball", "master-ball",
+	"safari-ball", "level-ball", "lure-ball", "moon-ball",
+	"friend-ball", "love-ball", "heavy-ball", "fast-ball",
+	"sport-ball", "premier-ball", "repeat-ball", "timer-ball",
+	"nest-ball", "net-ball", "dive-ball", "luxury-ball",
+	"heal-ball", "quick-ball", "dusk-ball", "cherish-ball"
+]
+
+BATTLE_USABLE_ITEMS = POKEBALLS + HEALING_ITEMS + REVIVE_ITEMS + BERRIES + PP_RECOVERY

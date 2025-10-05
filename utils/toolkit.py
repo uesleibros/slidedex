@@ -80,13 +80,21 @@ class Toolkit:
 			else:
 				with open(self.path, "r", encoding="utf-8") as f:
 					self.db = json.load(f)
-				if "users" not in self.db or "pokemon" not in self.db or "bags" not in self.db or "custom_messages" not in self.db:
-					self.db = {"users": {}, "pokemon": [], "bags": [], "custom_messages": {}}
-					self._save()
+				
+				if "users" not in self.db:
+					self.db["users"] = {}
+				if "pokemon" not in self.db:
+					self.db["pokemon"] = []
+				if "bags" not in self.db or not isinstance(self.db["bags"], list):
+					self.db["bags"] = []
+				if "custom_messages" not in self.db:
+					self.db["custom_messages"] = {}
+				
+				self._save()
 			self._reindex()
 
 	def clear(self) -> None:
-		self.db = {"users": {}, "pokemon": []}
+		self.db = {"users": {}, "pokemon": [], "bags": []}
 		self._save()
 
 	def _reindex(self) -> None:
@@ -201,6 +209,113 @@ class Toolkit:
 			return 15
 		else:
 			return 20
+
+	def get_bag(self, user_id: str) -> List[Dict]:
+		with self._lock:
+			self._ensure_user(user_id)
+			return [self._deepcopy(item) for item in self.db["bags"] if item["owner_id"] == user_id]
+
+	def get_item_quantity(self, user_id: str, item_id: str) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			for item in self.db["bags"]:
+				if item["owner_id"] == user_id and item["item_id"] == item_id:
+					return item["quantity"]
+			return 0
+
+	def has_item(self, user_id: str, item_id: str, quantity: int = 1) -> bool:
+		return self.get_item_quantity(user_id, item_id) >= quantity
+
+	def add_item(self, user_id: str, item_id: str, quantity: int = 1) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			
+			for item in self.db["bags"]:
+				if item["owner_id"] == user_id and item["item_id"] == item_id:
+					item["quantity"] += int(quantity)
+					self._save()
+					return item["quantity"]
+			
+			self.db["bags"].append({
+				"owner_id": user_id,
+				"item_id": item_id,
+				"quantity": int(quantity)
+			})
+			self._save()
+			return int(quantity)
+
+	def remove_item(self, user_id: str, item_id: str, quantity: int = 1) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			
+			for i, item in enumerate(self.db["bags"]):
+				if item["owner_id"] == user_id and item["item_id"] == item_id:
+					if item["quantity"] < quantity:
+						raise ValueError("Not enough items")
+					
+					item["quantity"] -= int(quantity)
+					
+					if item["quantity"] <= 0:
+						del self.db["bags"][i]
+						self._save()
+						return 0
+					
+					self._save()
+					return item["quantity"]
+			
+			raise ValueError("Item not found")
+
+	def set_item_quantity(self, user_id: str, item_id: str, quantity: int) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			
+			if quantity <= 0:
+				for i, item in enumerate(self.db["bags"]):
+					if item["owner_id"] == user_id and item["item_id"] == item_id:
+						del self.db["bags"][i]
+						break
+				self._save()
+				return 0
+			
+			for item in self.db["bags"]:
+				if item["owner_id"] == user_id and item["item_id"] == item_id:
+					item["quantity"] = int(quantity)
+					self._save()
+					return item["quantity"]
+			
+			self.db["bags"].append({
+				"owner_id": user_id,
+				"item_id": item_id,
+				"quantity": int(quantity)
+			})
+			self._save()
+			return int(quantity)
+
+	def clear_bag(self, user_id: str) -> None:
+		with self._lock:
+			self._ensure_user(user_id)
+			self.db["bags"] = [item for item in self.db["bags"] if item["owner_id"] != user_id]
+			self._save()
+
+	def count_items(self, user_id: str) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			return sum(item["quantity"] for item in self.db["bags"] if item["owner_id"] == user_id)
+
+	def count_unique_items(self, user_id: str) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			return len([item for item in self.db["bags"] if item["owner_id"] == user_id])
+
+	def transfer_item(self, from_user_id: str, to_user_id: str, item_id: str, quantity: int = 1) -> Tuple[int, int]:
+		with self._lock:
+			self._ensure_user(from_user_id)
+			self._ensure_user(to_user_id)
+			
+			from_qty = self.remove_item(from_user_id, item_id, quantity)
+			to_qty = self.add_item(to_user_id, item_id, quantity)
+			
+			return (from_qty, to_qty)
 
 	def add_user(self, user_id: str, gender: str) -> Dict:
 		with self._lock:
@@ -962,7 +1077,7 @@ class Toolkit:
 			p["happiness"] = self._clamp_happiness(current + gain)
 			self._save()
 			return p["happiness"]
-
+			
 	def increase_happiness_vitamin(self, owner_id: str, pokemon_id: int) -> int:
 		with self._lock:
 			idx = self._get_pokemon_index(owner_id, pokemon_id)
@@ -1056,5 +1171,3 @@ class Toolkit:
 			p["happiness"] = self._clamp_happiness(current - loss)
 			self._save()
 			return p["happiness"]
-
-

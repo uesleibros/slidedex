@@ -1,5 +1,6 @@
 import discord
 import asyncio
+import random
 from typing import List, Dict, Any, Optional, Set, Tuple
 from __main__ import pm, battle_tracker
 from utils.canvas import compose_battle_async
@@ -8,7 +9,7 @@ from utils.formatting import format_pokemon_display
 from ..pokemon import BattlePokemon
 from ..status import StatusHandler
 from ..capture import CaptureSystem
-from ..helpers import SwitchView, MovesView, PokeballsView, MoveData, _slug
+from ..helpers import SwitchView, MovesView, MoveData, _slug
 from ..pokeballs import PokeBallSystem, BallType
 from ..rewards import BattleRewards
 from .engine import BattleEngine
@@ -36,6 +37,7 @@ class WildBattle(BattleEngine):
 		self.location_type = "normal"
 		self.time_of_day = "day"
 		self.battle_participants: Set[int] = set()
+		self.run_attempts: int = 0
 	
 	@property
 	def player_active(self) -> BattlePokemon:
@@ -220,7 +222,7 @@ class WildBattle(BattleEngine):
 		if entry_damage:
 			self.lines.extend(entry_damage)
 
-		battle_tracker.add(self.user_id)
+		battle_tracker.add(self.user_id, self)
 		self.message = await self.interaction.channel.send(
 			embed=self._build_embed(),
 			file=await self._compose_image(),
@@ -434,6 +436,92 @@ class WildBattle(BattleEngine):
 			
 			await self.refresh()
 	
+	async def attempt_run(self) -> bool:
+		async with self.lock:
+			if self.ended:
+				return False
+			
+			if self.player_active.fainted:
+				self.lines = ["Seu Pokémon está desmaiado!"]
+				if self.actions_view:
+					self.actions_view.force_switch_mode = True
+				await self.refresh()
+				return False
+			
+			self.run_attempts += 1
+			
+			player_speed = self.player_active.eff_stat("speed")
+			wild_speed = self.wild.eff_stat("speed")
+			
+			if wild_speed == 0:
+				wild_speed = 1
+			
+			b_value = (wild_speed // 4) % 256
+			if b_value == 0:
+				b_value = 1
+			
+			f_value = ((player_speed * 128) // b_value) + (30 * self.run_attempts)
+			
+			if f_value >= 256 or f_value > random.randint(0, 255):
+				self.lines = ["💨 Você fugiu com sucesso!"]
+				self.ended = True
+				
+				if self.actions_view:
+					self.actions_view.disable_all()
+				
+				await self.refresh()
+				await self.interaction.channel.send(f"💨 <@{self.user_id}> fugiu da batalha!")
+				await self.cleanup()
+				return True
+			else:
+				self.lines = ["❌ Não conseguiu fugir!"]
+				self.lines.append("")
+				
+				enemy_move_id = self._select_ai_move(self.wild)
+				
+				if enemy_move_id != "__struggle__":
+					enemy_move_data = await self._fetch_move(enemy_move_id)
+				else:
+					enemy_move_data = MoveData(
+						"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
+					)
+				
+				self.lines.extend(
+					await self._execute_turn_action(False, enemy_move_id, enemy_move_data, self.wild, self.player_active)
+				)
+				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					if await self._resolve_battle_state(state):
+						await self.refresh()
+						return False
+				
+				end_turn_effects = StatusHandler.end_of_turn_effects(self.player_active, self.wild)
+				if end_turn_effects:
+					self.lines.append("")
+					self.lines.extend(end_turn_effects)
+				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					if await self._resolve_battle_state(state):
+						await self.refresh()
+						return False
+				
+				self.lines.append("")
+				await self._process_end_of_turn([self.player_active, self.wild])
+				await self._process_weather_effects([self.player_active, self.wild])
+				await self._process_field_effects()
+				
+				state = self._check_battle_state()
+				if state != "ongoing":
+					if await self._resolve_battle_state(state):
+						await self.refresh()
+						return False
+				
+				self.turn += 1
+				await self.refresh()
+				return False
+	
 	async def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
 		ev_yield = BattleRewards.calculate_ev_yield(self.wild)
 		
@@ -569,7 +657,7 @@ class WildBattle(BattleEngine):
 				
 				total_experience = sum(xp for _, _, xp in experience_distribution)
 				await self.interaction.channel.send(
-					f"{format_pokemon_display(self.wild_raw, bold_name=True)} foi adicionado à sua Pokédex e recebeu **+{total_experience} de XP!**\n"
+					f"{format_pokemon_display(self.wild_raw, bold_name=True)} foi adicionado à sua Pokédex e recebeu <:CometShard:1424200074463805551> **+{total_experience} de XP!**\n"
 					f"{ball_emoji} Capturado com {ball_name}!{bonus_text}\n"
 					f"{'\n'.join(exp_lines)}"
 				)
@@ -646,7 +734,7 @@ class WildBattle(BattleEngine):
 		
 		total_experience = sum(xp for _, _, xp in experience_distribution)
 		await self.interaction.channel.send(
-			f"💪 **Você venceu!** e recebeu **+{total_experience} de XP!**\n{'\n'.join(exp_lines)}"
+			f"<:OhBrother:1424196500581257339> **Você venceu!** e recebeu <:CometShard:1424200074463805551> **+{total_experience} de XP!**\n{'\n'.join(exp_lines)}"
 		)
 		await self.cleanup()
 	
@@ -655,7 +743,7 @@ class WildBattle(BattleEngine):
 		if self.actions_view:
 			self.actions_view.disable_all()
 		await self.refresh()
-		await self.interaction.channel.send(f"<@{self.user_id}> **Você perdeu!**\nNa próxima, tente usar estratégias válidas.")
+		await self.interaction.channel.send(f"<@{self.user_id}> <:YouGotMogged:1424196005519298570> **Você perdeu!**\nNa próxima, tente usar estratégias válidas.")
 		await self.cleanup()
 	
 	async def _handle_forced_switch(self) -> None:
@@ -696,7 +784,7 @@ class WildBattleView(discord.ui.View):
 		for item in self.children:
 			item.disabled = True
 	
-	@discord.ui.button(style=discord.ButtonStyle.primary, label="Lutar", emoji="⚔️")
+	@discord.ui.button(style=discord.ButtonStyle.primary, label="Lutar", emoji="⚔️", row=0)
 	async def fight(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
 			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
@@ -706,7 +794,7 @@ class WildBattleView(discord.ui.View):
 			return await interaction.response.edit_message(view=SwitchView(self.battle, force_only=True))
 		await interaction.response.edit_message(view=MovesView(self.battle))
 	
-	@discord.ui.button(style=discord.ButtonStyle.primary, label="Trocar", emoji="🔄")
+	@discord.ui.button(style=discord.ButtonStyle.primary, label="Trocar", emoji="🔄", row=0)
 	async def switch(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
 			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
@@ -714,14 +802,14 @@ class WildBattleView(discord.ui.View):
 			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
 		await interaction.response.edit_message(view=SwitchView(self.battle))
 	
-	@discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:PokeBall:1345558169090265151>", label="Capturar")
-	async def capture(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+	@discord.ui.button(style=discord.ButtonStyle.danger, label="Fugir", emoji="💨", row=0)
+	async def run(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
 		if str(interaction.user.id) != self.user_id:
 			return await interaction.response.send_message("Não é sua batalha!", ephemeral=True)
 		if self.battle.ended:
 			return await interaction.response.send_message("Batalha encerrada.", ephemeral=True)
-		if self.force_switch_mode or self.battle.player_active.fainted:
-			return await interaction.response.send_message("Troque de Pokémon primeiro!", ephemeral=True)
+		if self.force_switch_mode:
+			return await interaction.response.send_message("Você precisa trocar de Pokémon primeiro!", ephemeral=True)
 		
-		await interaction.response.edit_message(view=PokeballsView(self.battle))
-
+		await interaction.response.defer()
+		await self.battle.attempt_run()

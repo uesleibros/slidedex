@@ -1,5 +1,4 @@
 from discord.ext import commands
-from utils.pokemon_emojis import get_app_emoji
 from utils.formatting import format_pokemon_display
 from pokemon_sdk.calculations import calculate_stats
 from helpers.checks import requires_account, not_in_battle
@@ -79,7 +78,7 @@ class Party(commands.Cog):
 		except Exception as e:
 			return await ctx.send(f"Erro: {e}")
 		
-		await ctx.send(f"{format_pokemon_display(poke_a, bold_name=True)} e {format_pokemon_display(poke_b, bold_name=True)} trocaram de lugar.")
+		await ctx.send(f"{format_pokemon_display(poke_a, bold_name=True, show_hp=False, show_gender=False)} e {format_pokemon_display(poke_b, bold_name=True)} trocaram de lugar.")
 
 	@party_root.command(name="add")
 	@requires_account()
@@ -96,7 +95,7 @@ class Party(commands.Cog):
 			p = pm.tk.move_to_party(uid, pokemon_id)
 		except Exception as e:
 			return await ctx.send(f"Erro ao adicionar: {e}")
-		await ctx.send(f"{format_pokemon_display(p, bold_name=True)} foi adicionado à sua party.")
+		await ctx.send(f"{format_pokemon_display(p, bold_name=True, show_hp=False)} foi adicionado à sua party.")
 
 	@party_root.command(name="remove")
 	@requires_account()
@@ -123,7 +122,7 @@ class Party(commands.Cog):
 			p = pm.tk.move_to_box(uid, pokemon_id)
 		except Exception as e:
 			return await ctx.send(f"Erro ao remover: {e}")
-		await ctx.send(f"{format_pokemon_display(p, bold_name=True)} foi removido da party e movido para a box.")
+		await ctx.send(f"{format_pokemon_display(p, bold_name=True, show_hp=False)} foi removido da party e movido para a box.")
 
 
 async def setup(bot: commands.Bot):
