@@ -7,7 +7,7 @@ import pytz
 from utils.formatting import format_pokemon_display
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
-from .constants import NATURES, REGIONS_GENERATION, BERRIES, EVOLUTION_STONES
+from .constants import NATURES, REGIONS_GENERATION, BERRIES, EVOLUTION_STONES, VERSION_GROUPS
 from helpers.growth import GrowthRate
 
 class EvolutionChoiceView(discord.ui.View):
@@ -843,6 +843,11 @@ class PokemonManager:
 		current_time_of_day = self._get_current_time_of_day()
 		
 		for evolution in current_link.evolves_to:
+			evolution_species_id = int(evolution.species.url.split('/')[-2])
+			
+			if evolution_species_id > 386:
+				continue
+			
 			for detail in evolution.evolution_details:
 				if detail.trigger.name != trigger:
 					continue
@@ -882,7 +887,6 @@ class PokemonManager:
 						if pokemon.get("held_item") != detail.held_item.name:
 							continue
 				
-				evolution_species_id = int(evolution.species.url.split('/')[-2])
 				evolution_name = evolution.species.name.title()
 				
 				return {
@@ -1218,4 +1222,3 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
-
