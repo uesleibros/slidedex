@@ -469,6 +469,8 @@ class Bag(commands.Cog):
 			battle.ended = True
 			if battle.actions_view:
 				battle.actions_view.disable_all()
+			
+			await battle.refresh()
 			await battle.cleanup()
 			item_name = await pm.get_item_name(item_id)
 			await ctx.send(f"**{item_name}** usado! Você fugiu da batalha!")
@@ -827,5 +829,6 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
 	await bot.add_cog(Bag(bot))
+
 
 
