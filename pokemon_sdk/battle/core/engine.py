@@ -1,5 +1,6 @@
 import random
 import asyncio
+from enum import Enum
 from __main__ import pm
 from typing import List, Dict, Any, Optional
 from utils.formatting import format_pokemon_display
@@ -12,6 +13,15 @@ from ..effects import EffectHandler
 from ..status import StatusHandler
 from ..helpers import MoveData, _normalize_move, _slug, _hp_bar
 from ..targeting import TargetingSystem, BattleContext
+
+class BattleState(Enum):
+	ONGOING = "ongoing"
+	PLAYER_WIN = "player_win"
+	PLAYER_LOSS = "player_loss"
+	PLAYER_FAINTED_BACKUP = "player_fainted_backup"
+	PLAYER_FAINTED_NO_BACKUP = "player_fainted_no_backup"
+	BOTH_FAINTED_BACKUP = "both_fainted_backup"
+	BOTH_FAINTED_NO_BACKUP = "both_fainted_no_backup"
 
 class BattleEngine:
 	def __init__(self, battle_type: str = "single"):
@@ -683,6 +693,80 @@ class BattleEngine:
 			return -7
 		
 		return base_priority
+	
+	async def execute_battle_turn(
+		self,
+		player_move_id: str,
+		enemy_move_id: str,
+		player: BattlePokemon,
+		enemy: BattlePokemon
+	) -> None:
+		player_move_data = await self._fetch_move(player_move_id)
+		
+		if enemy_move_id != "__struggle__":
+			enemy_move_data = await self._fetch_move(enemy_move_id)
+		else:
+			enemy_move_data = MoveData(
+				"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
+			)
+		
+		turn_order = self._determine_turn_order(player_move_data, player, enemy_move_data, enemy)
+		
+		for side in turn_order:
+			if side == "first":
+				if player.fainted:
+					continue
+				
+				self.lines.extend(
+					await self._execute_turn_action(True, player_move_id, player_move_data, player, enemy)
+				)
+			else:
+				if enemy.fainted:
+					continue
+				
+				if self.lines:
+					self.lines.append("")
+				
+				self.lines.extend(
+					await self._execute_turn_action(False, enemy_move_id, enemy_move_data, enemy, player)
+				)
+		
+		end_turn_effects = StatusHandler.end_of_turn_effects(player, enemy)
+		if end_turn_effects:
+			self.lines.append("")
+			self.lines.extend(end_turn_effects)
+		
+		self.lines.append("")
+		await self._process_end_of_turn([player, enemy])
+		await self._process_weather_effects([player, enemy])
+		await self._process_field_effects()
+	
+	async def execute_enemy_turn(
+		self,
+		enemy_move_id: str,
+		enemy: BattlePokemon,
+		player: BattlePokemon
+	) -> None:
+		if enemy_move_id != "__struggle__":
+			enemy_move_data = await self._fetch_move(enemy_move_id)
+		else:
+			enemy_move_data = MoveData(
+				"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
+			)
+		
+		self.lines.extend(
+			await self._execute_turn_action(False, enemy_move_id, enemy_move_data, enemy, player)
+		)
+		
+		end_turn_effects = StatusHandler.end_of_turn_effects(player, enemy)
+		if end_turn_effects:
+			self.lines.append("")
+			self.lines.extend(end_turn_effects)
+		
+		self.lines.append("")
+		await self._process_end_of_turn([player, enemy])
+		await self._process_weather_effects([player, enemy])
+		await self._process_field_effects()
 	
 	async def _process_end_of_turn(self, participants: List[BattlePokemon]) -> None:
 		for pokemon in participants:
