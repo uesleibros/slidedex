@@ -120,7 +120,6 @@ class Bag(commands.Cog):
 		raise error
 
 	@bag_root.command(name="add")
-	@commands.is_owner()
 	async def bag_add(
 		self,
 		ctx: commands.Context,
@@ -829,6 +828,7 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
 	await bot.add_cog(Bag(bot))
+
 
 
 
