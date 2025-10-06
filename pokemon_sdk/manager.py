@@ -768,6 +768,7 @@ class PokemonManager:
 			"is_legendary": is_legendary,
 			"is_mythical": is_mythical,
 			"moves": final_moves,
+			"status": {"name": None, "counter": 0},
 			"happiness": happiness,
 			"growth_type": growth_type,
 			"base_stats": gen["stats"],
@@ -1233,3 +1234,4 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
