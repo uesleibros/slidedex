@@ -77,12 +77,12 @@ def format_pokemon_display(
 		status_name = status.get("name", '')
 		if status_name in STATUS_TAGS:
 			tags.append(STATUS_TAGS[status_name])
-			parts.append(f" [{'/'.join(tags)}]" if tags else "")
+			parts.append(f" {'/'.join(tags)}" if tags else "")
 
 	if show_hp:
 		current_hp = pokemon.get("current_hp")
 		if current_hp == 0:
-			parts.append("<:DEAD:1424144690625777785>")
+			parts.append("<:fntstatus:1424616601801723914>")
 
 	if show_gender:
 		if pokemon["gender"] != "Genderless":
