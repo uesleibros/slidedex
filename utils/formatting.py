@@ -1,6 +1,7 @@
 from utils.pokemon_emojis import get_app_emoji
 from typing import Optional
 from pokemon_sdk.constants import HAPPINESS_MAX, NATURES
+from pokemon_sdk.battle.constants import STATUS_TAGS
 
 def format_nature_info(nature: str) -> str:
 	nature_key = nature.title()
@@ -48,7 +49,7 @@ def format_poke_id(pid: int) -> str:
 def format_pokemon_display(
 	pokemon: dict, bold_name: Optional[bool] = False, show_nick: Optional[bool] = True, 
 	show_gender: Optional[bool] = True, show_poke: Optional[bool] = True, show_fav: Optional[bool] = False,
-	show_hp: Optional[bool] = True
+	show_hp: Optional[bool] = True, show_status: Optional[bool] = True
 ) -> str:
 	parts: list = []
 
@@ -70,6 +71,12 @@ def format_pokemon_display(
 	else:
 		parts.append(name)
 
+	if show_status:
+		status = pokemon.get("status")
+		if status and isinstance(status, dict):
+			if status_name and status_name in STATUS_TAGS:
+				parts.append(STATUS_TAGS[status_name])
+
 	if show_hp:
 		current_hp = pokemon.get("current_hp")
 		if current_hp == 0:
@@ -86,5 +93,6 @@ def format_pokemon_display(
 		parts.append("❤️")
 
 	return " ".join(parts)
+
 
 
