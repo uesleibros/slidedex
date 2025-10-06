@@ -97,4 +97,4 @@ def requires_target_pokemon(item_id: str) -> bool:
     effect = get_item_effect(item_id)
     if not effect:
         return False
-    return effect.type in ["heal", "revive", "status", "pp_restore", "pp_boost", "vitamin", "berry", "evolution"]
+    return effect.type in ["heal", "revive", "status", "pp_restore", "pp_boost", "vitamin", "berry", "evolution", "rare-candy"]
