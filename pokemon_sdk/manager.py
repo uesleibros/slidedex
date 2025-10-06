@@ -4,7 +4,7 @@ import aiopoke
 from typing import List, Optional, Dict
 from datetime import datetime
 import pytz
-from utils.canvad import compose_evolution_async
+from utils.canvas import compose_evolution_async
 from utils.formatting import format_pokemon_display
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
@@ -1239,6 +1239,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
