@@ -8,6 +8,11 @@ CATEGORY_NAMES = {
 	"key_items": "Itens Chave"
 }
 
+EVOLUTION_STONES = [
+	"water-stone", "fire-stone", "thunder-stone", 
+	"leaf-stone", "moon-stone", "sun-stone"
+]
+
 ITEM_EMOJIS = {
 	# Poké Balls
 	"poke-ball": PokeBallSystem.get_ball_emoji("poke-ball"),
@@ -376,5 +381,6 @@ ITEM_EMOJIS = {
 	"tm50": "<:tmfire:1424516746383196182>",
 
 }
+
 
 
