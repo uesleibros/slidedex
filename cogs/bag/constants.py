@@ -155,6 +155,7 @@ ITEM_EMOJIS = {
 	"powder-jar": "<:powderjar:1424507562778165290>",
 	"pokeblock-case": "<:pokeblockcase:1424525322761666690>",
 	"go-goggles": "<:gogoggles:1424525539112259647>",
+	"devon-scope": "<:devonscope:1424563452449390653>",
 
 	# Held Items
 	"leftovers": "<:leftovers:1424485322804170882>",
@@ -365,4 +366,5 @@ ITEM_EMOJIS = {
 	"tm48": "<:tmpsychic:1424517045583609876>",
 	"tm49": "<:tmdark:1424516560327938130>",
 	"tm50": "<:tmfire:1424516746383196182>",
+
 }
