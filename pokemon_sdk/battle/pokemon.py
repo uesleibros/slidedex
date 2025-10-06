@@ -37,7 +37,11 @@ class BattlePokemon:
 		self.species_data = species_data
 		self.is_shiny = raw.get("is_shiny", False)
 		self.stages = {key: 0 for key in ["atk", "def", "sp_atk", "sp_def", "speed", "accuracy", "evasion"]}
-		self.status = {"name": None, "counter": 0}
+		saved_status = raw.get("status")
+		if saved_status and isinstance(saved_status, dict):
+			self.status = {"name": saved_status.get("name"), "counter": saved_status.get("counter", 0)}
+		else:
+			self.status = {"name": None, "counter": 0}
 		self.volatile = self._init_volatile()
 		self.sprites = self._init_sprites()
 		self.types = _types_of(self)
