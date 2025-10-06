@@ -226,7 +226,7 @@ class Toolkit:
 	def has_item(self, user_id: str, item_id: str, quantity: int = 1) -> bool:
 		return self.get_item_quantity(user_id, item_id) >= quantity
 
-	def add_item(self, user_id: str, item_id: str, quantity: int = 1) -> int:
+	def add_item(self, user_id: str, item_id: str, quantity: int = 1, category: str = "items") -> int:
 		with self._lock:
 			self._ensure_user(user_id)
 			
@@ -239,6 +239,7 @@ class Toolkit:
 			self.db["bags"].append({
 				"owner_id": user_id,
 				"item_id": item_id,
+				"category": category,
 				"quantity": int(quantity)
 			})
 			self._save()
@@ -1186,6 +1187,7 @@ class Toolkit:
 			self._save()
 
 			return p["happiness"]
+
 
 
 
