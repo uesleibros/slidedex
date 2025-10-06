@@ -1,5 +1,13 @@
 from pokemon_sdk.battle.pokeballs import PokeBallSystem
 
+CATEGORY_NAMES = {
+	"items": "Itens",
+	"pokeballs": "Poké Balls",
+	"berries": "Berries",
+	"tms_hms": "TMs & HMs",
+	"key_items": "Itens Chave"
+}
+
 ITEM_EMOJIS = {
 	# Poké Balls
 	"poke-ball": PokeBallSystem.get_ball_emoji("poke-ball"),
@@ -368,4 +376,5 @@ ITEM_EMOJIS = {
 	"tm50": "<:tmfire:1424516746383196182>",
 
 }
+
 
