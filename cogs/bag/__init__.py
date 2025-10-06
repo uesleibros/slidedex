@@ -16,18 +16,6 @@ class Bag(commands.Cog):
         self.bot = bot
         self.item_handler = ItemHandler(toolkit, pm)
 
-    def _get_item_category(self, item_id: str) -> str:
-        from pokemon_sdk.constants import BERRIES, POKEBALLS
-        
-        if item_id in BERRIES:
-            return "berries"
-        elif item_id in POKEBALLS:
-            return "pokeballs"
-        elif item_id.startswith("tm") or item_id.startswith("hm"):
-            return "tms_hms"
-        else:
-            return "items"
-
     async def _generate_bag_embed(self, items: list, start: int, end: int, total: int, current_page: int) -> discord.Embed:
         embed = discord.Embed(title="Mochila", color=0x2F3136)
         
@@ -65,19 +53,11 @@ class Bag(commands.Cog):
             await ctx.send("Sua mochila está vazia.")
             return
         
-        all_items = []
-        for item in bag:
-            category = item["item_id"]
-            all_items.append({
-                "item_id": item["item_id"],
-                "quantity": item["quantity"],
-                "category": category
-            })
-        
-        all_items.sort(key=lambda x: (CATEGORY_ORDER.index(x["category"]), x["item_id"]))
+        #all_items = []
+        #all_items.sort(key=lambda x: (CATEGORY_ORDER.index(x["category"]), x["item_id"]))
         
         paginator = Paginator(
-            items=all_items,
+            items=bag,
             user_id=ctx.author.id,
             embed_generator=self._generate_bag_embed,
             page_size=25,
@@ -417,5 +397,6 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Bag(bot))
+
 
 
