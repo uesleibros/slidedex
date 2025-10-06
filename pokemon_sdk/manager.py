@@ -691,7 +691,7 @@ class PokemonManager:
 		if not self.tk.has_item(user_id, stone_id):
 			raise ValueError(f"Você não tem {stone_id}")
 		
-		evolution_data = await self.check_evolution(user_id, pokemon_id, trigger="use-item", stone_id)
+		evolution_data = await self.check_evolution(user_id, pokemon_id, trigger="use-item", item_id=stone_id)
 		
 		if not evolution_data or evolution_data.get("item") != stone_id:
 			pokemon = self.tk.get_pokemon(user_id, pokemon_id)
@@ -1238,6 +1238,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
