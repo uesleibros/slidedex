@@ -238,7 +238,7 @@ class BattleEngine:
 		if move_id and not is_struggle:
 			pp = user.get_pp(move_id)
 			if pp is not None and pp <= 0:
-				return [f"❌ {user.display_name} não tem PP para {move_data.name}!"]
+				return [f"{user.display_name} não tem PP para {move_data.name}!"]
 			user.dec_pp(move_id)
 			user.volatile["last_move_used"] = move_id
 			user.volatile["last_move_type"] = move_data.type_name.lower()
@@ -1015,4 +1015,3 @@ class BattleEngine:
 		
 		if self.field.get("water_sport", 0) > 0:
 			self.field["water_sport"] -= 1
-
