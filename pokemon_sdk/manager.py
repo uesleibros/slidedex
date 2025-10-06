@@ -7,7 +7,8 @@ import pytz
 from utils.formatting import format_pokemon_display
 from .services import PokeAPIService
 from .calculations import generate_pokemon_data, calculate_stats, iv_percent
-from .constants import NATURES, REGIONS_GENERATION, BERRIES, EVOLUTION_STONES, VERSION_GROUPS
+from .constants import NATURES, REGIONS_GENERATION, VERSION_GROUPS
+from cogs.bag.constants import EVOLUTION_STONES
 from helpers.growth import GrowthRate
 
 class EvolutionChoiceView(discord.ui.View):
@@ -1238,6 +1239,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
