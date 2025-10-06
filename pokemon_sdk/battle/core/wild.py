@@ -231,6 +231,8 @@ class WildBattle(BattleEngine):
 				pokemon.status.get("name"), 
 				pokemon.status.get("counter", 0)
 			)
+
+			self.player_party_raw[idx]["status"] = pokemon.status
 			
 			current_pokemon = pm.tk.get_pokemon(self.user_id, pokemon_id)
 			for battle_move in pokemon.moves:
@@ -239,6 +241,11 @@ class WildBattle(BattleEngine):
 						db_move["pp"] = battle_move["pp"]
 			
 			pm.tk.set_moves(self.user_id, pokemon_id, current_pokemon["moves"])
+		
+		if self.wild:
+			self.wild_raw["current_hp"] = self.wild.current_hp
+			self.wild_raw["status"] = self.wild.status
+			self.wild_raw["moves"] = [dict(m) for m in self.wild.moves]
 	
 	async def refresh(self) -> None:
 		if not self.message:
@@ -649,4 +656,5 @@ class WildBattleView(discord.ui.View):
 		
 		await interaction.response.defer()
 		await self.battle.attempt_run()
+
 
