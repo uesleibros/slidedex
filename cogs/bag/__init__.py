@@ -216,7 +216,6 @@ class Bag(commands.Cog):
                         await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} já está no nível máximo.")
                         return
                     await pm.use_rare_candy(uid, pokemon_id, ctx.message)
-                
                 else:
                     await ctx.send("Este item ainda não foi implementado.")
                     
@@ -229,8 +228,8 @@ class Bag(commands.Cog):
             await ctx.send(f"**{item_name}** usado!\nSistema de Repel ainda não implementado.")
 
     async def _use_in_battle(self, ctx: commands.Context, battle, item_id: str, party_pos: Optional[int]) -> None:
-        from pokemon_sdk.battle.pokeballs import PokeBallSystem
-        from pokemon_sdk.constants import POKEBALLS
+        from pokemon_sdk.battle.pokeballs import PokeBallSystem, BallType
+        POKEBALLS = {v for v in BallType.__dict__.values() if isinstance(v, str)}
         
         uid = str(ctx.author.id)
         effect = get_item_effect(item_id)
@@ -393,6 +392,7 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Bag(bot))
+
 
 
 
