@@ -211,7 +211,7 @@ class Bag(commands.Cog):
                         f"{format_pokemon_display(result['evolved'], bold_name=True, show_gender=False)}!"
                     )
                 
-                elif item_id == "rare-candy":
+                elif effect.type == "rare-candy":
                     if pokemon.get("level", 1) >= 100:
                         await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} já está no nível máximo.")
                         return
@@ -393,6 +393,7 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Bag(bot))
+
 
 
 
