@@ -62,7 +62,7 @@ class BattleEngine:
 		hp_percent = (pokemon.current_hp / pokemon.stats["hp"] * 100) if pokemon.stats["hp"] > 0 else 0
 		base_display = (
 			f"{format_pokemon_display(pokemon.raw, bold_name=True)} "
-			f"{pokemon.status_tag()} Lv{pokemon.level}\n"
+			f"Lv{pokemon.level}\n"
 			f"{bar} {max(0, pokemon.current_hp)}/{pokemon.stats['hp']} ({hp_percent:.1f}%)"
 		)
 
@@ -1015,3 +1015,4 @@ class BattleEngine:
 		
 		if self.field.get("water_sport", 0) > 0:
 			self.field["water_sport"] -= 1
+
