@@ -77,7 +77,7 @@ def format_pokemon_display(
 		status_name = status.get("name", '')
 		if status_name in STATUS_TAGS:
 			tags.append(STATUS_TAGS[status_name])
-			parts.append(f" {'/'.join(tags)}" if tags else "")
+			parts.append(f"{'/'.join(tags)}" if tags else "")
 
 	if show_hp:
 		current_hp = pokemon.get("current_hp")
@@ -95,3 +95,4 @@ def format_pokemon_display(
 		parts.append("❤️")
 
 	return " ".join(parts)
+
