@@ -419,7 +419,7 @@ class PokemonManager:
 					break
 			
 			if not is_gen3_or_earlier:
-				raise ValueError(f"Item '{item_id}' não está disponível na Gen 3")
+				raise ValueError(f"Item `{item_id}` não está disponível na Gen 3")
 		
 		new_quantity = self.tk.add_item(user_id, item_id, quantity)
 		
@@ -429,6 +429,7 @@ class PokemonManager:
 			"item_id": item_id,
 			"name": item_name,
 			"quantity": new_quantity,
+			"category": self.get_item_category(item_id),
 			"added": quantity
 		}
 
@@ -1238,6 +1239,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
