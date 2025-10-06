@@ -94,7 +94,7 @@ class Toolkit:
 			self._reindex()
 
 	def clear(self) -> None:
-		self.db = {"users": {}, "pokemon": [], "bags": []}
+		self.db = {"users": {}, "pokemon": [], "bags": [], "custom_messages": {}}
 		self._save()
 
 	def _reindex(self) -> None:
@@ -1187,6 +1187,7 @@ class Toolkit:
 			self._save()
 
 			return p["happiness"]
+
 
 
 
