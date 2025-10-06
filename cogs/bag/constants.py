@@ -108,7 +108,7 @@ ITEM_EMOJIS = {
 	"devon-parts": "<:devonparts:1424512364199411745>",
 	"basement-key": "<:basementkey:1424512723609325570>",
 	"poke-flute": "<:pokeflute:1424513239588274296>",
-	"parcel": "<:parcel:1424521411761930351>",
+	"oaks-parcel": "<:oaksparcel:1424631876961697803>",
 	"bike-voucher": "<:bikevoucher:1424521731376287829>",
 	"gold-teeth": "<:goldteeth:1424521855745921065>",
 	"card-key": "<:cardkey:1424522004509364346>",
@@ -368,3 +368,4 @@ ITEM_EMOJIS = {
 	"tm50": "<:tmfire:1424516746383196182>",
 
 }
+
