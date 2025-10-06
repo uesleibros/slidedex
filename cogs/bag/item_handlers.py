@@ -160,7 +160,7 @@ class ItemHandler:
         }
     
     async def use_evolution_stone(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Optional[Dict]:
-        evolution_data = await self.pm.check_evolution(uid, pokemon_id, trigger="use-item")
+        evolution_data = await self.pm.check_evolution(uid, pokemon_id, trigger="use-item", item_id=item_id)
         
         if not evolution_data or evolution_data.get("item") != item_id:
             raise ValueError("Pokémon não pode evoluir com este item")
