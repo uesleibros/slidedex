@@ -250,9 +250,9 @@ class WildBattle(BattleEngine):
 	async def refresh(self) -> None:
 		if not self.message:
 			return
-		
-		embed = self._build_embed()
+
 		await self._save_battle_state()
+		embed = self._build_embed()
 		
 		if self.must_redraw_image:
 			file = await self._compose_image()
@@ -390,7 +390,7 @@ class WildBattle(BattleEngine):
 				await self.cleanup()
 				return True
 			else:
-				self.lines = ["❌ Não conseguiu fugir!", ""]
+				self.lines = ["Não conseguiu fugir!", ""]
 				
 				enemy_move_id = self._select_ai_move(self.wild)
 				await self.execute_enemy_turn(enemy_move_id, self.wild, self.player_active)
@@ -656,5 +656,3 @@ class WildBattleView(discord.ui.View):
 		
 		await interaction.response.defer()
 		await self.battle.attempt_run()
-
-
