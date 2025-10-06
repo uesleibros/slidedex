@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, Literal, Callable
+from pokemon_sdk.constants import EVOLUTION_STONES
 
 @dataclass
 class ItemEffect:
