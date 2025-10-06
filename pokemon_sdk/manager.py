@@ -716,6 +716,7 @@ class PokemonManager:
 		shiny: Optional[bool] = None,
 		held_item: Optional[str] = None,
 		nickname: Optional[str] = None,
+		status: Optional[dict] = {"name": None, "counter" : 0},
 		owner_id: str = "wild",
 		on_party: bool = False
 	) -> Dict:
@@ -768,7 +769,7 @@ class PokemonManager:
 			"is_legendary": is_legendary,
 			"is_mythical": is_mythical,
 			"moves": final_moves,
-			"status": {"name": None, "counter": 0},
+			"status": status,
 			"happiness": happiness,
 			"growth_type": growth_type,
 			"base_stats": gen["stats"],
@@ -808,6 +809,7 @@ class PokemonManager:
 			shiny=pkmn["is_shiny"],
 			level=pkmn["level"],
 			moves=pkmn["moves"],
+			status=pkmn["status"],
 			is_legendary=pkmn["is_legendary"],
 			is_mythical=pkmn["is_mythical"],
 			types=pkmn["types"],
@@ -1234,4 +1236,5 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
