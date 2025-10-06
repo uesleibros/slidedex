@@ -5,7 +5,7 @@ from pokemon_sdk.constants import EVOLUTION_STONES
 @dataclass
 class ItemEffect:
     type: Literal["heal", "revive", "status", "pp_restore", "pp_boost", "vitamin", 
-                  "berry", "evolution", "battle_boost", "escape", "repel"]
+                  "berry", "evolution", "battle_boost", "escape", "repel", "rare-candy"]
     amount: Optional[int] = None
     percent: Optional[float] = None
     stat: Optional[str] = None
