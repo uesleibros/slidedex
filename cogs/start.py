@@ -5,7 +5,7 @@ from discord.ext import commands
 from pokemon_sdk.constants import NATURES, STAT_KEYS
 from pokemon_sdk.calculations import generate_pokemon_data, calculate_stats
 
-STARTERS = {"bulbasaur": 1, "charmander": 4, "squirtle": 7, "pikachu": 25}
+STARTERS = {"bulbasaur": 1, "charmander": 4, "squirtle": 7, "pikachu": 25, "eevee": 133}
 
 def norm_trainer_gender(g: str) -> str:
 	s = (g or "").strip().lower()
@@ -97,4 +97,5 @@ class Start(commands.Cog):
 		await ctx.send(f"{ctx.author.mention}, escolha seu inicial:", view=view)
 
 async def setup(bot: commands.Bot):
+
 	await bot.add_cog(Start(bot))
