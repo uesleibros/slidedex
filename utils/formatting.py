@@ -74,10 +74,9 @@ def format_pokemon_display(
 	if show_status:
 		tags = []
 		status = pokemon.get("status")
-		if status and isinstance(status, dict):
-			status_name = status.get("name")
-			if status_name and status_name in STATUS_TAGS:
-				tags.append(STATUS_TAGS[status_name])
+		status_name = status.get("name", '')
+		if sstatus_name in STATUS_TAGS:
+			tags.append(STATUS_TAGS[status_name])
 		parts.append(f" [{'/'.join(tags)}]" if tags else "")
 
 	if show_hp:
@@ -96,6 +95,7 @@ def format_pokemon_display(
 		parts.append("❤️")
 
 	return " ".join(parts)
+
 
 
 
