@@ -87,21 +87,6 @@ class Bag(commands.Cog):
         embed = await paginator.get_embed()
         await ctx.send(embed=embed, view=paginator)
 
-    @bag_root.error
-    async def bag_root_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
-        if isinstance(error, ArgumentParsingError):
-            await ctx.send(f"Erro nos argumentos: {str(error)}\n-# Use `.help {ctx.command.qualified_name}` para ver o uso correto.")
-            return
-        
-        if isinstance(error, commands.CommandNotFound):
-            return
-        
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"Argumento obrigatório faltando: `{error.param.name}`\n-# Use `.help {ctx.command.qualified_name}` para ver o uso correto.")
-            return
-        
-        raise error
-
     @bag_root.command(name="add")
     async def bag_add(self, ctx: commands.Context, item_id: str, quantity: int = 1) -> None:
         uid = str(ctx.author.id)
@@ -432,3 +417,4 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Bag(bot))
+
