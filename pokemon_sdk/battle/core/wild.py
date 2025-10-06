@@ -225,6 +225,12 @@ class WildBattle(BattleEngine):
 		for idx, pokemon in enumerate(self.player_team):
 			pokemon_id = self.player_party_raw[idx]["id"]
 			pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
+			pm.tk.set_status(
+				self.user_id, 
+				pokemon_id, 
+				pokemon.status.get("name"), 
+				pokemon.status.get("counter", 0)
+			)
 			
 			current_pokemon = pm.tk.get_pokemon(self.user_id, pokemon_id)
 			for battle_move in pokemon.moves:
@@ -643,3 +649,4 @@ class WildBattleView(discord.ui.View):
 		
 		await interaction.response.defer()
 		await self.battle.attempt_run()
+
