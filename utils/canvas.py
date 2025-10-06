@@ -183,6 +183,107 @@ def _compose_profile(
     finally:
         composed.close()
 
+def _compose_evolution(
+    sprite_from_bytes: bytes,
+    sprite_to_bytes: bytes,
+    canvas_size: Tuple[int, int] = (400, 400),
+    scale_factor: float = 3.0,
+) -> io.BytesIO:
+    sprite_from_raw = Image.open(io.BytesIO(sprite_from_bytes)).convert("RGBA")
+    sprite_to_raw = Image.open(io.BytesIO(sprite_to_bytes)).convert("RGBA")
+    
+    try:
+        sprite_from = sprite_from_raw.resize(
+            (int(sprite_from_raw.width * scale_factor), int(sprite_from_raw.height * scale_factor)),
+            Image.Resampling.NEAREST
+        )
+        sprite_to = sprite_to_raw.resize(
+            (int(sprite_to_raw.width * scale_factor), int(sprite_to_raw.height * scale_factor)),
+            Image.Resampling.NEAREST
+        )
+        
+        def create_canvas_with_sprite(sprite: Image.Image) -> Image.Image:
+            canvas = Image.new('RGB', canvas_size, (0, 0, 0))
+            sprite_rgb = Image.new('RGB', sprite.size, (0, 0, 0))
+            sprite_rgb.paste(sprite, (0, 0), sprite)
+            x = (canvas_size[0] - sprite.width) // 2
+            y = (canvas_size[1] - sprite.height) // 2
+            canvas.paste(sprite_rgb, (x, y))
+            return canvas
+        
+        def colorize_sprite(sprite: Image.Image, color: Tuple[int, int, int]) -> Image.Image:
+            colorized = Image.new('RGBA', sprite.size, (0, 0, 0, 0))
+            pixels_orig = sprite.load()
+            pixels_new = colorized.load()
+            for y in range(sprite.height):
+                for x in range(sprite.width):
+                    r, g, b, a = pixels_orig[x, y]
+                    if a > 10:
+                        pixels_new[x, y] = (*color, a)
+                    else:
+                        pixels_new[x, y] = (0, 0, 0, 0)
+            return colorized
+        
+        frames = []
+        durations = []
+        
+        canvas_from = create_canvas_with_sprite(sprite_from)
+        white_sprite_from = colorize_sprite(sprite_from, (255, 255, 255))
+        white_canvas_from = create_canvas_with_sprite(white_sprite_from)
+        
+        for _ in range(5):
+            frames.append(canvas_from.copy())
+            durations.append(100)
+            frames.append(white_canvas_from.copy())
+            durations.append(100)
+        
+        white_sprite_to = colorize_sprite(sprite_to, (255, 255, 255))
+        white_canvas_to = create_canvas_with_sprite(white_sprite_to)
+        
+        for _ in range(22):
+            frames.append(white_canvas_from.copy())
+            durations.append(50)
+            frames.append(white_canvas_to.copy())
+            durations.append(50)
+        
+        canvas_to = create_canvas_with_sprite(sprite_to)
+        
+        for i in range(12):
+            frame = Image.new('RGB', canvas_size, (0, 0, 0))
+            frame.paste(canvas_to, (0, 0))
+            intensity = int(255 * (1.0 - (i / 11.0)))
+            blend = Image.blend(
+                frame, 
+                Image.new('RGB', canvas_size, (255, 255, 255)), 
+                intensity / 255.0
+            )
+            frames.append(blend)
+            durations.append(60)
+        
+        frames.append(canvas_to.copy())
+        durations.append(2500)
+        
+        buf = io.BytesIO()
+        frames[0].save(
+            buf,
+            format="GIF",
+            save_all=True,
+            append_images=frames[1:],
+            duration=durations,
+            loop=0,
+            optimize=False,
+            disposal=2
+        )
+        buf.seek(0)
+        return buf
+        
+    finally:
+        sprite_from_raw.close()
+        sprite_to_raw.close()
+
+async def compose_evolution_async(*args, **kwargs) -> io.BytesIO:
+    return await asyncio.to_thread(_compose_evolution, *args, **kwargs)
+
 async def compose_pokemon_async(*args, **kwargs) -> io.BytesIO:
     return await asyncio.to_thread(_compose_pokemon, *args, **kwargs)
 
@@ -191,11 +292,3 @@ async def compose_battle_async(*args, **kwargs) -> io.BytesIO:
 
 async def compose_profile_async(*args, **kwargs) -> io.BytesIO:
     return await asyncio.to_thread(_compose_profile, *args, **kwargs)
-
-
-
-
-
-
-
-
