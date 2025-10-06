@@ -324,7 +324,7 @@ class PokemonManager:
 		if not item:
 			return "items"
 		
-		if item.name in BERRIES or item.name.endswith("-berry"):
+		if item.name.endswith("-berry"):
 			return "berries"
 		
 		category_name = item.category.name.lower()
@@ -1238,6 +1238,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
