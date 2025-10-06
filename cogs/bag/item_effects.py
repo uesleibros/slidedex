@@ -1,9 +1,5 @@
 from dataclasses import dataclass
 from typing import Optional, Literal, Callable
-from pokemon_sdk.constants import (
-    HEALING_ITEMS, REVIVE_ITEMS, VITAMINS, PP_RECOVERY, 
-    PP_BOOST, EVOLUTION_STONES, BERRIES, POKEBALLS
-)
 
 @dataclass
 class ItemEffect:
