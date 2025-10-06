@@ -27,6 +27,7 @@ ITEM_EFFECTS = {
     "energy-powder": ItemEffect(type="heal", amount=50),
     "energy-root": ItemEffect(type="heal", amount=200),
     "berry-juice": ItemEffect(type="heal", amount=20),
+    "rare-candy": ItemEffect(type="rare-candy"),
     
     "revive": ItemEffect(type="revive", percent=0.5),
     "max-revive": ItemEffect(type="revive", percent=1.0),
