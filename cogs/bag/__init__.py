@@ -5,8 +5,7 @@ from helpers.flags import flags, ArgumentParsingError
 from helpers.paginator import Paginator
 from helpers.checks import requires_account
 from utils.formatting import format_pokemon_display
-from pokemon_sdk.constants import CATEGORY_NAMES, CATEGORY_ORDER
-from .constants import ITEM_EMOJIS
+from .constants import ITEM_EMOJIS, CATEGORY_NAMES
 from .item_effects import get_item_effect, requires_target_pokemon, is_consumable
 from .item_handlers import ItemHandler
 from __main__ import toolkit, pm, battle_tracker
@@ -394,6 +393,7 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Bag(bot))
+
 
 
 
