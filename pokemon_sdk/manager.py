@@ -72,14 +72,25 @@ class EvolutionChoiceView(discord.ui.View):
 		)
 		
 		try:
+			old_pokemon_obj = await self.manager.service.get_pokemon(self.current_pokemon["species_id"])
+			new_pokemon_obj = await self.manager.service.get_pokemon(self.evolution_species_id)
+			old_sprite_bytes = await old_pokemon_obj.sprites.front_default.read()
+			new_sprite_bytes = await new_pokemon_obj.sprites.front_default.read()
+			
 			result = await self.manager.evolve_pokemon(
 				self.owner_id,
 				self.pokemon_id,
 				self.evolution_species_id
 			)
+
+			gif_buffer = await compose_evolution_async(
+				old_sprite_bytes,
+				new_sprite_bytes
+			)
 			
 			await interaction.edit_original_response(
-				content=f"<@{self.owner_id}> <:emojigg_Cap:1424197927496060969> {format_pokemon_display(self.current_pokemon, bold_name=True, show_gender=False)} evoluiu para {format_pokemon_display(result, bold_name=True, show_gender=False)}!"
+				content=f"<@{self.owner_id}> <:emojigg_Cap:1424197927496060969> {format_pokemon_display(self.current_pokemon, bold_name=True, show_gender=False)} evoluiu para {format_pokemon_display(result, bold_name=True, show_gender=False)}!",
+				attachments=[discord.File(gif_buffer, filename="evolution.gif")]
 			)
 		except Exception as e:
 			await interaction.edit_original_response(
@@ -1239,6 +1250,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
