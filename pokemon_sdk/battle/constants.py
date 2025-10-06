@@ -49,12 +49,12 @@ STAT_NAMES = {
 }
 
 STATUS_TAGS = {
-	"burn": "<:brn_status:1422760909830619156>",
-	"poison": "<:psn_status:1422760971310469215>",
-	"paralysis": "<:prz_status:1422761122813182006>",
-	"sleep": "<:slp_status:1422761029951029300>",
-	"freeze": "<:frz_status:1422761075744440372>",
-	"toxic": "<:psn_status:1422760971310469215>"
+	"burn": "<:brnstatus:1424614707884457994>",
+	"poison": "<:psnstatus:1424615771987902496>",
+	"paralysis": "<:przstatus:1424614450614505492>",
+	"sleep": "<:slpstatus:1424614954325246072>",
+	"freeze": "<:frzstatus:1424615357473230944>",
+	"toxic": "<:psnstatus:1424615771987902496>"
 }
 
 STATUS_MESSAGES = {
