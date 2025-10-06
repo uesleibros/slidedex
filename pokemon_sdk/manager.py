@@ -691,7 +691,7 @@ class PokemonManager:
 		if not self.tk.has_item(user_id, stone_id):
 			raise ValueError(f"Você não tem {stone_id}")
 		
-		evolution_data = await self.check_evolution(user_id, pokemon_id, trigger="use-item")
+		evolution_data = await self.check_evolution(user_id, pokemon_id, trigger="use-item", stone_id)
 		
 		if not evolution_data or evolution_data.get("item") != stone_id:
 			pokemon = self.tk.get_pokemon(user_id, pokemon_id)
@@ -830,7 +830,7 @@ class PokemonManager:
 
 		return created
 	
-	async def check_evolution(self, owner_id: str, pokemon_id: int, trigger: str = "level-up") -> Optional[Dict]:
+	async def check_evolution(self, owner_id: str, pokemon_id: int, trigger: str = "level-up", item_id: Optional[str] = None) -> Optional[Dict]:
 		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 		
 		if self.tk.is_evolution_blocked(owner_id, pokemon_id):
@@ -894,6 +894,8 @@ class PokemonManager:
 				
 				elif trigger == "use-item":
 					if not detail.item:
+						continue
+					if item_id and detail.item.name != item_id:
 						continue
 				
 				elif trigger == "trade":
@@ -1236,5 +1238,6 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
