@@ -490,6 +490,7 @@ class Toolkit:
 				"is_favorite": False,
 				"caught_at": datetime.utcnow().isoformat(),
 				"moves": [],
+				"status": {"name": None, "counter": 0},
 				"current_hp": current_hp if current_hp is None else int(current_hp),
 				"on_party": final_on_party
 			}
@@ -1170,4 +1171,5 @@ class Toolkit:
 			loss = self._get_happiness_loss_revival_herb(current)
 			p["happiness"] = self._clamp_happiness(current - loss)
 			self._save()
+
 			return p["happiness"]
