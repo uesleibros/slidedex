@@ -503,7 +503,7 @@ class Toolkit:
 				"is_favorite": False,
 				"caught_at": datetime.utcnow().isoformat(),
 				"moves": [],
-				"status": {"name": None, "counter": 0},
+				"status": status,
 				"current_hp": current_hp if current_hp is None else int(current_hp),
 				"on_party": final_on_party
 			}
@@ -1186,5 +1186,6 @@ class Toolkit:
 			self._save()
 
 			return p["happiness"]
+
 
 
