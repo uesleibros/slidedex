@@ -67,7 +67,7 @@ class Bag(commands.Cog):
         
         all_items = []
         for item in bag:
-            category = self._get_item_category(item["item_id"])
+            category = item["item_id"]
             all_items.append({
                 "item_id": item["item_id"],
                 "quantity": item["quantity"],
@@ -417,4 +417,5 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Bag(bot))
+
 
