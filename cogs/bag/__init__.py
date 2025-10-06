@@ -52,19 +52,9 @@ class Bag(commands.Cog):
         if not bag:
             await ctx.send("Sua mochila está vazia.")
             return
-        
-        all_items = []
-        for item in bag:
-            category = item["item_id"]
-            all_items.append({
-                "item_id": item["item_id"],
-                "quantity": item["quantity"],
-                "category": category
-            })
-        all_items.sort(key=lambda x: (CATEGORY_ORDER.index(x["category"]), x["item_id"]))
-        
+                
         paginator = Paginator(
-            items=all_items,
+            items=bag,
             user_id=ctx.author.id,
             embed_generator=self._generate_bag_embed,
             page_size=25,
@@ -404,6 +394,7 @@ class Bag(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Bag(bot))
+
 
 
 
