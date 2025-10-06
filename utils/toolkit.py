@@ -378,6 +378,19 @@ class Toolkit:
 					result.append(self._deepcopy(p))
 			return result
 
+	def set_status(self, owner_id: str, pokemon_id: int, status_name: Optional[str], counter: int = 0) -> Dict:
+	    with self._lock:
+	        idx = self._get_pokemon_index(owner_id, pokemon_id)
+	        self.db["pokemon"][idx]["status"] = {
+	            "name": status_name,
+	            "counter": int(counter)
+	        }
+	        self._save()
+	        return self._deepcopy(self.db["pokemon"][idx])
+	
+	def clear_pokemon_status(self, owner_id: str, pokemon_id: int) -> Dict:
+	    return self.set_status(owner_id, pokemon_id, None, 0)
+	
 	def get_user_party(self, user_id: str) -> List[Dict]:
 		with self._lock:
 			self._ensure_user(user_id)
@@ -1173,3 +1186,4 @@ class Toolkit:
 			self._save()
 
 			return p["happiness"]
+
