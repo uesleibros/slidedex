@@ -76,6 +76,11 @@ STAT_LABELS = {
 	"speed": "Velocidade",
 }
 
+EVOLUTION_STONES = [
+	"water-stone", "fire-stone", "thunder-stone", 
+	"leaf-stone", "moon-stone", "sun-stone"
+]
+
 VERSION_GROUPS = ("firered-leafgreen", "emerald", "ruby-sapphire")
 STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 
