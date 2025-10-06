@@ -893,6 +893,7 @@ class PokemonManager:
 						continue
 				
 				elif trigger == "use-item":
+					print(f"DEBUG: Comparando {detail.item.name} com {item_id}")
 					if not detail.item:
 						continue
 					if item_id and detail.item.name != item_id:
@@ -1238,6 +1239,7 @@ class PokemonManager:
 
 	async def close(self):
 		await self.service.close()
+
 
 
 
