@@ -27,6 +27,20 @@ def format_nature_info(nature: str) -> str:
 	
 	return f"{nature_key} (+10% {inc}, -10% {dec})"
 
+def format_item_display(item_id: Optional[str], bold_name: Optional[bool] = False) -> str:
+	from cogs.bag.constants import ITEM_EMOJIS
+
+	if not item_id:
+		return "Nenhum item"
+
+	emoji = ITEM_EMOJIS.get(item_id, "📦")
+	name = item_id.replace('-', ' ').title()
+
+	if bold_name:
+		return f"{emoji} **{name}**"
+	else:
+		return f"{emoji} {name}"
+
 def format_happiness_status(happiness: int) -> str:
 	current_friendship = happiness
 	percent = int((current_friendship / HAPPINESS_MAX) * 100)
@@ -49,7 +63,7 @@ def format_poke_id(pid: int) -> str:
 def format_pokemon_display(
 	pokemon: dict, bold_name: Optional[bool] = False, show_nick: Optional[bool] = True, 
 	show_gender: Optional[bool] = True, show_poke: Optional[bool] = True, show_fav: Optional[bool] = False,
-	show_hp: Optional[bool] = True, show_status: Optional[bool] = True
+	show_hp: Optional[bool] = True, show_status: Optional[bool] = True, show_item: Optional[bool] = True
 ) -> str:
 	parts: list = []
 
@@ -91,8 +105,11 @@ def format_pokemon_display(
 			gender = "<:keroppiquestion2:1424099265797689395>"
 		parts.append(gender)
 
+	if show_item and pokemon.get("held_item"):
+		from cogs.bag.constants import ITEM_EMOJIS
+		parts.append(ITEM_EMOJIS.get(pokemon["held_item"]))
+
 	if show_fav and pokemon["is_favorite"]:
 		parts.append("❤️")
 
 	return " ".join(parts)
-

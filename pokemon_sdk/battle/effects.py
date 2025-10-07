@@ -147,9 +147,7 @@ class EffectHandler:
 		}
 		
 		stat = stat_map.get(stat, stat)
-		
 		was_protected_by_mist = target.volatile.get("mist", 0) > 0 and stages < 0 and target != user
-		
 		actual_change, old_value = target.modify_stat_stage(stat, stages)
 		
 		if actual_change == 0:
@@ -171,10 +169,7 @@ class EffectHandler:
 		if target.volatile.get("confuse", 0) > 0:
 			return None
 		
-		target.volatile["confuse"] = random.randint(
-			BattleConstants.CONFUSION_MIN_TURNS, 
-			BattleConstants.CONFUSION_MAX_TURNS
-		)
+		target.volatile["confuse"] = random.randint(BattleConstants.CONFUSION_MIN_TURNS, BattleConstants.CONFUSION_MAX_TURNS)
 		return BattleMessages.confused(target.display_name)
 	
 	def _handle_flinch(self, user: BattlePokemon, target: BattlePokemon, effect: Dict[str, Any], damage: int, move_data: Optional[MoveData] = None) -> None:

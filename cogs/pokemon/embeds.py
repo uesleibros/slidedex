@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime
 from pokemon_sdk.calculations import calculate_stats, iv_percent
 from pokemon_sdk.constants import STAT_KEYS, STAT_LABELS
-from utils.formatting import format_poke_id, format_pokemon_display, format_happiness_status, format_nature_info
+from utils.formatting import format_poke_id, format_pokemon_display, format_happiness_status, format_nature_info, format_item_display
 from utils.canvas import compose_pokemon_async
 from utils.preloaded import preloaded_info_backgrounds
 from __main__ import toolkit, pm
@@ -85,7 +85,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 		f"🧬 **Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
 		f":rock: **Tipos:** {' / '.join(t.title() for t in user_pokemon['types'])}",
 		f"<:research_encounter:1424202205757444096> **Região:** {user_pokemon['region'].replace('-', ' ').title()}",
-		f":empty_nest: **Item Segurado:** {str(user_pokemon.get('held_item') or 'Nenhum').replace('-', ' ').title()}"
+		f":empty_nest: **Item Segurado:** {format_item_display(user_pokemon.get('held_item'))}"
 	]
 
 	stats_lines = [f"<:stats:1424204552910929920> **IV Total:** {iv_total}/186 ({iv_percent_val}%)"]

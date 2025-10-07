@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional, Tuple
 from .pokemon import BattlePokemon
+from utils.formatting import format_pokemon_display
 
 class BattleRewards:
 	
@@ -112,33 +113,15 @@ class BattleRewards:
 			return lines
 		
 		if len(distribution) > 1:
-			lines.append(f"<:CometShard:1424200074463805551> **XP Distribuído** ({len(distribution)} participantes):")
+			lines.append(f"**EXP Distribuído** ({len(distribution)} participantes):")
 		else:
-			lines.append("<:CometShard:1424200074463805551> **XP Ganho:**")
+			lines.append("**EXP Ganho:**")
 		
-		for index, pokemon_name, experience in distribution:
-			lines.append(f"  • {pokemon_name} +{experience} XP")
+		for index, pokemon, experience in distribution:
+			lines.append(f"  • {format_pokemon_display(pokemon.raw, bold_name=False, show_gender=False, show_item=False, show_fav=False, show_status=False)} +{experience} XP")
 		
 		if max_level_count > 0:
 			lines.append("")
 			lines.append(f"ℹ️ {max_level_count} Pokémon no nível máximo (não ganhou XP)")
-		
-		return lines
-	
-	@staticmethod
-	def format_ev_gains(
-		distribution: List[Tuple[int, str, Dict[str, int]]]
-	) -> List[str]:
-		lines = []
-		
-		if not distribution:
-			return lines
-		
-		lines.append("💪 **EVs Ganhos:**")
-		
-		for _, pokemon_name, evs in distribution:
-			ev_parts = [f"{stat.upper()}: +{value}" for stat, value in evs.items() if value > 0]
-			if ev_parts:
-				lines.append(f"  • {pokemon_name} [{', '.join(ev_parts)}]")
 		
 		return lines

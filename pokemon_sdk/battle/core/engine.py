@@ -44,6 +44,7 @@ class BattleEngine:
 		self.damage_calculator = DamageCalculator(self.weather)
 		self.effect_handler = EffectHandler()
 		self.battle_context = BattleContext(battle_type=battle_type)
+		self.future_attacks = []
 	
 	def _find_first_available_pokemon(self, team: List[BattlePokemon]) -> Optional[int]:
 		for idx, pokemon in enumerate(team):
@@ -186,6 +187,11 @@ class BattleEngine:
 		return self.effect_cache.get(_slug(move_id), {})
 	
 	def _check_move_restrictions(self, user: BattlePokemon, move_id: str, move_data: MoveData) -> Optional[str]:
+		if user.volatile.get("rampage_turns", 0) > 0:
+			rampage_move = user.volatile.get("rampage_move")
+			if rampage_move and _slug(rampage_move) != _slug(move_id):
+				return None
+		
 		if user.volatile.get("must_recharge"):
 			user.volatile["must_recharge"] = False
 			return f"⚡ {user.display_name} precisa recarregar!"
@@ -366,6 +372,13 @@ class BattleEngine:
 				final_accuracy = accuracy * stage_multiplier
 				
 				if random.randint(1, 100) > int(final_accuracy):
+					
+					if effect_data.get("crash_on_miss"):
+						for effect in effect_data.get("effects", []):
+							if effect.get("type") == "crash_damage":
+								effect_results = self.effect_handler.apply_effect(user, target, effect, 0, move_data)
+								return [BattleMessages.miss(user.display_name, move_data.name)] + effect_results
+					
 					return [BattleMessages.miss(user.display_name, move_data.name)]
 		
 		if move_data.dmg_class == "status" or move_data.power == 0:
@@ -485,6 +498,14 @@ class BattleEngine:
 			user.volatile["must_recharge"] = True
 		
 		self._update_move_counters(user, move_data, effect_data, did_hit=True)
+		
+		if effect_data.get("rampage"):
+			if not user.volatile.get("rampage_turns", 0):
+				min_turns = effect_data["rampage"].get("min_turns", 2)
+				max_turns = effect_data["rampage"].get("max_turns", 3)
+				turns = random.randint(min_turns, max_turns)
+				user.volatile["rampage_turns"] = turns
+				user.volatile["rampage_move"] = move_data.name
 		
 		for effect in effect_data.get("effects", []):
 			effect_results = self.effect_handler.apply_effect(user, target, effect, total_damage, move_data)
@@ -772,6 +793,15 @@ class BattleEngine:
 		for pokemon in participants:
 			if pokemon.fainted:
 				continue
+			
+			if pokemon.volatile.get("rampage_turns", 0) > 0:
+				pokemon.volatile["rampage_turns"] -= 1
+				if pokemon.volatile["rampage_turns"] <= 0:
+					pokemon.volatile["rampage_move"] = None
+					for effect in [{"type": "confusion", "target": "self", "chance": 100}]:
+						result = self.effect_handler.apply_effect(pokemon, pokemon, effect, 0, None)
+						if result:
+							self.lines.extend(result)
 			
 			pokemon.volatile["follow_me"] = False
 			pokemon.volatile["rage_powder"] = False

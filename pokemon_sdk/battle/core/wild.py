@@ -5,13 +5,13 @@ from typing import List, Dict, Any, Optional, Set, Tuple
 from __main__ import pm, battle_tracker
 from utils.canvas import compose_battle_async
 from utils.preloaded import preloaded_textures
-from utils.formatting import format_pokemon_display
+from utils.formatting import format_pokemon_display, format_item_display
 from ..pokemon import BattlePokemon
-from ..status import StatusHandler
 from ..capture import CaptureSystem
 from ..helpers import SwitchView, MovesView, _slug
 from ..pokeballs import PokeBallSystem, BallType
 from ..rewards import BattleRewards
+from ...constants import VERSION_GROUPS
 from .engine import BattleEngine, BattleState
 
 class WildBattle(BattleEngine):
@@ -32,12 +32,46 @@ class WildBattle(BattleEngine):
 		self.message: Optional[discord.Message] = None
 		self.player_team: List[BattlePokemon] = []
 		self.wild: Optional[BattlePokemon] = None
+		self.wild_api = None
 		self.actions_view: Optional[WildBattleView] = None
 		self.ball_type = BallType.POKE_BALL
 		self.location_type = "normal"
 		self.time_of_day = "day"
 		self.battle_participants: Set[int] = set()
 		self.run_attempts: int = 0
+	
+	async def _generate_wild_held_item(self) -> None:
+		if not self.wild_api or not hasattr(self.wild_api, 'held_items'):
+			return
+		
+		held_items = self.wild_api.held_items
+		if not held_items:
+			return
+		
+		possible_items = []
+		
+		for held_item_data in held_items:
+			item_name = held_item_data.item.name
+			
+			for version_detail in held_item_data.version_details:
+				version_name = version_detail.version.name
+				
+				if version_name in VERSION_GROUPS:
+					rarity = version_detail.rarity
+					possible_items.append((item_name, rarity))
+					break
+		
+		if not possible_items:
+			return
+		
+		for item_id, rarity in possible_items:
+			chance = rarity / 100.0
+			
+			if random.random() < chance:
+				self.wild_raw["held_item"] = item_id
+				return
+		
+		self.wild_raw["held_item"] = None
 	
 	@property
 	def player_active(self) -> BattlePokemon:
@@ -78,7 +112,13 @@ class WildBattle(BattleEngine):
 			pm.service.get_pokemon(self.wild_raw["species_id"]),
 			pm.service.get_species(self.wild_raw["species_id"])
 		)
+		
+		self.wild_api = w_api
+		
+		await self._generate_wild_held_item()
+		
 		self.wild = BattlePokemon(self.wild_raw, w_api, w_spec)
+		self.wild.additional_info = "(Selvagem)"
 		
 		party_coros = []
 		for p in self.player_party_raw:
@@ -89,11 +129,13 @@ class WildBattle(BattleEngine):
 		
 		party_data = await asyncio.gather(*party_coros)
 		for i in range(0, len(party_data), 2):
+			idx = i // 2
 			self.player_team.append(BattlePokemon(
-				self.player_party_raw[i // 2],
+				self.player_party_raw[idx],
 				party_data[i],
 				party_data[i + 1]
 			))
+			self.player_team[idx].additional_info = f"(<@{self.user_id}>)"
 		
 		if not self._validate_party(self.player_team):
 			await self.interaction.followup.send(
@@ -204,10 +246,101 @@ class WildBattle(BattleEngine):
 		
 		return field_status
 	
+	def _process_entry_abilities(self, pokemon: BattlePokemon, is_player: bool) -> List[str]:
+		lines = []
+		ability = pokemon.get_effective_ability()
+		
+		if ability == "intimidate":
+			opponent = self.wild if is_player else self.player_active
+			opponent.modify_stat_stage("atk", -1)
+			lines.append(f"😤 Intimidate de {pokemon.display_name} baixou o ataque de {opponent.display_name}!")
+		
+		elif ability == "drought":
+			self.weather["type"] = "sun"
+			self.weather["turns"] = 5
+			lines.append(f"☀️ Drought de {pokemon.display_name} intensificou o sol!")
+		
+		elif ability == "drizzle":
+			self.weather["type"] = "rain"
+			self.weather["turns"] = 5
+			lines.append(f"🌧️ Drizzle de {pokemon.display_name} começou a chover!")
+		
+		elif ability == "sand_stream":
+			self.weather["type"] = "sandstorm"
+			self.weather["turns"] = 5
+			lines.append(f"🌪️ Sand Stream de {pokemon.display_name} criou uma tempestade de areia!")
+		
+		elif ability == "snow_warning":
+			self.weather["type"] = "hail"
+			self.weather["turns"] = 5
+			lines.append(f"❄️ Snow Warning de {pokemon.display_name} começou a granizar!")
+		
+		elif ability == "download":
+			opponent = self.wild if is_player else self.player_active
+			phys_def = opponent.eff_stat("def")
+			spec_def = opponent.eff_stat("sp_def")
+			
+			if phys_def < spec_def:
+				pokemon.modify_stat_stage("atk", 1)
+				lines.append(f"⬇️ Download de {pokemon.display_name} aumentou Attack!")
+			else:
+				pokemon.modify_stat_stage("sp_atk", 1)
+				lines.append(f"⬇️ Download de {pokemon.display_name} aumentou Sp. Attack!")
+		
+		elif ability == "trace":
+			opponent = self.wild if is_player else self.player_active
+			opponent_ability = opponent.get_effective_ability()
+			
+			untraceable = ["trace", "multitype", "stance_change", "power_construct", "battle_bond", "schooling", "comatose", "shields_down", "disguise", "zen_mode", "flower_gift"]
+			
+			if opponent_ability and opponent_ability not in untraceable:
+				pokemon.volatile["original_ability"] = ability
+				pokemon.ability = opponent_ability
+				pokemon.volatile["traced_ability"] = opponent_ability
+				lines.append(f"✨ Trace de {pokemon.display_name} copiou {opponent_ability} de {opponent.display_name}!")
+		
+		elif ability == "pressure":
+			lines.append(f"💪 {pokemon.display_name} está exercendo Pressure!")
+		
+		elif ability == "mold_breaker":
+			lines.append(f"🔨 {pokemon.display_name} quebra moldes!")
+		
+		elif ability == "teravolt":
+			lines.append(f"⚡ {pokemon.display_name} está irradiando uma aura turbulenta!")
+		
+		elif ability == "turboblaze":
+			lines.append(f"🔥 {pokemon.display_name} está irradiando uma aura ardente!")
+		
+		elif ability == "slow_start":
+			pokemon.volatile["slow_start_turns"] = 5
+			lines.append(f"🐢 {pokemon.display_name} não pode dar tudo de si!")
+		
+		elif ability == "unnerve":
+			opponent = self.wild if is_player else self.player_active
+			opponent.volatile["unnerved"] = True
+			lines.append(f"😰 {opponent.display_name} está nervoso demais para comer Berries!")
+		
+		return lines
+	
 	async def start(self) -> None:
 		self.battle_participants.add(self.active_player_idx)
 		self.actions_view = WildBattleView(self)
-		self.lines = [f"A batalha começou! Vamos lá, {self.player_active.display_name}!"]
+		
+		start_messages = [f"A batalha começou! Vamos lá, {self.player_active.display_name}!"]
+		
+		if self.wild_raw.get("held_item"):
+			item_display = format_item_display(self.wild_raw["held_item"])
+			start_messages.append(f"🎁 {self.wild.display_name} está segurando {item_display}!")
+		
+		self.lines = start_messages
+		
+		entry_ability_messages = self._process_entry_abilities(self.player_active, is_player=True)
+		if entry_ability_messages:
+			self.lines.extend(entry_ability_messages)
+		
+		entry_ability_messages_wild = self._process_entry_abilities(self.wild, is_player=False)
+		if entry_ability_messages_wild:
+			self.lines.extend(entry_ability_messages_wild)
 		
 		entry_damage = self._process_entry_hazards(self.player_active, is_player=True)
 		if entry_damage:
@@ -318,14 +451,13 @@ class WildBattle(BattleEngine):
 			
 			self.battle_context.team1 = [self.player_active]
 			
+			entry_ability_messages = self._process_entry_abilities(self.player_active, is_player=True)
+			if entry_ability_messages:
+				self.lines.extend(entry_ability_messages)
+			
 			entry_damage = self._process_entry_hazards(self.player_active, is_player=True)
 			if entry_damage:
 				self.lines.extend(entry_damage)
-			
-			ability = self.player_active.get_effective_ability()
-			if ability == "intimidate":
-				self.wild.modify_stat_stage("atk", -1)
-				self.lines.append(f"😤 Intimidate baixou o ataque de {self.wild.display_name}!")
 			
 			if self.actions_view:
 				self.actions_view.force_switch_mode = False
@@ -363,6 +495,35 @@ class WildBattle(BattleEngine):
 					self.actions_view.force_switch_mode = True
 				await self.refresh()
 				return False
+			
+			if self.player_active.volatile.get("trapped"):
+				trapper = self.player_active.volatile.get("trapped_by")
+				if trapper and not trapper.fainted:
+					self.lines = [f"❌ Você não pode fugir! {self.wild.display_name} te prendeu!"]
+					await self.refresh()
+					return False
+			
+			if self.player_active.volatile.get("ingrain"):
+				self.lines = ["❌ Você não pode fugir! Suas raízes te prendem!"]
+				await self.refresh()
+				return False
+			
+			wild_held_item = self.wild_raw.get("held_item")
+			player_held_item = self.player_party_raw[self.active_player_idx].get("held_item")
+			
+			if player_held_item == "smoke-ball":
+				self.lines = ["💨 Você fugiu com sucesso com Smoke Ball!"]
+				self.ended = True
+				
+				if self.actions_view:
+					self.actions_view.disable_all()
+				
+				await self.refresh()
+				await self.interaction.channel.send(
+					f"💨 <@{self.user_id}> fugiu da batalha com Smoke Ball!"
+				)
+				await self.cleanup()
+				return True
 			
 			self.run_attempts += 1
 			
@@ -436,7 +597,7 @@ class WildBattle(BattleEngine):
 				exp_distribution = await self._calculate_experience_distribution()
 				await self._distribute_evs()
 				
-				pm.tk.add_pokemon(
+				captured_pokemon = pm.tk.add_pokemon(
 					owner_id=self.user_id,
 					species_id=self.wild_raw["species_id"],
 					ivs=self.wild_raw["ivs"],
@@ -457,6 +618,7 @@ class WildBattle(BattleEngine):
 					nickname=self.wild_raw.get("nickname"),
 					name=self.wild_raw.get("name"),
 					current_hp=self.wild_raw.get("current_hp"),
+					held_item=self.wild_raw.get("held_item"),
 					on_party=pm.tk.can_add_to_party(self.user_id)
 				)
 				
@@ -472,11 +634,17 @@ class WildBattle(BattleEngine):
 				await self.refresh()
 				
 				total_exp = sum(xp for _, _, xp in exp_distribution)
-				await self.interaction.channel.send(
-					f"{format_pokemon_display(self.wild_raw, bold_name=True)} foi adicionado à sua Pokédex e recebeu <:CometShard:1424200074463805551> **+{total_exp} de XP!**\n"
+				capture_message = (
+					f"{format_pokemon_display(self.wild_raw, bold_name=True)} foi adicionado à sua Pokédex e recebeu <:CometShard:1424200074463805551> **+{total_exp} de EXP!**\n"
 					f"{ball_emoji} Capturado com {ball_name}!{bonus_text}\n"
 					f"{'\n'.join(exp_lines)}"
 				)
+				
+				if self.wild_raw.get("held_item"):
+					item_display = format_item_display(self.wild_raw["held_item"])
+					capture_message += f"\n🎁 Estava segurando {item_display}!"
+				
+				await self.interaction.channel.send(capture_message)
 				
 				await self.cleanup()
 				return True
@@ -515,7 +683,8 @@ class WildBattle(BattleEngine):
 			pokemon_data = self.player_party_raw[participant_index]
 			pokemon_battle = self.player_team[participant_index]
 			
-			has_macho_brace = pokemon_battle.volatile.get("held_item") == "macho_brace"
+			held_item = pokemon_data.get("held_item")
+			has_macho_brace = held_item == "macho-brace"
 			evs_to_give = BattleRewards.apply_ev_modifiers(ev_yield, has_macho_brace=has_macho_brace)
 			
 			try:
@@ -544,7 +713,8 @@ class WildBattle(BattleEngine):
 				max_level_skipped += 1
 				continue
 			
-			has_lucky_egg = pokemon_battle.volatile.get("held_item") == "lucky_egg"
+			held_item = pokemon_data.get("held_item")
+			has_lucky_egg = held_item == "lucky-egg"
 			exp_to_give = BattleRewards.apply_exp_modifiers(
 				base_exp,
 				participant_count,
@@ -558,7 +728,7 @@ class WildBattle(BattleEngine):
 				notify_message=self.message
 			)
 			
-			distribution.append((participant_index, pokemon_battle.display_name, exp_to_give))
+			distribution.append((participant_index, pokemon_battle, exp_to_give))
 		
 		self._max_level_skipped = max_level_skipped
 		return distribution
@@ -567,6 +737,8 @@ class WildBattle(BattleEngine):
 		await self._apply_battle_happiness_bonus()
 		await self._distribute_evs()
 		exp_distribution = await self._calculate_experience_distribution()
+		
+		wild_held_item = self.wild_raw.get("held_item")
 		
 		self.ended = True
 		
@@ -579,9 +751,14 @@ class WildBattle(BattleEngine):
 		await self.refresh()
 		
 		total_exp = sum(xp for _, _, xp in exp_distribution)
-		await self.interaction.channel.send(
-			f"<:OhBrother:1424196500581257339> **Você venceu!** e recebeu <:CometShard:1424200074463805551> **+{total_exp} de XP!**\n{'\n'.join(exp_lines)}"
-		)
+		victory_message = f"<:OhBrother:1424196500581257339> **Você venceu!** e recebeu <:CometShard:1424200074463805551> **+{total_exp} de EXP!**\n{'\n'.join(exp_lines)}"
+		
+		if wild_held_item:
+			item_display = format_item_display(wild_held_item)
+			victory_message += f"\n🎁 {self.wild.display_name} dropou {item_display}!"
+			await pm.give_item(self.user_id, wild_held_item, 1)
+		
+		await self.interaction.channel.send(victory_message)
 		await self.cleanup()
 	
 	async def _handle_defeat(self) -> None:
