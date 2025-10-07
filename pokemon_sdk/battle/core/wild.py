@@ -118,7 +118,6 @@ class WildBattle(BattleEngine):
 		await self._generate_wild_held_item()
 		
 		self.wild = BattlePokemon(self.wild_raw, w_api, w_spec)
-		self.wild.additional_info = "(Selvagem)"
 		
 		party_coros = []
 		for p in self.player_party_raw:
@@ -135,7 +134,6 @@ class WildBattle(BattleEngine):
 				party_data[i],
 				party_data[i + 1]
 			))
-			self.player_team[idx].additional_info = f"(<@{self.user_id}>)"
 		
 		if not self._validate_party(self.player_team):
 			await self.interaction.followup.send(
@@ -330,7 +328,7 @@ class WildBattle(BattleEngine):
 		
 		if self.wild_raw.get("held_item"):
 			item_display = format_item_display(self.wild_raw["held_item"])
-			start_messages.append(f"🎁 {self.wild.display_name} está segurando {item_display}!")
+			start_messages.append(f"{self.wild.display_name} está segurando {item_display}!")
 		
 		self.lines = start_messages
 		
@@ -832,4 +830,5 @@ class WildBattleView(discord.ui.View):
 			return await interaction.response.send_message("Você precisa trocar de Pokémon primeiro!", ephemeral=True)
 		
 		await interaction.response.defer()
+
 		await self.battle.attempt_run()
