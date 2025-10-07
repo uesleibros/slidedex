@@ -70,7 +70,7 @@ class Bag(commands.Cog):
 			description_lines.append(f"`{item['item_id']}`　{format_item_display(item['item_id'])}{item['quantity']:>4}x")
 
 		embed.description = "\n".join(description_lines)
-		embed.set_footer(text=f"Página {current_page + 1} • {total} tipos de itens")
+		embed.set_footer(text=f"Mostrando {total} de {current_page + 1}")
 		
 		return embed
 
@@ -717,6 +717,7 @@ class Bag(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Bag(bot))
+
 
 
 
