@@ -92,7 +92,7 @@ class Pokemon(commands.Cog):
 		help=(
 			"Lista os Pokémon do usuário com suporte a filtros, ordenação e paginação.\n\n"
 			"**BÁSICO**\n"
-			"  --user                  Lista as infomrações do usuário\n"
+			"  --user                  Lista as informações do usuário\n"
 			"  --party                 Lista apenas Pokémon que estão na party\n"
 			"  --box                   Lista apenas Pokémon que estão na box\n"
 			"  --shiny                 Filtra apenas Pokémon shiny\n"
@@ -746,3 +746,4 @@ class Pokemon(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))
+
