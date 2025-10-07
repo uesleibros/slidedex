@@ -93,7 +93,7 @@ class Bag(commands.Cog):
 		)
 		
 		embed = await paginator.get_embed()
-		bag_img: discord.File = discord.File("/resources/textures/bag.png", filename="bag.png")
+		bag_img: discord.File = discord.File("resources/textures/bag.png", filename="bag.png")
 		embed.set_thumbnail(url="attachment://bag.png")
 		await ctx.send(embed=embed, view=paginator, file=bag_img)
 
@@ -717,4 +717,5 @@ class Bag(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Bag(bot))
+
 
