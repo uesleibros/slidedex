@@ -257,7 +257,7 @@ class Bag(commands.Cog):
 		
 		await ctx.send(
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou **{result['healed']} HP**!\n"
-			f"❤️ HP Atual: {result['current_hp']}/{result['max_hp']} ({hp_percent:.1f}%)"
+			f"HP Atual: {result['current_hp']}/{result['max_hp']} ({hp_percent:.1f}%)"
 		)
 
 	async def _handle_revive(
@@ -274,7 +274,7 @@ class Bag(commands.Cog):
 		
 		await ctx.send(
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} foi revivido!\n"
-			f"❤️ HP Restaurado: {result['restored_hp']}/{result['max_hp']}"
+			f"HP Restaurado: {result['restored_hp']}/{result['max_hp']}"
 		)
 
 	async def _handle_status_heal(
@@ -314,7 +314,6 @@ class Bag(commands.Cog):
 		])
 		
 		await ctx.send(
-			f"✅ **{item_name} Usado**\n"
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou PP!\n\n"
 			f"**Movimentos:**\n{moves_info}"
 		)
@@ -334,9 +333,9 @@ class Bag(commands.Cog):
 		
 		await ctx.send(
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)}\n"
-			f"🎯 Movimento: **{move_name}**\n"
-			f"📊 PP Máximo: {result['move']['pp_max']}\n"
-			f"⬆️ PP Ups: {result['move'].get('pp_ups', 0)}/3"
+			f"Movimento: **{move_name}**\n"
+			f"PP Máximo: {result['move']['pp_max']}\n"
+			f"PP Ups: {result['move'].get('pp_ups', 0)}/3"
 		)
 
 	async def _handle_vitamin(
@@ -354,10 +353,10 @@ class Bag(commands.Cog):
 		
 		await ctx.send(
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} ganhou EVs!\n"
-			f"📊 **Stat:** {stat_name}\n"
-			f"➕ **EVs Ganhos:** +{result['ev_gain']}\n"
-			f"📈 **EVs Atuais:** {result['new_ev']}/100\n"
-			f"📊 **EVs Totais:** {result['total_evs']}/510"
+			f"Stat: {stat_name}\n"
+			f"EVs Ganhos: +{result['ev_gain']}\n"
+			f"EVs Atuais: {result['new_ev']}/100\n"
+			f"EVs Totais: {result['total_evs']}/510"
 		)
 
 	async def _handle_ev_reducer(
@@ -375,10 +374,10 @@ class Bag(commands.Cog):
 		
 		await ctx.send(
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} reduziu EVs!\n"
-			f"📊 **Stat:** {stat_name}\n"
-			f"➖ **EVs Reduzidos:** -{result['ev_reduced']}\n"
-			f"📉 **EVs Atuais:** {result['new_ev']}/100\n"
-			f"📊 **EVs Totais:** {result['total_evs']}/510"
+			f"Stat:** {stat_name}\n"
+			f"EVs Reduzidos: -{result['ev_reduced']}\n"
+			f"EVs Atuais: {result['new_ev']}/100\n"
+			f"EVs Totais: {result['total_evs']}/510"
 		)
 
 	async def _handle_evolution(
@@ -434,7 +433,7 @@ class Bag(commands.Cog):
 		
 		message = (
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} recuperou **{result['healed']} HP**!\n"
-			f"❤️ HP Atual: {result['current_hp']}/{result['max_hp']} ({hp_percent:.1f}%)"
+			f"HP Atual: {result['current_hp']}/{result['max_hp']} ({hp_percent:.1f}%)"
 		)
 		
 		if result['confusion_applied']:
@@ -468,7 +467,7 @@ class Bag(commands.Cog):
 			])
 			
 			await ctx.send(
-				f"✨ **Sacred Ash Usado**\n"
+				f"**Sacred Ash Usado**\n"
 				f"Todos os Pokémon desmaiados foram revividos!\n\n"
 				f"**Pokémon Revividos ({result['revived_count']}):**\n{revived_list}"
 			)
@@ -714,4 +713,5 @@ class Bag(commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
+
 	await bot.add_cog(Bag(bot))
