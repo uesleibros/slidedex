@@ -68,7 +68,7 @@ class Bag(commands.Cog):
 				description_lines.append(f"**{category_name}**")
 			
 			description_lines.append(f"`{item['item_id']}`　{format_item_display(item['item_id'])}{item['quantity']:>4}x")
-		
+
 		embed.description = "\n".join(description_lines)
 		embed.set_footer(text=f"Página {current_page + 1} • {total} tipos de itens")
 		
@@ -93,7 +93,9 @@ class Bag(commands.Cog):
 		)
 		
 		embed = await paginator.get_embed()
-		await ctx.send(embed=embed, view=paginator)
+		bag_img: discord.File = discord.File("/resources/textures/bag.png", filename="bag.png")
+		embed.set_thumbnail(url="attachment://bag.png")
+		await ctx.send(embed=embed, view=paginator, file=bag_img)
 
 	@bag_root.command(name="add")
 	async def bag_add(self, ctx: commands.Context, item_id: str, quantity: int = 1) -> None:
@@ -715,3 +717,4 @@ class Bag(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Bag(bot))
+
