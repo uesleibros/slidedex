@@ -50,7 +50,7 @@ class Bag(commands.Cog):
 		self.item_handler = ItemHandler(toolkit, pm)
 
 	async def _generate_bag_embed(self, items: list, start: int, end: int, total: int, current_page: int) -> discord.Embed:
-		embed = discord.Embed(title="Mochila", color=EMBED_COLOR)
+		embed = discord.Embed(title="Sua Mochila", color=EMBED_COLOR)
 		
 		if not items:
 			embed.description = ERROR_MESSAGES['empty_bag']
@@ -717,5 +717,6 @@ class Bag(commands.Cog):
 async def setup(bot: commands.Bot) -> None:
 
 	await bot.add_cog(Bag(bot))
+
 
 
