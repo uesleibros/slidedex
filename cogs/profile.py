@@ -37,7 +37,7 @@ class Profile(commands.Cog):
 			title=f"Perfil de {user.display_name}"
 		)
 
-		embed.add_field(name="Dinheiro", value=f"${user_info['money']}")
+		embed.add_field(name="Dinheiro", value=f"₽{user_info['money']}")
 		embed.add_field(name="Pokémon", value=f"{len(user_pokemon)}")
 
 		del user_pokemon
@@ -49,3 +49,4 @@ class Profile(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Profile(bot))
+
