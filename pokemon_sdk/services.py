@@ -26,8 +26,7 @@ class PokeAPIService:
 	async def get_evolution_chain_safe(self, chain_id: int):
 		url = f"https://pokeapi.co/api/v2/evolution-chain/{chain_id}/"
 		
-		response = self.client.http.get(url)
-		data = await response.json()
+		response = await self.client.http.get(url)
 		
 		def clean_evolution_data(chain_data):
 			if isinstance(chain_data, dict):
@@ -115,4 +114,5 @@ class PokeAPIService:
 
 	async def close(self):
 		await self.client.close()
+
 
