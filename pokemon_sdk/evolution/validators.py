@@ -96,8 +96,5 @@ class EvolutionValidator:
         elif trigger == "trade":
             if not self.validate_held_item(pokemon.get("held_item"), detail.held_item.name if detail.held_item else None):
                 return False, f"Item {detail.held_item.name} deve estar sendo segurado"
-            
-            if not self.validate_known_move(pokemon.get("moves", []), detail.known_move.name if detail.known_move else None):
-                return False, f"Movimento {detail.known_move.name} necessário"
         
         return True, None
