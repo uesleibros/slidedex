@@ -16,7 +16,7 @@ class Trade(commands.Cog):
         if not user:
             return await ctx.send(
                 "Mencione um usuário para trocar!\n"
-                "Uso: `!trade @usuário`"
+                "Uso: `.trade @usuário`"
             )
         
         if user.bot:
@@ -71,7 +71,7 @@ class Trade(commands.Cog):
         
         if type in ["pokemon", "p", "poke"]:
             if not args:
-                return await ctx.send("Especifique os IDs dos Pokémon!\nExemplo: `!trade add pokemon 1 5 23`")
+                return await ctx.send("Especifique os IDs dos Pokémon!\nExemplo: `.trade add pokemon 1 5 23`")
             
             try:
                 pokemon_ids = [int(arg) for arg in args]
@@ -87,7 +87,7 @@ class Trade(commands.Cog):
         
         elif type in ["item", "i", "items"]:
             if not args:
-                return await ctx.send("Especifique o item!\nExemplo: `!trade add item rare-candy 5`")
+                return await ctx.send("Especifique o item!\nExemplo: `.trade add item rare-candy 5`")
             
             item_id = args[0].lower()
             quantity = 1
@@ -112,7 +112,7 @@ class Trade(commands.Cog):
         
         elif type in ["money", "m", "cash"]:
             if not args:
-                return await ctx.send("Especifique a quantidade!\nExemplo: `!trade add money 5000`")
+                return await ctx.send("Especifique a quantidade!\nExemplo: `.trade add money 5000`")
             
             try:
                 amount = int(args[0])
