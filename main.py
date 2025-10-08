@@ -21,6 +21,7 @@ intents.members = True
 bot = commands.Bot(command_prefix=".", intents=intents)
 toolkit = Toolkit()
 pm: PokemonManager | None = None
+trade_manager: TradeManager | None = None
 battle_tracker: BattleTracker = BattleTracker()
 
 @bot.event
@@ -307,4 +308,5 @@ class MyHelpCommand(commands.HelpCommand):
 
 bot.help_command = MyHelpCommand()
 bot.run(str(TOKEN))
+
 
