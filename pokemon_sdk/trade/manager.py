@@ -427,6 +427,8 @@ class TradeManager:
                     
                     await self._check_trade_evolutions(trade, channel)
                     
+                    self._cleanup_trade(trade_id)
+                    
                     return True, None
                     
                 except Exception as e:
