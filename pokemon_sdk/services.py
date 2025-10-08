@@ -22,31 +22,6 @@ class PokeAPIService:
 	
 	async def get_species(self, species_id: int):
 		return await self.client.get_pokemon_species(species_id)
-	
-	async def get_evolution_chain_safe(self, chain_id: int):
-		url = f"https://pokeapi.co/api/v2/evolution-chain/{chain_id}/"
-		
-		response = await self.client.http.get(url)
-		
-		def clean_evolution_data(chain_data):
-			if isinstance(chain_data, dict):
-				chain_data.pop('base_form_id', None)
-				
-				if 'evolution_details' in chain_data:
-					for detail in chain_data['evolution_details']:
-						if isinstance(detail, dict):
-							detail.pop('base_form_id', None)
-				
-				if 'evolves_to' in chain_data:
-					for evo in chain_data['evolves_to']:
-						clean_evolution_data(evo)
-			
-			return chain_data
-		
-		if 'chain' in data:
-			data['chain'] = clean_evolution_data(data['chain'])
-		
-		return EvolutionChain(**data)
 
 	def get_base_stats(self, poke) -> Dict[str, int]:
 		return {s.stat.name: s.base_stat for s in poke.stats}
@@ -114,5 +89,6 @@ class PokeAPIService:
 
 	async def close(self):
 		await self.client.close()
+
 
 
