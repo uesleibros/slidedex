@@ -10,7 +10,7 @@ class Trade(commands.Cog):
         self.bot = bot
         self.tm = trade_manager
     
-    @commands.group(name="trade", aliases=["t", "troca"], invoke_without_command=True)
+    @commands.group(name="trade", aliases=["t"], invoke_without_command=True)
     @requires_account()
     async def trade(self, ctx: commands.Context, user: Optional[discord.Member] = None):
         if not user:
@@ -58,7 +58,7 @@ class Trade(commands.Cog):
         trade.message = message
         trade.channel_id = ctx.channel.id
     
-    @trade.command(name="add", aliases=["adicionar", "a"])
+    @trade.command(name="add", aliases=["a"])
     @requires_account()
     async def trade_add(self, ctx: commands.Context, type: str, *args):
         user_id = str(ctx.author.id)
@@ -110,7 +110,7 @@ class Trade(commands.Cog):
             item_name = await pm.get_item_name(item_id)
             await ctx.send(f"**{item_name}** x{quantity} adicionado à sua oferta!")
         
-        elif type in ["money", "m", "dinheiro", "cash"]:
+        elif type in ["money", "m", "cash"]:
             if not args:
                 return await ctx.send("Especifique a quantidade!\nExemplo: `!trade add money 5000`")
             
@@ -122,7 +122,7 @@ class Trade(commands.Cog):
             success, error = await self.tm.set_money_offer(trade.trade_id, user_id, amount)
             
             if not success:
-                return await ctx.send(f"❌ {error}")
+                return await ctx.send(f"{error}")
             
             await ctx.send(f"₽{amount:,} adicionado à sua oferta!")
         
@@ -137,7 +137,7 @@ class Trade(commands.Cog):
             view.message = trade.message
             await view.update_embed()
     
-    @trade.command(name="remove", aliases=["remover", "r"])
+    @trade.command(name="remove", aliases=["r"])
     @requires_account()
     async def trade_remove(self, ctx: commands.Context, type: str, *args):
         user_id = str(ctx.author.id)
@@ -158,7 +158,7 @@ class Trade(commands.Cog):
                 return await ctx.send("IDs inválidos!")
             
             await self.tm.remove_pokemon_from_offer(trade.trade_id, user_id, pokemon_ids)
-            await ctx.send(f"✅ {len(pokemon_ids)} Pokémon removido(s)!")
+            await ctx.send(f"{len(pokemon_ids)} Pokémon removido(s)!")
         
         elif type in ["item", "i"]:
             if not args:
@@ -191,7 +191,7 @@ class Trade(commands.Cog):
             view.message = trade.message
             await view.update_embed()
     
-    @trade.command(name="cancel", aliases=["cancelar", "c"])
+    @trade.command(name="cancel", aliases=["c"])
     @requires_account()
     async def trade_cancel(self, ctx: commands.Context):
         user_id = str(ctx.author.id)
