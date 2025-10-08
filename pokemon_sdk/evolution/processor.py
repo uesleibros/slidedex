@@ -81,33 +81,44 @@ class EvolutionProcessor:
         trigger: str = EvolutionTriggers.LEVEL_UP,
         item_id: Optional[str] = None
     ) -> Optional[Dict]:
-        pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-        
-        if self.tk.is_evolution_blocked(owner_id, pokemon_id):
+        try:
+            pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
+            
+            if self.tk.is_evolution_blocked(owner_id, pokemon_id):
+                return None
+            
+            species = await self.service.get_species(pokemon["species_id"])
+            
+            if not species.evolution_chain:
+                return None
+            
+            try:
+                chain = await self.service.client.get_evolution_chain(species.evolution_chain.id)
+            except (TypeError, AttributeError):
+                return None
+            
+            current_link = self.navigator.find_current_in_chain(chain.chain, pokemon["species_id"])
+            
+            if not current_link or not current_link.evolves_to:
+                return None
+            
+            if trigger == EvolutionTriggers.LEVEL_UP:
+                return await self.trigger_handler.check_level_up(
+                    pokemon, current_link, self.config.max_generation
+                )
+            elif trigger == EvolutionTriggers.USE_ITEM:
+                return await self.trigger_handler.check_use_item(
+                    pokemon, current_link, item_id, self.config.max_generation
+                )
+            elif trigger == EvolutionTriggers.TRADE:
+                return await self.trigger_handler.check_trade(
+                    pokemon, current_link, self.config.max_generation
+                )
+            
             return None
-        
-        species = await self.service.get_species(pokemon["species_id"])
-        chain = await self.service.client.get_evolution_chain(species.evolution_chain.id)
-        
-        current_link = self.navigator.find_current_in_chain(chain.chain, pokemon["species_id"])
-        
-        if not current_link or not current_link.evolves_to:
+            
+        except Exception:
             return None
-        
-        if trigger == EvolutionTriggers.LEVEL_UP:
-            return await self.trigger_handler.check_level_up(
-                pokemon, current_link, self.config.max_generation
-            )
-        elif trigger == EvolutionTriggers.USE_ITEM:
-            return await self.trigger_handler.check_use_item(
-                pokemon, current_link, item_id, self.config.max_generation
-            )
-        elif trigger == EvolutionTriggers.TRADE:
-            return await self.trigger_handler.check_trade(
-                pokemon, current_link, self.config.max_generation
-            )
-        
-        return None
     
     async def evolve_pokemon(self, owner_id: str, pokemon_id: int, new_species_id: int) -> Dict:
         return await self.executor.evolve(owner_id, pokemon_id, new_species_id)
@@ -125,3 +136,4 @@ class EvolutionProcessor:
             extra_info += EvolutionMessages.time_info(evolution_data["time_of_day"])
         
         return extra_info
+
