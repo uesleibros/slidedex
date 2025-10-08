@@ -370,7 +370,8 @@ class TradeManager:
     
     async def execute_trade(
         self,
-        trade_id: str
+        trade_id: str,
+        channel: discord.abc.Messageable
     ) -> Tuple[bool, Optional[str]]:
         trade = self._active_trades.get(trade_id)
         if not trade:
@@ -424,10 +425,46 @@ class TradeManager:
                     
                     trade.state = TradeState.COMPLETED
                     
+                    await self._check_trade_evolutions(trade, channel)
+                    
                     return True, None
                     
                 except Exception as e:
                     return False, f"Erro ao executar trade: {str(e)}"
+    
+    async def _check_trade_evolutions(
+        self,
+        trade: TradeSession,
+        channel: discord.abc.Messageable
+    ) -> None:
+        from pokemon_sdk.evolution import EvolutionTriggers
+        
+        all_traded_pokemon = [
+            (trade.initiator_id, trade.partner_offer.pokemon_ids),
+            (trade.partner_id, trade.initiator_offer.pokemon_ids)
+        ]
+        
+        for new_owner_id, pokemon_ids in all_traded_pokemon:
+            for pid in pokemon_ids:
+                try:
+                    pokemon = self.tk.get_pokemon(new_owner_id, pid)
+                    
+                    evolution_data = await self.pm.check_evolution(
+                        new_owner_id,
+                        pid,
+                        EvolutionTriggers.TRADE
+                    )
+                    
+                    if evolution_data:
+                        await self.pm.evolution_ui.send_evolution_message(
+                            channel=channel,
+                            owner_id=new_owner_id,
+                            pokemon_id=pid,
+                            current_pokemon=pokemon,
+                            evolution_species_id=evolution_data["evolves_to_id"]
+                        )
+                except Exception:
+                    continue
     
     async def _transfer_pokemon(
         self,
