@@ -26,7 +26,7 @@ battle_tracker: BattleTracker = BattleTracker()
 
 @bot.event
 async def on_ready():
-	global pm
+	global pm, trade_manager
 	pm = PokemonManager(toolkit)
 	trade_manager = TradeManager(toolkit, pm)
 	await load_application_emojis(bot)
@@ -308,5 +308,6 @@ class MyHelpCommand(commands.HelpCommand):
 
 bot.help_command = MyHelpCommand()
 bot.run(str(TOKEN))
+
 
 
