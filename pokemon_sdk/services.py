@@ -128,10 +128,23 @@ class PokeAPIService:
 		return None
 	
 	async def get_species(self, species_id: int) -> Munch:
-		resp = await self._request(f"pokemon-species/{species_id}")
-		chain_id = self._extract_id_from_url(resp.evolution_chain.url)
-		resp.evolution_chain.id = chain_id
-		return resp
+		try:
+			with open("data/api/pokemon-species.json", "r") as f:
+				parser = ijson.items(f, "item")
+				for specie in parser:
+					if specie.get("id") == specie:
+						result = specie
+						chain_id = self._extract_id_from_url(specie.evolution_chain.url)
+						result.evolution_chain.id = chain_id
+						del specie
+						gc.collect()
+						return munchify(result)
+		except Exception as e:
+			self.logger.error(f"Erro ao ler pokemon-species.json: {e}")
+			return None
+		finally:
+			gc.collect()
+		return None
 
 	async def get_evolution_chain(self, chain_id: int) -> Munch:
 		try:
@@ -250,6 +263,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
