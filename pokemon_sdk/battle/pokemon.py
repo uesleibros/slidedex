@@ -29,6 +29,7 @@ class BattlePokemon:
 			self.current_hp = max(0, min(int(current_hp), self.stats["hp"]))
 		
 		moves = raw.get("moves")
+		print(moves)
 		if not moves:
 			self.moves = [{"id": "tackle", "pp": 35, "pp_max": 35}]
 		else:
