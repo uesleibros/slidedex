@@ -141,7 +141,6 @@ class PokeAPIService:
 
 	@staticmethod
 	def get_base_stats(poke) -> Dict[str, int]:
-		print(poke.stats)
 		return {s.stat.name: s.base_stat for s in poke.stats}
 
 	@staticmethod
@@ -210,6 +209,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
