@@ -1,6 +1,5 @@
 import discord
 import random
-import aiopoke
 from typing import List, Optional, Dict, Tuple
 from utils.formatting import format_pokemon_display, format_item_display
 from ..services import PokeAPIService
@@ -26,9 +25,9 @@ class ItemManager:
 		self.tk = toolkit
 		self.config = config or GameConfig()
 	
-	async def get_item(self, item_id: str) -> Optional[aiopoke.Item]:
+	async def get_item(self, item_id: str) -> Optional[object]:
 		try:
-			return await self.service.client.get_item(item_id)
+			return await self.service.get_item(item_id)
 		except:
 			return None
 	
@@ -95,7 +94,7 @@ class ItemManager:
 		item = await self.get_item(item_id)
 		return item.cost if item else 0
 	
-	async def _is_item_available_in_generation(self, item: aiopoke.Item) -> bool:
+	async def _is_item_available_in_generation(self, item: object) -> bool:
 		from ..constants import VERSION_GROUPS
 		
 		if not hasattr(item, 'flavor_text_entries') or not item.flavor_text_entries:
@@ -231,7 +230,7 @@ class PokemonManager:
 		party = self.tk.get_user_party(owner_id)
 		return any(p.get("held_item") == "exp-share" for p in party)
 	
-	async def get_item(self, item_id: str) -> Optional[aiopoke.Item]:
+	async def get_item(self, item_id: str) -> Optional[object]:
 		return await self.item_manager.get_item(item_id)
 
 	async def validate_item(self, item_id: str) -> bool:
@@ -292,8 +291,8 @@ class PokemonManager:
 		level = level or self.config.default_level
 		status = status or StatusConfig().default_status
 		
-		poke: aiopoke.Pokemon = await self.service.get_pokemon(species_id)
-		species: aiopoke.PokemonSpecies = await self.service.get_species(species_id)
+		poke = await self.service.get_pokemon(species_id)
+		species = await self.service.get_species(species_id)
 		base_stats = self.service.get_base_stats(poke)
 	
 		final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}

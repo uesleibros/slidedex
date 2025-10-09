@@ -1,7 +1,6 @@
 import discord
 from typing import Optional, Callable, Dict, Tuple
 from io import BytesIO
-
 from utils.formatting import format_pokemon_display
 from utils.canvas import compose_evolution_async
 from .config import EvolutionConfig, Emojis
@@ -153,8 +152,8 @@ class EvolutionUIHandler:
 		old_pokemon_obj = await self.processor.service.get_pokemon(old_species_id)
 		new_pokemon_obj = await self.processor.service.get_pokemon(new_species_id)
 		
-		old_sprite_bytes = await old_pokemon_obj.sprites.front_default.read()
-		new_sprite_bytes = await new_pokemon_obj.sprites.front_default.read()
+		old_sprite_bytes = await self.processor.service.get_bytes(old_pokemon_obj.sprites.front_default)
+		new_sprite_bytes = await self.processor.service.get_bytes(new_pokemon_obj.sprites.front_default)
 		
 		return await compose_evolution_async(old_sprite_bytes, new_sprite_bytes)
 	

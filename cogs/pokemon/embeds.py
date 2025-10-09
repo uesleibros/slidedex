@@ -1,5 +1,4 @@
 import discord
-import aiopoke
 from typing import Optional
 from datetime import datetime
 from pokemon_sdk.calculations import calculate_stats, iv_percent
@@ -37,7 +36,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 	except ValueError:
 		return None
 
-	pokemon: aiopoke.Pokemon = await pm.service.get_pokemon(user_pokemon["species_id"])
+	pokemon = await pm.service.get_pokemon(user_pokemon["species_id"])
 	
 	base_stats = {s.stat.name: s.base_stat for s in pokemon.stats}
 	stats = calculate_stats(base_stats, user_pokemon["ivs"], user_pokemon.get("evs", {}), user_pokemon["level"], user_pokemon["nature"])
@@ -66,7 +65,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 	title = f"Level {user_pokemon['level']} {format_pokemon_display(user_pokemon, show_fav=True, show_poke=False)}"
 	
 	sprite_to_use = pokemon.sprites.front_shiny if user_pokemon['is_shiny'] else pokemon.sprites.front_default
-	sprite_bytes = await sprite_to_use.read() if sprite_to_use else None
+	sprite_bytes = await pm.service.get_bytes(sprite_to_use) if sprite_to_use else None
 	
 	files = []
 	if sprite_bytes:

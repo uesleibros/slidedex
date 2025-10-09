@@ -181,8 +181,8 @@ class WildBattle(BattleEngine):
 			if self.player_active.sprites.get("front"):
 				wild_sprite = self.player_active.sprites["front"]
 		
-		pb = await player_sprite.read() if player_sprite else None
-		ef = await wild_sprite.read() if wild_sprite else None
+		pb = await pm.service.get_bytes(player_sprite) if player_sprite else None
+		ef = await pm.service.get_bytes(wild_sprite) if wild_sprite else None
 		
 		buf = await compose_battle_async(pb, ef, preloaded_textures["battle"])
 		return discord.File(buf, filename="battle.png")

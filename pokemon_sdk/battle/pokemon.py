@@ -1,6 +1,5 @@
 import random
 from typing import Dict, Any, Optional, List
-import aiopoke
 from pokemon_sdk.calculations import calculate_stats
 from .constants import BattleConstants, STAT_MAP
 from .helpers import _apply_stage, _get_stat, _types_of
@@ -13,7 +12,7 @@ class BattlePokemon:
 		'additional_info'
 	)
 	
-	def __init__(self, raw: Dict[str, Any], pokeapi_data: aiopoke.Pokemon, species_data: aiopoke.PokemonSpecies):
+	def __init__(self, raw: Dict[str, Any], pokeapi_data: object, species_data: object):
 		self.raw = raw
 		self.species_id = raw["species_id"]
 		self.name = raw.get("name")

@@ -90,7 +90,7 @@ class Spawn(commands.Cog):
 		habitat_name = species.habitat.name if species.habitat else ("rare" if (is_legendary or is_mythical) else "grassland")
 
 		sprite = poke.sprites.front_shiny if is_shiny and poke.sprites.front_shiny else poke.sprites.front_default
-		sprite_bytes = await sprite.read() if sprite else None
+		sprite_bytes = await pm.service.get_bytes(sprite) if sprite else None
 		pokemon_min_level = await self.get_pokemon_min_level(species)
 
 		author_id = str(ctx.author.id)

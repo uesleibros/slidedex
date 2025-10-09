@@ -1,27 +1,61 @@
 import random
-from typing import Dict, List, Any, Optional, Union, Tuple
-from aiopoke import AiopokeClient
-from aiopoke.objects.resources.evolutions.evolution_chain import EvolutionChain
+from typing import Dict, List, Optional, Union, Tuple
+from munch import Munch, munchify
 from .constants import VERSION_GROUPS, SHINY_ROLL
-
-class NoCache:
-	def get(self, *_, **__): return None
-	def put(self, *_, **__): return None
-	def has(self, obj: Any): return False
+from curl_cffi.requests import AsyncSession
+import logging
 
 class PokeAPIService:
 	def __init__(self):
-		self.client = AiopokeClient()
-		self.client._cache = NoCache()
+		self._BASE_URL: str = "https://pokeapi.co/api/v2"
+		self._session: Optional[AsyncSession] = AsyncSession(timeout=30, impersonate="chrome110")
+		self.logger = logging.getLogger(__name__)
+	
+	async def close(self):
+		if self._session:
+			await self._session.close()
+			self._session = None
+	
+	async def _request(self, endpoint: str) -> Munch:		
+		url = f"{self._BASE_URL}/{endpoint}"
+		
+		try:
+			resp = await self._session.get(url)
+			resp.raise_for_status()
+			return munchify(resp.json())
+		except Exception as e:
+			self.logger.error(f"Erro ao buscar {url}: {str(e)}")
+			raise
 
-	async def get_pokemon(self, species_id: int):
-		return await self.client.get_pokemon(species_id)
+	async def get_bytes(self, url: str) -> bytes:
+		try:
+			resp = await self._session.get(url)
+			resp.raise_for_status()
+			return resp.content
+		except Exception as e:
+			self.logger.error(f"Erro ao ler {url}: {str(e)}")
+			raise
+
+	def _extract_id_from_url(self, url: str) -> int:
+		return int(url.rstrip('/').split('/')[-1])
+
+	async def get_pokemon(self, name: str) -> Munch:
+		return await self._request(f"pokemon/{str(name).lower()}")
 	
-	async def get_move(self, move_id: Union[str, int]):
-		return await self.client.get_move(move_id)
+	async def get_move(self, move_id: Union[str, int]) -> Munch:
+		return await self._request(f"move/{move_id}")
 	
-	async def get_species(self, species_id: int):
-		return await self.client.get_pokemon_species(species_id)
+	async def get_species(self, species_id: int) -> Munch:
+		resp = await self._request(f"pokemon-species/{species_id}")
+		chain_id = self._extract_id_from_url(resp.evolution_chain.url)
+		resp.evolution_chain.id = chain_id
+		return resp
+
+	async def get_evolution_chain(self, chain_id: int) -> Munch:
+		return await self._request(f"evolution-chain/{chain_id}")
+
+	async def get_item(self, item_id: Union[str, int]) -> Munch:
+		return await self._request(f"item/{item_id}")
 
 	def get_base_stats(self, poke) -> Dict[str, int]:
 		return {s.stat.name: s.base_stat for s in poke.stats}
@@ -86,9 +120,3 @@ class PokeAPIService:
 
 	def roll_shiny(self) -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
-
-	async def close(self):
-		await self.client.close()
-
-
-

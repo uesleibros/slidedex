@@ -308,6 +308,3 @@ class MyHelpCommand(commands.HelpCommand):
 
 bot.help_command = MyHelpCommand()
 bot.run(str(TOKEN))
-
-
-

@@ -1,5 +1,4 @@
 from typing import Optional, Dict
-import discord
 from .config import EvolutionConfig, EvolutionTriggers
 from .validators import EvolutionValidator, TimeManager
 from .triggers import EvolutionTriggerHandler
@@ -87,7 +86,7 @@ class EvolutionProcessor:
             return None
         
         species = await self.service.get_species(pokemon["species_id"])
-        chain = await self.service.client.get_evolution_chain(species.evolution_chain.id)
+        chain = await self.service.get_evolution_chain(species.evolution_chain.id)
         
         current_link = self.navigator.find_current_in_chain(chain.chain, pokemon["species_id"])
         
