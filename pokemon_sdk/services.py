@@ -158,7 +158,7 @@ class PokeAPIService:
 		for move_entry in poke.moves:
 			best_level = None
 			
-			learn_level = move_entry.level_learned_at
+			learn_level = move_entry.level_learned_at or 0
 			
 			if max_level is not None and learn_level > max_level:
 				continue
@@ -210,6 +210,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
