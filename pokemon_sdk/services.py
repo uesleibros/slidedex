@@ -170,7 +170,7 @@ class PokeAPIService:
 				best_level = learn_level
 			
 			if best_level is not None:
-				move_id = move_entry.move.name
+				move_id = move_entry.name
 				if move_id not in moves_data:
 					moves_data[move_id] = best_level
 		
@@ -210,6 +210,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
