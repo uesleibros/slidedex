@@ -150,8 +150,32 @@ class PokeAPIService:
 			gc.collect()
 		return None
 
-	async def get_item(self, item_id: Union[str, int]) -> Munch:
-		return await self._request(f"item/{item_id}")
+	async def get_item(self, identifier: Union[str, int]) -> Munch:
+		is_id = isinstance(identifier, int) or str(identifier).isdigit()
+		if not is_id:
+			identifier = str(identifier).lower()
+		try:
+			with open("data/api/items.json", "r") as f:
+				parser = ijson.items(f, "item")
+				for item in parser:
+					if is_id:
+						if item.get("id") == int(identifier):
+							result = item
+							del item
+							gc.collect()
+							return munchify(result)
+					else:
+						if item.get("name") == identifier:
+							result = item
+							del item
+							gc.collect()
+							return munchify(result)
+		except Exception as e:
+			self.logger.error(f"Erro ao ler items.json: {e}")
+			return None
+		finally:
+			gc.collect()
+		return None
 
 	@staticmethod
 	def get_base_stats(poke) -> Dict[str, int]:
@@ -226,6 +250,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
