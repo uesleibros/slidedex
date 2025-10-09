@@ -158,17 +158,16 @@ class PokeAPIService:
 		for move_entry in poke.moves:
 			best_level = None
 			
-			for version_detail in move_entry.version_group_details:
-				learn_level = version_detail.level_learned_at
-				
-				if max_level is not None and learn_level > max_level:
-					continue
-				
-				if min_level is not None and learn_level <= min_level:
-					continue
-				
-				if best_level is None or learn_level > best_level:
-					best_level = learn_level
+			learn_level = move_entry.level_learned_at
+			
+			if max_level is not None and learn_level > max_level:
+				continue
+			
+			if min_level is not None and learn_level <= min_level:
+				continue
+			
+			if best_level is None or learn_level > best_level:
+				best_level = learn_level
 			
 			if best_level is not None:
 				move_id = move_entry.move.name
@@ -211,6 +210,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
