@@ -5,4 +5,5 @@ curl_cffi
 psutil
 git+https://github.com/oliver-ni/Flag-Parsing.git
 pytz
+ijson
 python-dotenv
