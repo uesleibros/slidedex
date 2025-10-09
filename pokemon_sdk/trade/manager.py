@@ -428,15 +428,18 @@ class TradeManager:
                     
                     trade.state = TradeState.COMPLETED
                     
-                    await self._check_trade_evolutions(trade, channel)
-                    
                     self._cleanup_trade(trade_id)
-                    
-                    return True, None
                     
                 except Exception as e:
                     self._cleanup_trade(trade_id)
                     return False, f"Erro ao executar trade: {str(e)}"
+        
+        try:
+            await self._check_trade_evolutions(trade, channel)
+        except Exception as e:
+            print(f"Erro ao verificar evoluções: {e}")
+        
+        return True, None
     
     async def _check_trade_evolutions(
         self,
@@ -444,6 +447,7 @@ class TradeManager:
         channel: discord.abc.Messageable
     ) -> None:
         from pokemon_sdk.evolution import EvolutionTriggers
+        from utils.formatting import format_pokemon_display
         
         all_traded_pokemon = [
             (trade.initiator_id, trade.partner_offer.pokemon_ids),
@@ -462,14 +466,30 @@ class TradeManager:
                     )
                     
                     if evolution_data:
-                        await self.pm.evolution_ui.send_evolution_message(
-                            channel=channel,
+                        if "evolves_to_id" in evolution_data and "species_id" not in evolution_data:
+                            evolution_data["species_id"] = evolution_data["evolves_to_id"]
+                        
+                        if "name" not in evolution_data:
+                            try:
+                                evo_species = await self.pm.service.get_species(evolution_data["species_id"])
+                                evolution_data["name"] = evo_species.name.title()
+                            except:
+                                evolution_data["name"] = f"#{evolution_data['species_id']}"
+                        
+                        temp_message = await channel.send(
+                            f"<@{new_owner_id}> {format_pokemon_display(pokemon, bold_name=True)} pode evoluir após a troca!"
+                        )
+                        
+                        await self.pm.evolution_ui.show_evolution_choice(
+                            message=temp_message,
                             owner_id=new_owner_id,
                             pokemon_id=pid,
-                            current_pokemon=pokemon,
-                            evolution_species_id=evolution_data["evolves_to_id"]
+                            pokemon=pokemon,
+                            evolution_data=evolution_data
                         )
-                except Exception:
+                        
+                except Exception as e:
+                    print(f"Erro ao verificar evolução por trade: {e}")
                     continue
     
     async def _transfer_pokemon(
