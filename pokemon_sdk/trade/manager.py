@@ -1,7 +1,7 @@
 import discord
 import asyncio
 from typing import Optional, Dict, List, Set, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -37,13 +37,13 @@ class TradeSession:
     initiator_offer: TradeOffer = field(default_factory=TradeOffer)
     partner_offer: TradeOffer = field(default_factory=TradeOffer)
     state: TradeState = TradeState.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    expires_at: datetime = field(default_factory=lambda: datetime.utcnow() + timedelta(minutes=10))
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(minutes=10))
     message: Optional[discord.Message] = None
     channel_id: Optional[int] = None
     
     def is_expired(self) -> bool:
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
     
     def get_offer(self, user_id: str) -> TradeOffer:
         return self.initiator_offer if user_id == self.initiator_id else self.partner_offer
@@ -77,7 +77,7 @@ class TradeManager:
     
     def _generate_trade_id(self) -> str:
         self._trade_counter += 1
-        return f"trade_{self._trade_counter}_{int(datetime.utcnow().timestamp())}"
+        return f"trade_{self._trade_counter}_{int(datetime.now(timezone.utc).timestamp())}"
     
     def is_trading(self, user_id: str) -> bool:
         if user_id not in self._user_trades:
