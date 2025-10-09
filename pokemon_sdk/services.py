@@ -1,7 +1,7 @@
 import random
 from typing import Dict, List, Optional, Union, Tuple
 from munch import Munch, munchify
-from .constants import VERSION_GROUPS, SHINY_ROLL
+from .constants import SHINY_ROLL
 from curl_cffi.requests import AsyncSession
 import logging
 import ijson
@@ -87,22 +87,45 @@ class PokeAPIService:
 							del poke
 							gc.collect()
 							return munchify(result)
-						else:
-							if poke.get("name") == identifier:
-								result = poke
-								del poke
-								gc.collect()
-								return munchify(result)
+					else:
+						if poke.get("name") == identifier:
+							result = poke
+							del poke
+							gc.collect()
+							return munchify(result)
 		except Exception as e:
-			self.logger.error(f"Erro ao ler {file_path}: {e}")
+			self.logger.error(f"Erro ao ler pokemon.json: {e}")
 			return None
 		finally:
 			gc.collect()
 		return None
-		#return await self._request(f"pokemon/{str(name).lower()}")
 	
 	async def get_move(self, move_id: Union[str, int]) -> Munch:
-		return await self._request(f"move/{move_id}")
+		is_id = isinstance(move_id, int) or str(move_id).isdigit()
+		if not is_id:
+			move_id = str(move_id).lower()
+		try:
+			with open("data/api/moves.json", "r") as f:
+				parser = ijson.items(f, "item")
+				for move in parser:
+					if is_id:
+						if move.get("id") == int(move_id):
+							result = move
+							del move
+							gc.collect()
+							return munchify(result)
+					else:
+						if move.get("name") == move_id:
+							result = move
+							del move
+							gc.collect()
+							return munchify(result)
+		except Exception as e:
+			self.logger.error(f"Erro ao ler moves.json: {e}")
+			return None
+		finally:
+			gc.collect()
+		return None
 	
 	async def get_species(self, species_id: int) -> Munch:
 		resp = await self._request(f"pokemon-species/{species_id}")
@@ -130,18 +153,11 @@ class PokeAPIService:
 	@staticmethod
 	def get_level_up_moves(poke, max_level: Optional[int] = None, min_level: Optional[int] = None) -> List[Tuple[str, int]]:
 		moves_data = {}
-		learned_move_names = set()
 		
 		for move_entry in poke.moves:
 			best_level = None
 			
 			for version_detail in move_entry.version_group_details:
-				if version_detail.version_group.name not in VERSION_GROUPS:
-					continue
-				
-				if version_detail.move_learn_method.name != "level-up":
-					continue
-				
 				learn_level = version_detail.level_learned_at
 				
 				if max_level is not None and learn_level > max_level:
@@ -155,19 +171,23 @@ class PokeAPIService:
 			
 			if best_level is not None:
 				move_id = move_entry.move.name
-				if move_id not in learned_move_names:
+				if move_id not in moves_data:
 					moves_data[move_id] = best_level
-					learned_move_names.add(move_id)
 		
 		result = [(move_id, level) for move_id, level in moves_data.items()]
 		result.sort(key=lambda x: (x[1], x[0]))
 		
-		del moves_data, learned_move_names
+		del moves_data
 		return result
 
-	def select_level_up_moves(self, poke, level: int) -> List[Dict]:
+	async def select_level_up_moves(self, poke, level: int) -> List[Dict]:
 		moves = self.get_level_up_moves(poke, max_level=level)
-		result = [{"id": move_id, "pp": 35, "pp_max": 35} for move_id, _ in moves[-4:]]
+		result = []
+		for move_id, _ in moves[-4:]:
+			move_data = await self.get_move(move_id)
+			pp_max = move_data.pp if move_data else 35
+			result.append({"id": move_id, "pp": pp_max, "pp_max": pp_max})
+			del move_data
 		del moves
 		return result
 
@@ -189,6 +209,4 @@ class PokeAPIService:
 
 	@staticmethod
 	def roll_shiny() -> bool:
-
 		return random.randint(1, SHINY_ROLL) == 1
-
