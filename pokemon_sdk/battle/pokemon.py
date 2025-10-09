@@ -32,7 +32,7 @@ class BattlePokemon:
 		if not moves:
 			self.moves = [{"id": "tackle", "pp": 35, "pp_max": 35}]
 		else:
-			self.moves = [dict(m) for m in raw_data.get("moves", [])]
+			self.moves = [dict(m) for m in moves]
 		
 		self.pokeapi_data = pokeapi_data
 		self.species_data = species_data
