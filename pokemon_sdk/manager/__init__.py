@@ -94,18 +94,6 @@ class ItemManager:
 		item = await self.get_item(item_id)
 		return item.cost if item else 0
 	
-	async def _is_item_available_in_generation(self, item: object) -> bool:
-		from ..constants import VERSION_GROUPS
-		
-		if not hasattr(item, 'flavor_text_entries') or not item.flavor_text_entries:
-			return True
-		
-		for flavor in item.flavor_text_entries:
-			if flavor.version_group.name in VERSION_GROUPS:
-				return True
-		
-		return False
-	
 	async def give_item(self, user_id: str, item_id: str, quantity: int = 1) -> Dict:
 		is_valid = await self.validate_item(item_id)
 		if not is_valid:
@@ -114,9 +102,6 @@ class ItemManager:
 		item = await self.get_item(item_id)
 		if not item:
 			raise ValueError(Messages.item_not_found(item_id))
-		
-		if not await self._is_item_available_in_generation(item):
-			raise ValueError(Messages.item_unavailable(item_id))
 		
 		category = await self.get_item_category(item_id)
 		new_quantity = self.tk.add_item(user_id, item_id, quantity, category)
@@ -814,3 +799,4 @@ class PokemonManager:
 	async def close(self):
 
 		await self.service.close()
+
