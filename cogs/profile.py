@@ -24,9 +24,9 @@ class Profile(commands.Cog):
 		for poke in user_party:
 			poke_data = await pm.service.get_pokemon(poke["species_id"])
 			if poke.get("is_shiny") and poke_data.sprites.front_shiny:
-				party_sprites.append(await poke_data.sprites.front_shiny.read())
+				party_sprites.append(await pm.service.get_bytes(poke_data.sprites.front_shiny))
 			elif poke_data.sprites.front_default:
-				party_sprites.append(await poke_data.sprites.front_default.read())
+				party_sprites.append(await pm.service.get_bytes(poke_data.sprites.front_default))
 
 		background = preloaded_textures["profile"]
 		buf = await compose_profile_async(party_sprites, background)
@@ -48,4 +48,3 @@ class Profile(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Profile(bot))
-
