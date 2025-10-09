@@ -165,7 +165,7 @@ class PokeAPIService:
 			if min_level is not None and learn_level <= min_level:
 				continue
 
-			if move_entry.move_learn_method.name != "level-up":
+			if move_entry.move_learn_method != "level-up":
 				continue
 			
 			if best_level is None or learn_level > best_level:
@@ -212,6 +212,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
