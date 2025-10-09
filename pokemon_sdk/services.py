@@ -134,7 +134,21 @@ class PokeAPIService:
 		return resp
 
 	async def get_evolution_chain(self, chain_id: int) -> Munch:
-		return await self._request(f"evolution-chain/{chain_id}")
+		try:
+			with open("data/api/evolution-chain.json", "r") as f:
+				parser = ijson.items(f, "item")
+				for chain in parser:
+					if chain.get("id") == chain_id:
+						result = chain
+						del chain
+						gc.collect()
+						return munchify(result)
+		except Exception as e:
+			self.logger.error(f"Erro ao ler evolution-chain.json: {e}")
+			return None
+		finally:
+			gc.collect()
+		return None
 
 	async def get_item(self, item_id: Union[str, int]) -> Munch:
 		return await self._request(f"item/{item_id}")
@@ -212,6 +226,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
