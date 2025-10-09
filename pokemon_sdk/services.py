@@ -5,7 +5,6 @@ from .constants import VERSION_GROUPS, SHINY_ROLL
 from curl_cffi.requests import AsyncSession
 import logging
 import ijson
-from functools import lru_cache
 import gc
 
 class PokeAPIService:
@@ -87,13 +86,13 @@ class PokeAPIService:
 							result = poke
 							del poke
 							gc.collect()
-							return result
+							return munchify(result)
 						else:
 							if poke.get("name") == identifier:
 								result = poke
 								del poke
 								gc.collect()
-								return result
+								return munchify(result)
 		except Exception as e:
 			self.logger.error(f"Erro ao ler {file_path}: {e}")
 			return None
@@ -192,3 +191,4 @@ class PokeAPIService:
 	def roll_shiny() -> bool:
 
 		return random.randint(1, SHINY_ROLL) == 1
+
