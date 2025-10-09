@@ -4,39 +4,73 @@ from munch import Munch, munchify
 from .constants import VERSION_GROUPS, SHINY_ROLL
 from curl_cffi.requests import AsyncSession
 import logging
+from functools import lru_cache
+import gc
 
 class PokeAPIService:
 	def __init__(self):
 		self._BASE_URL: str = "https://pokeapi.co/api/v2"
-		self._session: Optional[AsyncSession] = AsyncSession(timeout=30, impersonate="chrome110")
+		self._session: Optional[AsyncSession] = None
 		self.logger = logging.getLogger(__name__)
+	
+	async def __aenter__(self):
+		if not self._session:
+			self._session = AsyncSession(
+				timeout=30,
+				impersonate="chrome110",
+				max_clients=10
+			)
+		return self
+	
+	async def __aexit__(self, exc_type, exc_val, exc_tb):
+		await self.close()
 	
 	async def close(self):
 		if self._session:
 			await self._session.close()
 			self._session = None
+		gc.collect()
 	
-	async def _request(self, endpoint: str) -> Munch:		
+	def _ensure_session(self):
+		if not self._session:
+			self._session = AsyncSession(
+				timeout=30,
+				impersonate="chrome110",
+				max_clients=10
+			)
+	
+	async def _request(self, endpoint: str) -> Munch:
+		self._ensure_session()
 		url = f"{self._BASE_URL}/{endpoint}"
 		
 		try:
 			resp = await self._session.get(url)
 			resp.raise_for_status()
-			return munchify(resp.json())
+			data = munchify(resp.json())
+			del resp
+			return data
 		except Exception as e:
 			self.logger.error(f"Erro ao buscar {url}: {str(e)}")
 			raise
+		finally:
+			gc.collect()
 
 	async def get_bytes(self, url: str) -> bytes:
+		self._ensure_session()
 		try:
 			resp = await self._session.get(url)
 			resp.raise_for_status()
-			return resp.content
+			content = resp.content
+			del resp
+			return content
 		except Exception as e:
 			self.logger.error(f"Erro ao ler {url}: {str(e)}")
 			raise
+		finally:
+			gc.collect()
 
-	def _extract_id_from_url(self, url: str) -> int:
+	@staticmethod
+	def _extract_id_from_url(url: str) -> int:
 		return int(url.rstrip('/').split('/')[-1])
 
 	async def get_pokemon(self, name: str) -> Munch:
@@ -57,16 +91,19 @@ class PokeAPIService:
 	async def get_item(self, item_id: Union[str, int]) -> Munch:
 		return await self._request(f"item/{item_id}")
 
-	def get_base_stats(self, poke) -> Dict[str, int]:
+	@staticmethod
+	def get_base_stats(poke) -> Dict[str, int]:
 		return {s.stat.name: s.base_stat for s in poke.stats}
 
-	def choose_ability(self, poke) -> str:
+	@staticmethod
+	def choose_ability(poke) -> str:
 		regular = [a.ability.name for a in poke.abilities if not a.is_hidden]
 		if regular:
 			return random.choice(regular)
 		return poke.abilities[0].ability.name
 
-	def get_level_up_moves(self, poke, max_level: Optional[int] = None, min_level: Optional[int] = None) -> List[Tuple[str, int]]:
+	@staticmethod
+	def get_level_up_moves(poke, max_level: Optional[int] = None, min_level: Optional[int] = None) -> List[Tuple[str, int]]:
 		moves_data = {}
 		learned_move_names = set()
 		
@@ -99,17 +136,24 @@ class PokeAPIService:
 		
 		result = [(move_id, level) for move_id, level in moves_data.items()]
 		result.sort(key=lambda x: (x[1], x[0]))
+		
+		del moves_data, learned_move_names
 		return result
 
 	def select_level_up_moves(self, poke, level: int) -> List[Dict]:
 		moves = self.get_level_up_moves(poke, max_level=level)
-		return [{"id": move_id, "pp": 35, "pp_max": 35} for move_id, _ in moves[-4:]]
+		result = [{"id": move_id, "pp": 35, "pp_max": 35} for move_id, _ in moves[-4:]]
+		del moves
+		return result
 
 	def get_future_moves(self, poke, current_level: int) -> List[Tuple[int, str]]:
 		moves = self.get_level_up_moves(poke, min_level=current_level)
-		return [(level, move_id) for move_id, level in moves]
+		result = [(level, move_id) for move_id, level in moves]
+		del moves
+		return result
 
-	def roll_gender(self, species, forced: Optional[str] = None) -> str:
+	@staticmethod
+	def roll_gender(species, forced: Optional[str] = None) -> str:
 		if forced in ("Male", "Female", "Genderless"):
 			return forced
 		gr = getattr(species, "gender_rate", -1)
@@ -118,5 +162,6 @@ class PokeAPIService:
 		female_chance = gr * 12.5
 		return "Female" if random.random() * 100 < female_chance else "Male"
 
-	def roll_shiny(self) -> bool:
+	@staticmethod
+	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
