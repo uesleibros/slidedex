@@ -301,7 +301,7 @@ class PokemonManager:
 		
 		gen = generate_pokemon_data(base_stats, level=final_level, nature=final_nature, ivs=final_ivs)
 		final_ability = ability or self.service.choose_ability(poke)
-		final_moves = moves or self.service.select_level_up_moves(poke, final_level)
+		final_moves = moves or await self.service.select_level_up_moves(poke, final_level)
 		final_gender = self.service.roll_gender(species, forced=forced_gender)
 		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
 	
@@ -812,4 +812,5 @@ class PokemonManager:
 		return result
 		
 	async def close(self):
+
 		await self.service.close()
