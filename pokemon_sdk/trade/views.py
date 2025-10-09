@@ -37,7 +37,7 @@ class TradeView(discord.ui.View):
             except:
                 pass
     
-    @discord.ui.button(label="Adicionar Pokémon", style=discord.ButtonStyle.primary, row=0)
+    @discord.ui.button(label="Como Adicionar Pokémon", style=discord.ButtonStyle.primary, row=0)
     async def add_pokemon(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(
             "Use: `!trade add pokemon <ID1> [ID2] [ID3]...`\n"
@@ -45,7 +45,7 @@ class TradeView(discord.ui.View):
             ephemeral=True
         )
     
-    @discord.ui.button(label="Adicionar Item", style=discord.ButtonStyle.primary, row=0)
+    @discord.ui.button(label="Como Adicionar Item", style=discord.ButtonStyle.primary, row=0)
     async def add_item(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(
             "Use: `!trade add item <nome> [quantidade]`\n"
@@ -53,7 +53,7 @@ class TradeView(discord.ui.View):
             ephemeral=True
         )
     
-    @discord.ui.button(label="Adicionar Dinheiro", style=discord.ButtonStyle.primary, row=0)
+    @discord.ui.button(label="Como Adicionar Dinheiro", style=discord.ButtonStyle.primary, row=0)
     async def add_money(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(
             "Use: `!trade add money <quantidade>`\n"
