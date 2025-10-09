@@ -4,6 +4,7 @@ from munch import Munch, munchify
 from .constants import VERSION_GROUPS, SHINY_ROLL
 from curl_cffi.requests import AsyncSession
 import logging
+import ijson
 from functools import lru_cache
 import gc
 
@@ -73,8 +74,33 @@ class PokeAPIService:
 	def _extract_id_from_url(url: str) -> int:
 		return int(url.rstrip('/').split('/')[-1])
 
-	async def get_pokemon(self, name: str) -> Munch:
-		return await self._request(f"pokemon/{str(name).lower()}")
+	async def get_pokemon(self, identifier: Union[str, int]) -> Munch:
+		is_id = isinstance(identifier, int) or str(identifier).isdigit()
+		if not is_id:
+			identifier = str(identifier).lower()
+		try:
+			with open("data/api/pokemon.json", "r") as f:
+				parser = ijson.items(f, "item")
+				for poke in parser:
+					if is_id:
+						if poke.get("id") == int(identifier):
+							result = poke
+							del poke
+							gc.collect()
+							return result
+						else:
+							if poke.get("name") == identifier:
+								result = poke
+								del poke
+								gc.collect()
+								return result
+		except Exception as e:
+			self.logger.error(f"Erro ao ler {file_path}: {e}")
+			return None
+		finally:
+			gc.collect()
+		return None
+		#return await self._request(f"pokemon/{str(name).lower()}")
 	
 	async def get_move(self, move_id: Union[str, int]) -> Munch:
 		return await self._request(f"move/{move_id}")
@@ -164,4 +190,5 @@ class PokeAPIService:
 
 	@staticmethod
 	def roll_shiny() -> bool:
+
 		return random.randint(1, SHINY_ROLL) == 1
