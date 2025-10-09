@@ -1,4 +1,5 @@
 import random
+import asyncio
 import discord
 from discord.ext import commands
 from __main__ import pm, battle_tracker
@@ -45,7 +46,6 @@ class BattleView(discord.ui.View):
 		await battle.start()
 
 class Spawn(commands.Cog):
-	""" [DEV] Comandos de Spawn. """
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
 		self.preloaded_backgrounds = preloaded_backgrounds
@@ -82,15 +82,14 @@ class Spawn(commands.Cog):
 	@requires_account()
 	async def spawn_command(self, ctx: commands.Context) -> None:
 		is_shiny = random.randint(1, SHINY_ROLL) == 1
-		poke = await pm.service.get_pokemon(str(random.randint(1, 386)))
-		species = await pm.service.get_species(poke.id)
+		pokemon_id = random.randint(1, 386)
+		
+		species = await pm.service.get_species(pokemon_id)
 
 		is_legendary = bool(getattr(species, "is_legendary", False))
 		is_mythical = bool(getattr(species, "is_mythical", False))
 		habitat_name = species.habitat.name if species.habitat else ("rare" if (is_legendary or is_mythical) else "grassland")
 
-		sprite = poke.sprites.front_shiny if is_shiny and poke.sprites.front_shiny else poke.sprites.front_default
-		sprite_bytes = await pm.service.get_bytes(sprite) if sprite else None
 		pokemon_min_level = await self.get_pokemon_min_level(species)
 
 		author_id = str(ctx.author.id)
@@ -103,7 +102,8 @@ class Spawn(commands.Cog):
 		except ValueError:
 			level = random.randint(pokemon_min_level, max(pokemon_min_level, 15))
 
-		wild = await pm.generate_temp_pokemon(owner_id="wild", species_id=poke.id, level=level, on_party=False, shiny=is_shiny)
+		wild = await pm.generate_temp_pokemon(owner_id="wild", species_id=pokemon_id, level=level, on_party=False, shiny=is_shiny)
+		sprite_bytes = pm.service.get_pokemon_sprite(wild)[0]
 		buffer = await compose_pokemon_async(sprite_bytes, self.preloaded_backgrounds[habitat_name])
 		
 		title = "✨ Um Pokémon Shiny Selvagem Apareceu! ✨" if is_shiny else "Um Pokémon Selvagem Apareceu!"

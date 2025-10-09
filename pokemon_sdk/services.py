@@ -1,84 +1,61 @@
 import random
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple, Any
 from munch import Munch, munchify
 from .constants import SHINY_ROLL
-from curl_cffi.requests import AsyncSession
 import logging
 import ijson
 import gc
+import os
 
 class PokeAPIService:
 	def __init__(self):
-		self._BASE_URL: str = "https://pokeapi.co/api/v2"
-		self._session: Optional[AsyncSession] = None
 		self.logger = logging.getLogger(__name__)
-	
-	async def __aenter__(self):
-		if not self._session:
-			self._session = AsyncSession(
-				timeout=30,
-				impersonate="chrome110",
-				max_clients=10
-			)
-		return self
-	
-	async def __aexit__(self, exc_type, exc_val, exc_tb):
-		await self.close()
-	
-	async def close(self):
-		if self._session:
-			await self._session.close()
-			self._session = None
-		gc.collect()
-	
-	def _ensure_session(self):
-		if not self._session:
-			self._session = AsyncSession(
-				timeout=30,
-				impersonate="chrome110",
-				max_clients=10
-			)
-	
-	async def _request(self, endpoint: str) -> Munch:
-		self._ensure_session()
-		url = f"{self._BASE_URL}/{endpoint}"
-		
-		try:
-			resp = await self._session.get(url)
-			resp.raise_for_status()
-			data = munchify(resp.json())
-			del resp
-			return data
-		except Exception as e:
-			self.logger.error(f"Erro ao buscar {url}: {str(e)}")
-			raise
-		finally:
-			gc.collect()
-
-	async def get_bytes(self, url: str) -> bytes:
-		self._ensure_session()
-		try:
-			resp = await self._session.get(url)
-			resp.raise_for_status()
-			content = resp.content
-			del resp
-			return content
-		except Exception as e:
-			self.logger.error(f"Erro ao ler {url}: {str(e)}")
-			raise
-		finally:
-			gc.collect()
 
 	@staticmethod
 	def _extract_id_from_url(url: str) -> int:
 		return int(url.rstrip('/').split('/')[-1])
+
+	def get_pokemon_sprite(self, poke: Dict[str, Any]) -> Tuple[Optional[bytes], Optional[bytes]]:
+		id_str = str(int(poke["species_id"])).zfill(3)
+		
+		def find_sprite(orientation) -> Optional[bytes]:
+			candidates = []
+			if poke["gender"].lower() == "female":
+				if poke["is_shiny"]:
+					candidates.extend([
+						f"{id_str}_{orientation}_shiny_female.png",
+						f"{id_str}_{orientation}_shiny.png",
+						f"{id_str}_{orientation}_default.png"
+					])
+				else:
+					candidates.extend([
+						f"{id_str}_{orientation}_female.png",
+						f"{id_str}_{orientation}_default.png"
+					])
+			else:
+				if poke["is_shiny"]:
+					candidates.extend([
+						f"{id_str}_{orientation}_shiny.png",
+						f"{id_str}_{orientation}_default.png"
+					])
+				else:
+					candidates.append(f"{id_str}_{orientation}_default.png")
+			
+			for name in candidates:
+				path = os.path.join("data/api/sprites", name)
+				if os.path.exists(path):
+					with open(path, "rb") as f:
+						return f.read()
+			return None
+		
+		return (find_sprite("front"), find_sprite("back"))
 
 	async def get_pokemon(self, identifier: Union[str, int]) -> Munch:
 		is_id = isinstance(identifier, int) or str(identifier).isdigit()
 		if not is_id:
 			identifier = str(identifier).lower()
 		try:
-			with open("data/api/pokemon.json", "r") as f:
+			with open("data/api/pokemon.json", "r", encoding="utf-8") as f:
 				parser = ijson.items(f, "item")
 				for poke in parser:
 					if is_id:
@@ -105,7 +82,7 @@ class PokeAPIService:
 		if not is_id:
 			move_id = str(move_id).lower()
 		try:
-			with open("data/api/moves.json", "r") as f:
+			with open("data/api/moves.json", "r", encoding="utf-8") as f:
 				parser = ijson.items(f, "item")
 				for move in parser:
 					if is_id:
@@ -129,7 +106,7 @@ class PokeAPIService:
 	
 	async def get_species(self, species_id: int) -> Munch:
 		try:
-			with open("data/api/pokemon-species.json", "r") as f:
+			with open("data/api/pokemon-species.json", "r", encoding="utf-8") as f:
 				parser = ijson.items(f, "item")
 				for specie in parser:
 					if specie.get("id") == species_id:
@@ -148,7 +125,7 @@ class PokeAPIService:
 
 	async def get_evolution_chain(self, chain_id: int) -> Munch:
 		try:
-			with open("data/api/evolution-chain.json", "r") as f:
+			with open("data/api/evolution-chain.json", "r", encoding="utf-8") as f:
 				parser = ijson.items(f, "item")
 				for chain in parser:
 					if chain.get("id") == chain_id:
@@ -168,7 +145,7 @@ class PokeAPIService:
 		if not is_id:
 			identifier = str(identifier).lower()
 		try:
-			with open("data/api/items.json", "r") as f:
+			with open("data/api/items.json", "r", encoding="utf-8") as f:
 				parser = ijson.items(f, "item")
 				for item in parser:
 					if is_id:

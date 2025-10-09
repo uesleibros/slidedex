@@ -64,8 +64,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 
 	title = f"Level {user_pokemon['level']} {format_pokemon_display(user_pokemon, show_fav=True, show_poke=False)}"
 	
-	sprite_to_use = pokemon.sprites.front_shiny if user_pokemon['is_shiny'] else pokemon.sprites.front_default
-	sprite_bytes = await pm.service.get_bytes(sprite_to_use) if sprite_to_use else None
+	sprite_bytes = pm.service.get_pokemon_sprite(user_pokemon)[0]
 	
 	files = []
 	if sprite_bytes:

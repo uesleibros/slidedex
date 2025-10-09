@@ -170,19 +170,17 @@ class WildBattle(BattleEngine):
 			await asyncio.gather(*[self._fetch_move(mid) for mid in move_ids if mid])
 	
 	async def _compose_image(self) -> discord.File:
-		player_sprite = self.player_active.sprites["back"]
-		wild_sprite = self.wild.sprites["front"]
-		
+		pb = None
+		ef = None
+
+		pb = pm.service.get_pokemon_sprite(self.player_active.raw)[1]
+		ef = pm.service.get_pokemon_sprite(self.wild.raw)[0]
+
 		if self.player_active.volatile.get("transformed"):
-			if self.wild.sprites.get("back"):
-				player_sprite = self.wild.sprites["back"]
+			pb = pm.service.get_pokemon_sprite(self.wild.raw)[1]
 		
 		if self.wild.volatile.get("transformed"):
-			if self.player_active.sprites.get("front"):
-				wild_sprite = self.player_active.sprites["front"]
-		
-		pb = await pm.service.get_bytes(player_sprite) if player_sprite else None
-		ef = await pm.service.get_bytes(wild_sprite) if wild_sprite else None
+			ef = pm.service.get_pokemon_sprite(self.player_active.raw)[0]
 		
 		buf = await compose_battle_async(pb, ef, preloaded_textures["battle"])
 		return discord.File(buf, filename="battle.png")

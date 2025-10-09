@@ -22,11 +22,7 @@ class Profile(commands.Cog):
 		party_sprites: List[bytes] = []
 
 		for poke in user_party:
-			poke_data = await pm.service.get_pokemon(poke["species_id"])
-			if poke.get("is_shiny") and poke_data.sprites.front_shiny:
-				party_sprites.append(await pm.service.get_bytes(poke_data.sprites.front_shiny))
-			elif poke_data.sprites.front_default:
-				party_sprites.append(await pm.service.get_bytes(poke_data.sprites.front_default))
+			party_sprites.append(pm.service.get_pokemon_sprite(poke)[0])
 
 		background = preloaded_textures["profile"]
 		buf = await compose_profile_async(party_sprites, background)

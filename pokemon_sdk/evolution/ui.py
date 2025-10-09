@@ -146,14 +146,12 @@ class EvolutionUIHandler:
 	
 	async def generate_evolution_animation(
 		self,
-		old_species_id: int,
+		current_pokemon: Dict,
 		new_species_id: int
-	) -> BytesIO:
-		old_pokemon_obj = await self.processor.service.get_pokemon(old_species_id)
-		new_pokemon_obj = await self.processor.service.get_pokemon(new_species_id)
-		
-		old_sprite_bytes = await self.processor.service.get_bytes(old_pokemon_obj.sprites.front_default)
-		new_sprite_bytes = await self.processor.service.get_bytes(new_pokemon_obj.sprites.front_default)
+	) -> BytesIO:	
+		old_sprite_bytes = self.processor.service.get_pokemon_sprite(current_pokemon)[0]
+		current_pokemon["species_id"] = new_species_id
+		new_sprite_bytes = self.processor.service.get_pokemon_sprite(current_pokemon)[0]
 		
 		return await compose_evolution_async(old_sprite_bytes, new_sprite_bytes)
 	
@@ -166,7 +164,7 @@ class EvolutionUIHandler:
 		evolution_species_id: int
 	) -> Dict:
 		gif_buffer = await self.generate_evolution_animation(
-			current_pokemon["species_id"],
+			current_pokemon,
 			evolution_species_id
 		)
 		
@@ -199,7 +197,7 @@ class EvolutionUIHandler:
 		evolution_species_id: int
 	) -> Tuple[Dict, discord.Message]:
 		gif_buffer = await self.generate_evolution_animation(
-			current_pokemon["species_id"],
+			current_pokemon,
 			evolution_species_id
 		)
 		
