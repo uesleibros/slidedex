@@ -132,7 +132,7 @@ class PokeAPIService:
 			with open("data/api/pokemon-species.json", "r") as f:
 				parser = ijson.items(f, "item")
 				for specie in parser:
-					if specie.get("id") == specie:
+					if specie.get("id") == species_id:
 						result = specie
 						chain_id = self._extract_id_from_url(specie.evolution_chain.url)
 						result.evolution_chain.id = chain_id
@@ -263,6 +263,7 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
+
 
 
 
