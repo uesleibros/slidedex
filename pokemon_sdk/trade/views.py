@@ -8,7 +8,6 @@ class TradeView(discord.ui.View):
         self.tm = trade_manager
         self.trade = trade_session
         self.message: Optional[discord.Message] = None
-        self.completed = False
     
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         user_id = str(interaction.user.id)
@@ -23,129 +22,94 @@ class TradeView(discord.ui.View):
         return True
     
     async def on_timeout(self) -> None:
-        if self.completed:
-            return
-            
         await self.tm.cancel_trade(self.trade.trade_id, "expirada")
         
         if self.message:
-            from __main__ import bot
+            for item in self.children:
+                item.disabled = True
+            
+            embed = self.message.embeds[0] if self.message.embeds else discord.Embed()
+            embed.color = discord.Color.dark_gray()
+            embed.title = "Trade Expirada"
             
             try:
-                initiator = await bot.fetch_user(int(self.trade.initiator_id))
-                partner = await bot.fetch_user(int(self.trade.partner_id))
-                
-                for item in self.children:
-                    item.disabled = True
-                
-                embed = discord.Embed(
-                    title="Trade Expirada",
-                    description="Tempo limite de 10 minutos atingido.",
-                    color=discord.Color.dark_gray()
-                )
-                
                 await self.message.edit(embed=embed, view=self)
-                await self.message.channel.send(
-                    f"{initiator.mention} {partner.mention} A trade expirou por inatividade."
-                )
             except:
                 pass
     
-    @discord.ui.button(label="Confirmar Oferta", style=discord.ButtonStyle.green, row=0)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="Como Adicionar Pokémon", style=discord.ButtonStyle.primary, row=0)
+    async def add_pokemon(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use: `!trade add pokemon <ID1> [ID2] [ID3]...`\n"
+            "Exemplo: `!trade add pokemon 1 5 23`",
+            ephemeral=True
+        )
+    
+    @discord.ui.button(label="Como Adicionar Item", style=discord.ButtonStyle.primary, row=0)
+    async def add_item(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use: `!trade add item <nome> [quantidade]`\n"
+            "Exemplo: `!trade add item rare-candy 5`",
+            ephemeral=True
+        )
+    
+    @discord.ui.button(label="Como Adicionar Dinheiro", style=discord.ButtonStyle.primary, row=0)
+    async def add_money(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use: `!trade add money <quantidade>`\n"
+            "Exemplo: `!trade add money 5000`",
+            ephemeral=True
+        )
+    
+    @discord.ui.button(label="Limpar Oferta", style=discord.ButtonStyle.secondary, row=1)
+    async def clear_offer(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = str(interaction.user.id)
         offer = self.trade.get_offer(user_id)
         
-        if offer.confirmed:
-            await interaction.response.send_message(
-                "Você já confirmou sua oferta! Aguardando a outra parte confirmar.",
-                ephemeral=True
-            )
-            return
+        offer.pokemon_ids.clear()
+        offer.items.clear()
+        offer.money = 0
+        offer.confirmed = False
         
-        is_empty = (
-            len(offer.pokemon_ids) == 0 and
-            len(offer.items) == 0 and
-            offer.money == 0
-        )
+        self.trade.reset_confirmations()
         
-        if is_empty:
-            await interaction.response.send_message(
-                "Você não adicionou nada à sua oferta. Tem certeza que quer confirmar uma oferta vazia? Use o botão novamente para confirmar.",
-                ephemeral=True
-            )
-            
-            success, error = await self.tm.confirm_offer(self.trade.trade_id, user_id)
-            
-            if not success:
-                return await interaction.followup.send(f"{error}", ephemeral=True)
-            
-            await self.update_embed()
-            return
+        await interaction.response.send_message("Sua oferta foi limpa!", ephemeral=True)
+        await self.update_embed()
+    
+    @discord.ui.button(label="Confirmar", style=discord.ButtonStyle.success, row=2)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user_id = str(interaction.user.id)
         
         success, error = await self.tm.confirm_offer(self.trade.trade_id, user_id)
         
         if not success:
             return await interaction.response.send_message(f"{error}", ephemeral=True)
         
-        await interaction.response.send_message(
-            "Oferta confirmada com sucesso!",
-            ephemeral=True
-        )
-        
-        await self.update_embed()
+        if self.trade.both_confirmed():
+            await interaction.response.defer()
+            await self.execute_trade()
+        else:
+            await interaction.response.send_message("Você confirmou sua oferta!", ephemeral=True)
+            await self.update_embed()
     
-    @discord.ui.button(label="Executar Trade", style=discord.ButtonStyle.blurple, row=0, disabled=True)
-    async def execute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not self.trade.both_confirmed():
-            await interaction.response.send_message(
-                "Ambas as partes precisam confirmar antes de executar a trade!",
-                ephemeral=True
-            )
-            return
-        
-        await interaction.response.send_message(
-            "Executando a trade...",
-            ephemeral=True
-        )
-        
-        await self.execute_trade()
-    
-    @discord.ui.button(label="Cancelar Trade", style=discord.ButtonStyle.red, row=0)
+    @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.danger, row=2)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        from __main__ import bot
-        
-        self.completed = True
         await self.tm.cancel_trade(self.trade.trade_id)
-        
-        initiator = await bot.fetch_user(int(self.trade.initiator_id))
-        partner = await bot.fetch_user(int(self.trade.partner_id))
         
         for item in self.children:
             item.disabled = True
         
         embed = discord.Embed(
             title="Trade Cancelada",
-            description=f"A trade foi cancelada por {interaction.user.mention}.",
+            description=f"Trade cancelada por {interaction.user.mention}",
             color=discord.Color.red()
         )
         
         await interaction.response.edit_message(embed=embed, view=self)
-        await self.message.channel.send(
-            f"{initiator.mention} {partner.mention} A trade foi cancelada."
-        )
-        
         self.stop()
     
     async def execute_trade(self):
-        from __main__ import bot
-        
-        self.completed = True
-        
         success, error = await self.tm.execute_trade(self.trade.trade_id, self.message.channel)
-        
-        initiator = await bot.fetch_user(int(self.trade.initiator_id))
-        partner = await bot.fetch_user(int(self.trade.partner_id))
         
         for item in self.children:
             item.disabled = True
@@ -153,21 +117,13 @@ class TradeView(discord.ui.View):
         if success:
             embed = await self._create_success_embed()
             await self.message.edit(embed=embed, view=self)
-            
-            await self.message.channel.send(
-                f"{initiator.mention} {partner.mention} Trade realizada com sucesso!"
-            )
         else:
             embed = discord.Embed(
                 title="Erro na Trade",
-                description=f"A trade não pôde ser concluída.\n\n**Motivo:** {error}",
+                description=f"**Erro:** {error}",
                 color=discord.Color.red()
             )
             await self.message.edit(embed=embed, view=self)
-            
-            await self.message.channel.send(
-                f"{initiator.mention} {partner.mention} A trade falhou: {error}"
-            )
         
         self.stop()
     
@@ -178,8 +134,8 @@ class TradeView(discord.ui.View):
         partner = await bot.fetch_user(int(self.trade.partner_id))
         
         embed = discord.Embed(
-            title="Trade Concluída com Sucesso",
-            description="Os itens foram trocados entre os jogadores.",
+            title="Trade Completada!",
+            description="A trade foi realizada com sucesso!",
             color=discord.Color.green(),
             timestamp=discord.utils.utcnow()
         )
@@ -194,18 +150,8 @@ class TradeView(discord.ui.View):
                     poke = self.tm.tk.get_pokemon(self.trade.initiator_id, pid)
                     pokemon_list.append(f"• {format_pokemon_display(poke, show_level=True)}")
                 except:
-                    pokemon_list.append(f"• Pokemon ID #{pid}")
-            initiator_received.append("**Pokemon recebidos:**\n" + "\n".join(pokemon_list))
-        
-        if self.trade.partner_offer.items:
-            items_list = []
-            for item_id, qty in self.trade.partner_offer.items.items():
-                item_name = await self.tm.pm.get_item_name(item_id)
-                items_list.append(f"• {item_name} x{qty}")
-            initiator_received.append("**Itens recebidos:**\n" + "\n".join(items_list))
-        
-        if self.trade.partner_offer.money > 0:
-            initiator_received.append(f"**Dinheiro recebido:**\n{self.trade.partner_offer.money:,}")
+                    pokemon_list.append(f"• Pokémon #{pid}")
+            initiator_received.append(f"**Pokémon:**\n" + "\n".join(pokemon_list))
         
         if self.trade.initiator_offer.pokemon_ids:
             pokemon_list = []
@@ -214,32 +160,42 @@ class TradeView(discord.ui.View):
                     poke = self.tm.tk.get_pokemon(self.trade.partner_id, pid)
                     pokemon_list.append(f"• {format_pokemon_display(poke, show_level=True)}")
                 except:
-                    pokemon_list.append(f"• Pokemon ID #{pid}")
-            partner_received.append("**Pokemon recebidos:**\n" + "\n".join(pokemon_list))
+                    pokemon_list.append(f"• Pokémon #{pid}")
+            partner_received.append(f"**Pokémon:**\n" + "\n".join(pokemon_list))
+        
+        if self.trade.partner_offer.items:
+            items_list = []
+            for item_id, qty in self.trade.partner_offer.items.items():
+                item_name = await self.tm.pm.get_item_name(item_id)
+                items_list.append(f"• {item_name} x{qty}")
+            initiator_received.append(f"**Itens:**\n" + "\n".join(items_list))
         
         if self.trade.initiator_offer.items:
             items_list = []
             for item_id, qty in self.trade.initiator_offer.items.items():
                 item_name = await self.tm.pm.get_item_name(item_id)
                 items_list.append(f"• {item_name} x{qty}")
-            partner_received.append("**Itens recebidos:**\n" + "\n".join(items_list))
+            partner_received.append(f"**Itens:**\n" + "\n".join(items_list))
+        
+        if self.trade.partner_offer.money > 0:
+            initiator_received.append(f"**Dinheiro:** {self.trade.partner_offer.money:,}")
         
         if self.trade.initiator_offer.money > 0:
-            partner_received.append(f"**Dinheiro recebido:**\n{self.trade.initiator_offer.money:,}")
+            partner_received.append(f"**Dinheiro:** {self.trade.initiator_offer.money:,}")
         
-        embed.add_field(
-            name=f"{initiator.display_name} recebeu:",
-            value="\n\n".join(initiator_received) if initiator_received else "Nada",
-            inline=False
-        )
+        if initiator_received:
+            embed.add_field(
+                name=f"{initiator.display_name} recebeu:",
+                value="\n\n".join(initiator_received),
+                inline=False
+            )
         
-        embed.add_field(
-            name=f"{partner.display_name} recebeu:",
-            value="\n\n".join(partner_received) if partner_received else "Nada",
-            inline=False
-        )
-        
-        embed.set_footer(text="Trade concluída")
+        if partner_received:
+            embed.add_field(
+                name=f"{partner.display_name} recebeu:",
+                value="\n\n".join(partner_received),
+                inline=False
+            )
         
         return embed
     
@@ -248,15 +204,6 @@ class TradeView(discord.ui.View):
             return
         
         embed = await self._create_trade_embed()
-        
-        for item in self.children:
-            if hasattr(item, 'custom_id') or item.label == "Executar Trade":
-                if self.trade.both_confirmed():
-                    item.disabled = False
-                    item.style = discord.ButtonStyle.green
-                else:
-                    item.disabled = True
-                    item.style = discord.ButtonStyle.blurple
         
         try:
             await self.message.edit(embed=embed, view=self)
@@ -269,72 +216,50 @@ class TradeView(discord.ui.View):
         initiator = await bot.fetch_user(int(self.trade.initiator_id))
         partner = await bot.fetch_user(int(self.trade.partner_id))
         
-        time_left = (self.trade.expires_at - discord.utils.utcnow()).total_seconds()
-        minutes_left = max(0, int(time_left / 60))
-        seconds_left = max(0, int(time_left % 60))
-        
-        if self.trade.both_confirmed():
-            color = discord.Color.green()
-            status = "Pronto para executar! Clique no botão 'Executar Trade' para finalizar."
-        elif self.trade.initiator_offer.confirmed or self.trade.partner_offer.confirmed:
-            color = discord.Color.orange()
-            if self.trade.initiator_offer.confirmed:
-                status = f"Aguardando {partner.mention} confirmar a oferta."
-            else:
-                status = f"Aguardando {initiator.mention} confirmar a oferta."
-        else:
-            color = discord.Color.blue()
-            status = "Adicione itens usando os comandos abaixo e clique em 'Confirmar Oferta'."
-        
         embed = discord.Embed(
-            title="Sistema de Trocas",
-            description=f"**{initiator.display_name}** está trocando com **{partner.display_name}**",
-            color=color,
+            title="Trade em Andamento",
+            description=(
+                f"**{initiator.display_name}** <-> **{partner.display_name}**\n\n"
+                f"Use os botões abaixo ou comandos para adicionar itens à trade."
+            ),
+            color=discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
         
-        embed.add_field(
-            name="Como adicionar itens:",
-            value=(
-                "**Pokemon:**\n"
-                "`.trade add pokemon <ID>` - Adiciona um Pokemon\n"
-                "`.trade add pokemon <ID1> <ID2> <ID3>` - Adiciona vários\n\n"
-                "**Itens:**\n"
-                "`.trade add item <nome> <quantidade>` - Adiciona itens\n\n"
-                "**Dinheiro:**\n"
-                "`.trade add money <valor>` - Adiciona dinheiro\n\n"
-                "**Remover:**\n"
-                "`.trade remove pokemon <ID>` - Remove um Pokemon\n"
-                "`.trade clear` - Limpa toda sua oferta"
-            ),
-            inline=False
-        )
-        
-        initiator_status = "CONFIRMADO" if self.trade.initiator_offer.confirmed else "AGUARDANDO"
         initiator_offer_text = await self._format_offer(self.trade.initiator_offer)
-        
         embed.add_field(
-            name=f"Oferta de {initiator.display_name} - [{initiator_status}]",
-            value=initiator_offer_text or "*Nenhum item adicionado*",
+            name=f"{'[OK]' if self.trade.initiator_offer.confirmed else '[...]'} {initiator.display_name}",
+            value=initiator_offer_text or "*Nada oferecido*",
             inline=True
         )
         
-        partner_status = "CONFIRMADO" if self.trade.partner_offer.confirmed else "AGUARDANDO"
         partner_offer_text = await self._format_offer(self.trade.partner_offer)
-        
         embed.add_field(
-            name=f"Oferta de {partner.display_name} - [{partner_status}]",
-            value=partner_offer_text or "*Nenhum item adicionado*",
+            name=f"{'[OK]' if self.trade.partner_offer.confirmed else '[...]'} {partner.display_name}",
+            value=partner_offer_text or "*Nada oferecido*",
             inline=True
         )
         
+        status_text = ""
+        if self.trade.both_confirmed():
+            status_text = "**Ambos confirmaram! Processando...**"
+        elif self.trade.initiator_offer.confirmed:
+            status_text = f"Aguardando {partner.mention} confirmar"
+        elif self.trade.partner_offer.confirmed:
+            status_text = f"Aguardando {initiator.mention} confirmar"
+        else:
+            status_text = "Aguardando confirmações"
+        
         embed.add_field(
-            name="Status da Trade:",
-            value=status,
+            name="Status",
+            value=status_text,
             inline=False
         )
         
-        embed.set_footer(text=f"Tempo restante: {minutes_left}m {seconds_left}s")
+        time_left = (self.trade.expires_at - discord.utils.utcnow()).total_seconds()
+        minutes_left = int(time_left / 60)
+        
+        embed.set_footer(text=f"Trade expira em {minutes_left} minutos | ID: {self.trade.trade_id}")
         
         return embed
     
@@ -342,27 +267,23 @@ class TradeView(discord.ui.View):
         parts = []
         
         if offer.pokemon_ids:
-            parts.append(f"**Pokemon:** {len(offer.pokemon_ids)} no total")
-            for i, pid in enumerate(offer.pokemon_ids[:5], 1):
-                parts.append(f"  {i}. ID #{pid}")
+            parts.append(f"**Pokémon ({len(offer.pokemon_ids)}):**")
+            for pid in offer.pokemon_ids[:5]:
+                parts.append(f"• ID #{pid}")
             
             if len(offer.pokemon_ids) > 5:
-                parts.append(f"  ... e mais {len(offer.pokemon_ids) - 5} Pokemon")
+                parts.append(f"*...e mais {len(offer.pokemon_ids) - 5}*")
         
         if offer.items:
-            total_items = sum(offer.items.values())
-            parts.append(f"\n**Itens:** {total_items} unidades no total")
-            count = 0
-            for item_id, qty in offer.items.items():
-                if count >= 5:
-                    remaining = len(offer.items) - 5
-                    parts.append(f"  ... e mais {remaining} tipos de item")
-                    break
+            parts.append(f"\n**Itens ({len(offer.items)}):**")
+            for item_id, qty in list(offer.items.items())[:5]:
                 item_name = await self.tm.pm.get_item_name(item_id)
-                parts.append(f"  • {item_name} x{qty}")
-                count += 1
+                parts.append(f"• {item_name} x{qty}")
+            
+            if len(offer.items) > 5:
+                parts.append(f"*...e mais {len(offer.items) - 5}*")
         
         if offer.money > 0:
-            parts.append(f"\n**Dinheiro:** {offer.money:,}")
+            parts.append(f"\n**Dinheiro:**\n{offer.money:,}")
         
         return "\n".join(parts) if parts else ""
