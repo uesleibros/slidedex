@@ -138,6 +138,7 @@ class PokeAPIService:
 						result.evolution_chain.id = chain_id
 						del specie
 						gc.collect()
+						print(result)
 						return munchify(result)
 		except Exception as e:
 			self.logger.error(f"Erro ao ler pokemon-species.json: {e}")
@@ -263,16 +264,3 @@ class PokeAPIService:
 	@staticmethod
 	def roll_shiny() -> bool:
 		return random.randint(1, SHINY_ROLL) == 1
-
-
-
-
-
-
-
-
-
-
-
-
-
