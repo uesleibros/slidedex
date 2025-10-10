@@ -333,7 +333,7 @@ class Toolkit:
 		idx = self.roll_random(user_id, 0, len(regular))
 		return regular[idx]
 
-	def roll_gender(self, user_id: str, male_ratio: float = 0.5, forced: Optonal[str] = None) -> str:
+	def roll_gender(self, user_id: str, male_ratio: float = 0.5, forced: Optional[str] = None) -> str:
 		if forced in ("Male", "Female", "Genderless"):
 			return forced
 		if male_ratio < 0:
@@ -1339,6 +1339,7 @@ class Toolkit:
 				self._save()
 			
 			return updated
+
 
 
 
