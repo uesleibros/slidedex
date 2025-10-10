@@ -1,15 +1,16 @@
 import math
-import random
 from typing import Tuple
 from .pokemon import BattlePokemon
 from .constants import BattleConstants
 from .pokeballs import PokeBallSystem, BallType
+from __main__ import toolkit
 
 class CaptureSystem:
 	
 	@staticmethod
 	def attempt_capture_gen3(
 		wild: BattlePokemon,
+		user_id: str,
 		ball_type: str = BallType.POKE_BALL,
 		turn: int = 1,
 		time_of_day: str = "day",
@@ -45,11 +46,15 @@ class CaptureSystem:
 		shake_probability = int(1048560 / math.sqrt(math.sqrt((16711680 / a))))
 		shakes = 0
 		
+		rng = toolkit.get_user_rng(user_id)
+		
 		for _ in range(4):
-			if random.randint(0, BattleConstants.CAPTURE_RANGE - 1) < shake_probability:
+			if rng.randint(0, BattleConstants.CAPTURE_RANGE) < shake_probability:
 				shakes += 1
 			else:
 				break
+		
+		toolkit.save_user_rng(user_id, rng)
 		
 		return shakes == 4, shakes, ball_modifier
 	
