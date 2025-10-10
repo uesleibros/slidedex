@@ -263,7 +263,7 @@ class TradeView(discord.ui.View):
 			inline=True
 		)
 		
-		partner_offer_text = await self._format_offer(self.trade.partner_offer)
+		partner_offer_text = self._format_offer(self.trade.partner_offer)
 		embed.add_field(
 			name=f"{'[OK]' if self.trade.partner_offer.confirmed else '[...]'} {partner.display_name}",
 			value=partner_offer_text or "*Nada oferecido*",
