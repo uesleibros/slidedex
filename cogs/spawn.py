@@ -101,6 +101,7 @@ class Spawn(commands.Cog):
 			level = pm.tk.roll_random(author_id, pokemon_min_level, max(pokemon_min_level, 15) + 1)
 
 		wild = pm.generate_temp_pokemon(
+			user_id=author_id,
 			owner_id="wild",
 			species_id=pokemon_id,
 			level=level,
@@ -129,4 +130,3 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
-
