@@ -1,7 +1,6 @@
-import discord
 import asyncio
-import random
-from typing import List, Dict, Any, Optional, Set, Tuple
+import discord
+from discord.ext import commands
 from __main__ import pm, battle_tracker
 from utils.canvas import compose_battle_async
 from utils.preloaded import preloaded_textures
@@ -568,8 +567,9 @@ class WildBattle(BattleEngine):
 	
 			already_caught = pm.tk.has_caught_species(self.user_id, self.wild.species_id)
 			success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
-				user_id=self.user_id,
 				wild=self.wild,
+				toolkit=pm.tk,
+				user_id=self.user_id,
 				ball_type=self.ball_type,
 				turn=self.turn,
 				time_of_day=self.time_of_day,
@@ -823,5 +823,3 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
-
-
