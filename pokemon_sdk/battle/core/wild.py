@@ -67,7 +67,7 @@ class WildBattle(BattleEngine):
 		for item_id, rarity in possible_items:
 			chance = rarity / 100.0
 			
-			if random.random() < chance:
+			if pm.tk.roll_chance(self.user_id, chance):
 				self.wild_raw["held_item"] = item_id
 				return
 		
@@ -823,4 +823,5 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
 
