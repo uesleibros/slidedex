@@ -3,14 +3,13 @@ from typing import Optional
 from discord.ext import commands
 from helpers.flags import flags
 from helpers.paginator import Paginator
-from helpers.checks import requires_account, not_in_battle
+from helpers.checks import requires_account
 from utils.formatting import format_pokemon_display
 from __main__ import toolkit
 from .views import InfoView, ConfirmationView
 from .embeds import generate_pokemon_embed, generate_info_embed
 from .filters import apply_filters, apply_sort_limit
 from .analysis import analyze_pokemons
-from cogs.bag.constants import ITEM_EMOJIS
 
 class Pokemon(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:

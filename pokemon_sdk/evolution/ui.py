@@ -168,7 +168,7 @@ class EvolutionUIHandler:
 			evolution_species_id
 		)
 		
-		result = await self.processor.evolve_pokemon(
+		result = self.processor.evolve_pokemon(
 			owner_id,
 			pokemon_id,
 			evolution_species_id
@@ -201,7 +201,7 @@ class EvolutionUIHandler:
 			evolution_species_id
 		)
 		
-		result = await self.processor.evolve_pokemon(
+		result = self.processor.evolve_pokemon(
 			owner_id,
 			pokemon_id,
 			evolution_species_id
@@ -251,10 +251,10 @@ class EvolutionUIHandler:
 		view.message = sent_message
 		return sent_message
 	
-	async def evolve_silent(
+	def evolve_silent(
 		self,
 		owner_id: str,
 		pokemon_id: int,
 		evolution_species_id: int
 	) -> Dict:
-		return await self.processor.evolve_pokemon(owner_id, pokemon_id, evolution_species_id)
+		return self.processor.evolve_pokemon(owner_id, pokemon_id, evolution_species_id)

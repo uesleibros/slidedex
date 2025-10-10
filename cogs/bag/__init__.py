@@ -121,8 +121,8 @@ class Bag(commands.Cog):
 				)
 				return
 			
-			result = await pm.give_item(uid, item_id, quantity)
-			category = await pm.get_item_category(item_id)
+			result = pm.give_item(uid, item_id, quantity)
+			category = pm.get_item_category(item_id)
 			
 			await ctx.send(
 				f"Adicionado {format_item_display(item_id, bold_name=True)} x{quantity}\n"
@@ -217,7 +217,7 @@ class Bag(commands.Cog):
 		pokemon = party[party_pos - 1]
 		pokemon_id = pokemon["id"]
 		effect = get_item_effect(item_id)
-		item_name = await pm.get_item_name(item_id)
+		item_name = pm.get_item_name(item_id)
 		
 		try:
 			handlers = {
@@ -254,7 +254,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_healing_item(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_healing_item(uid, pokemon_id, item_id, pokemon)
 		hp_percent = (result['current_hp'] / result['max_hp']) * 100
 		
 		await ctx.send(
@@ -272,7 +272,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_revive_item(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_revive_item(uid, pokemon_id, item_id, pokemon)
 		
 		await ctx.send(
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} foi revivido!\n"
@@ -290,7 +290,7 @@ class Bag(commands.Cog):
 		move_slot: Optional[int]
 	) -> None:
 		from pokemon_sdk.battle.constants import STATUS_TAGS
-		result = await self.item_handler.use_status_heal_item(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_status_heal_item(uid, pokemon_id, item_id, pokemon)
 		
 		status_emoji = STATUS_TAGS.get(result['cured_status'], "✨")
 		
@@ -308,7 +308,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_pp_item(uid, pokemon_id, item_id, pokemon, move_slot)
+		result = self.item_handler.use_pp_item(uid, pokemon_id, item_id, pokemon, move_slot)
 		
 		moves_info = "\n".join([
 			f"• {m['id'].replace('-', ' ').title()}: {m['pp']}/{m['pp_max']}"
@@ -330,7 +330,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_pp_item(uid, pokemon_id, item_id, pokemon, move_slot)
+		result = self.item_handler.use_pp_item(uid, pokemon_id, item_id, pokemon, move_slot)
 		move_name = result['move']['id'].replace('-', ' ').title()
 		
 		await ctx.send(
@@ -350,7 +350,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_vitamin(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_vitamin(uid, pokemon_id, item_id, pokemon)
 		stat_name = STAT_NAMES.get(result['stat'], result['stat'].title())
 		
 		await ctx.send(
@@ -371,7 +371,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_ev_reducing_berry(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_ev_reducing_berry(uid, pokemon_id, item_id, pokemon)
 		stat_name = STAT_NAMES.get(result['stat'], result['stat'].title())
 		
 		await ctx.send(
@@ -392,7 +392,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_evolution_stone(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_evolution_stone(uid, pokemon_id, item_id, pokemon)
 		
 		await pm.evolution_ui.send_evolution_message(
 			channel=ctx.channel,
@@ -430,7 +430,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_confusion_berry(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_confusion_berry(uid, pokemon_id, item_id, pokemon)
 		hp_percent = (result['current_hp'] / result['max_hp']) * 100
 		
 		message = (
@@ -453,7 +453,7 @@ class Bag(commands.Cog):
 		pokemon: Dict,
 		move_slot: Optional[int]
 	) -> None:
-		result = await self.item_handler.use_flute(uid, pokemon_id, item_id, pokemon)
+		result = self.item_handler.use_flute(uid, pokemon_id, item_id, pokemon)
 		
 		await ctx.send(
 			f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} foi curado de **{result['cured_status']}**!"
@@ -461,7 +461,7 @@ class Bag(commands.Cog):
 
 	async def _use_sacred_ash(self, ctx: commands.Context, uid: str) -> None:
 		try:
-			result = await self.item_handler.use_sacred_ash(uid)
+			result = self.item_handler.use_sacred_ash(uid)
 			
 			revived_list = "\n".join([
 				f"• {p['name'].title()} - {p['restored_hp']} HP"
@@ -478,7 +478,7 @@ class Bag(commands.Cog):
 
 	async def _use_repel(self, ctx: commands.Context, uid: str, item_id: str) -> None:
 		toolkit.remove_item(uid, item_id, 1)
-		item_name = await pm.get_item_name(item_id)
+		item_name = pm.get_item_name(item_id)
 		await ctx.send(f"Sistema de Repel ainda não implementado.")
 
 	async def _use_in_battle(
@@ -551,7 +551,7 @@ class Bag(commands.Cog):
 		effect
 	) -> None:
 		toolkit.remove_item(uid, item_id, 1)
-		item_name = await pm.get_item_name(item_id)
+		item_name = pm.get_item_name(item_id)
 		
 		battle.ended = True
 		if battle.actions_view:
@@ -632,7 +632,6 @@ class Bag(commands.Cog):
 		target_idx = party_pos - 1
 		pokemon = party[target_idx]
 		pokemon_id = pokemon["id"]
-		item_name = await pm.get_item_name(item_id)
 		
 		try:
 			if effect.type == "revive":
@@ -642,7 +641,7 @@ class Bag(commands.Cog):
 					)
 					return
 				
-				result = await self.item_handler.use_revive_item(uid, pokemon_id, item_id, pokemon)
+				result = self.item_handler.use_revive_item(uid, pokemon_id, item_id, pokemon)
 				battle.player_team[target_idx].current_hp = result['restored_hp']
 				
 				await ctx.send(
@@ -651,7 +650,7 @@ class Bag(commands.Cog):
 				await battle.refresh()
 			
 			elif effect.type in ["heal", "berry"]:
-				result = await self.item_handler.use_healing_item(uid, pokemon_id, item_id, pokemon)
+				result = self.item_handler.use_healing_item(uid, pokemon_id, item_id, pokemon)
 				battle.player_team[target_idx].current_hp = result['current_hp']
 				
 				hp_percent = (result['current_hp'] / result['max_hp']) * 100
@@ -662,7 +661,7 @@ class Bag(commands.Cog):
 				await battle.refresh()
 			
 			elif effect.type in ["pp_restore", "pp_boost"]:
-				result = await self.item_handler.use_pp_item(uid, pokemon_id, item_id, pokemon)
+				result = self.item_handler.use_pp_item(uid, pokemon_id, item_id, pokemon)
 				battle.player_team[target_idx].moves = result['moves']
 				
 				await ctx.send(
@@ -672,9 +671,9 @@ class Bag(commands.Cog):
 			
 			elif effect.type in ["status", "flute"]:
 				if effect.type == "status":
-					result = await self.item_handler.use_status_heal_item(uid, pokemon_id, item_id, pokemon)
+					result = self.item_handler.use_status_heal_item(uid, pokemon_id, item_id, pokemon)
 				else:
-					result = await self.item_handler.use_flute(uid, pokemon_id, item_id, pokemon)
+					result = self.item_handler.use_flute(uid, pokemon_id, item_id, pokemon)
 				
 				battle.player_team[target_idx].status = None
 				
@@ -701,7 +700,7 @@ class Bag(commands.Cog):
 			await ctx.send(ERROR_MESSAGES['item_not_found'].format(item_id=item_id))
 			return
 		
-		is_valid = await pm.validate_item(item_id)
+		is_valid = pm.validate_item(item_id)
 		if not is_valid:
 			await ctx.send(ERROR_MESSAGES['invalid_item'].format(item_id=item_id))
 			return

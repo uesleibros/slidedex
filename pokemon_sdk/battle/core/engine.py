@@ -159,7 +159,7 @@ class BattleEngine:
 		
 		return lines
 	
-	async def _fetch_move(self, move_id: str) -> MoveData:		
+	def _fetch_move(self, move_id: str) -> MoveData:		
 		key = _slug(move_id)
 		if not key:
 			raise ValueError("Invalid move_id")
@@ -167,7 +167,7 @@ class BattleEngine:
 		if key in self.move_cache:
 			return self.move_cache[key]
 		
-		move_data = await pm.service.get_move(key)
+		move_data = pm.service.get_move(key)
 		normalized = _normalize_move(move_data)
 		self.move_cache[key] = normalized
 		
@@ -722,10 +722,10 @@ class BattleEngine:
 		player: BattlePokemon,
 		enemy: BattlePokemon
 	) -> None:
-		player_move_data = await self._fetch_move(player_move_id)
+		player_move_data = self._fetch_move(player_move_id)
 		
 		if enemy_move_id != "__struggle__":
-			enemy_move_data = await self._fetch_move(enemy_move_id)
+			enemy_move_data = self._fetch_move(enemy_move_id)
 		else:
 			enemy_move_data = MoveData(
 				"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []
@@ -769,7 +769,7 @@ class BattleEngine:
 		player: BattlePokemon
 	) -> None:
 		if enemy_move_id != "__struggle__":
-			enemy_move_data = await self._fetch_move(enemy_move_id)
+			enemy_move_data = self._fetch_move(enemy_move_id)
 		else:
 			enemy_move_data = MoveData(
 				"Struggle", None, 50, 0, "physical", "normal", 1, 1, 0, 0, 0, 0, None, 0, []

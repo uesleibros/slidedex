@@ -25,36 +25,36 @@ class ItemManager:
 		self.tk = toolkit
 		self.config = config or GameConfig()
 	
-	async def get_item(self, item_id: str) -> Optional[object]:
+	def get_item(self, item_id: str) -> Optional[object]:
 		try:
-			return await self.service.get_item(item_id)
+			return self.service.get_item(item_id)
 		except:
 			return None
 	
-	async def validate_item(self, item_id: str) -> bool:
-		item = await self.get_item(item_id)
+	def validate_item(self, item_id: str) -> bool:
+		item = self.get_item(item_id)
 		return item is not None
 	
-	async def get_item_attributes(self, item_id: str) -> List[str]:
-		item = await self.get_item(item_id)
+	def get_item_attributes(self, item_id: str) -> List[str]:
+		item = self.get_item(item_id)
 		return [attr.name for attr in item.attributes] if item else []
 	
-	async def is_battle_only_item(self, item_id: str) -> bool:
-		attributes = await self.get_item_attributes(item_id)
+	def is_battle_only_item(self, item_id: str) -> bool:
+		attributes = self.get_item_attributes(item_id)
 		if not attributes:
 			return False
 		return "usable-in-battle" in attributes and "usable-overworld" not in attributes
 	
-	async def is_consumable(self, item_id: str) -> bool:
-		attributes = await self.get_item_attributes(item_id)
+	def is_consumable(self, item_id: str) -> bool:
+		attributes = self.get_item_attributes(item_id)
 		return "consumable" in attributes
 	
-	async def is_holdable(self, item_id: str) -> bool:
-		attributes = await self.get_item_attributes(item_id)
+	def is_holdable(self, item_id: str) -> bool:
+		attributes = self.get_item_attributes(item_id)
 		return "holdable" in attributes
 	
-	async def get_item_category(self, item_id: str) -> str:
-		item = await self.get_item(item_id)
+	def get_item_category(self, item_id: str) -> str:
+		item = self.get_item(item_id)
 		if not item:
 			return ItemCategories.DEFAULT_CATEGORY
 		
@@ -64,9 +64,9 @@ class ItemManager:
 		category_name = item.category.name.lower()
 		return ItemCategories.MAPPING.get(category_name, ItemCategories.DEFAULT_CATEGORY)
 	
-	async def get_item_name(self, item_id: str, language: str = None) -> str:
+	def get_item_name(self, item_id: str, language: str = None) -> str:
 		language = language or self.config.default_language
-		item = await self.get_item(item_id)
+		item = self.get_item(item_id)
 		
 		if not item:
 			return item_id.replace("-", " ").title()
@@ -77,9 +77,9 @@ class ItemManager:
 		
 		return item.name.replace("-", " ").title()
 	
-	async def get_item_effect(self, item_id: str, language: str = None) -> Optional[str]:
+	def get_item_effect(self, item_id: str, language: str = None) -> Optional[str]:
 		language = language or self.config.default_language
-		item = await self.get_item(item_id)
+		item = self.get_item(item_id)
 		
 		if not item:
 			return None
@@ -90,22 +90,22 @@ class ItemManager:
 		
 		return None
 	
-	async def get_item_cost(self, item_id: str) -> int:
-		item = await self.get_item(item_id)
+	def get_item_cost(self, item_id: str) -> int:
+		item = self.get_item(item_id)
 		return item.cost if item else 0
 	
-	async def give_item(self, user_id: str, item_id: str, quantity: int = 1) -> Dict:
-		is_valid = await self.validate_item(item_id)
+	def give_item(self, user_id: str, item_id: str, quantity: int = 1) -> Dict:
+		is_valid = self.validate_item(item_id)
 		if not is_valid:
 			raise ValueError(Messages.item_not_found(item_id))
 		
-		item = await self.get_item(item_id)
+		item = self.get_item(item_id)
 		if not item:
 			raise ValueError(Messages.item_not_found(item_id))
 		
-		category = await self.get_item_category(item_id)
+		category = self.get_item_category(item_id)
 		new_quantity = self.tk.add_item(user_id, item_id, quantity, category)
-		item_name = await self.get_item_name(item_id)
+		item_name = self.get_item_name(item_id)
 		
 		return {
 			"item_id": item_id,
@@ -114,12 +114,12 @@ class ItemManager:
 			"added": quantity
 		}
 	
-	async def give_random_item(self, user_id: str, item_pool: Optional[List[str]] = None, quantity: int = 1) -> Dict:
+	def give_random_item(self, user_id: str, item_pool: Optional[List[str]] = None, quantity: int = 1) -> Dict:
 		item_pool = item_pool or ItemPool.RANDOM_ITEMS
 		item_id = random.choice(item_pool)
-		return await self.give_item(user_id, item_id, quantity)
+		return self.give_item(user_id, item_id, quantity)
 	
-	async def give_level_up_reward(self, user_id: str, pokemon_level: int) -> Optional[Dict]:
+	def give_level_up_reward(self, user_id: str, pokemon_level: int) -> Optional[Dict]:
 		if pokemon_level % self.config.level_reward_interval != 0:
 			return None
 		
@@ -130,14 +130,14 @@ class ItemManager:
 		given_items = []
 		for item_id, qty in level_rewards:
 			try:
-				result = await self.give_item(user_id, item_id, qty)
+				result = self.give_item(user_id, item_id, qty)
 				given_items.append(result)
 			except:
 				continue
 		
 		return {"level": pokemon_level, "items": given_items}
 	
-	async def give_capture_reward(self, user_id: str, pokemon: Dict) -> List[Dict]:
+	def give_capture_reward(self, user_id: str, pokemon: Dict) -> List[Dict]:
 		rewards = []
 		reward_list = ItemPool.CAPTURE_REWARDS_BASE.copy()
 		
@@ -154,7 +154,7 @@ class ItemManager:
 			try:
 				if isinstance(qty, tuple):
 					qty = random.randint(qty[0], qty[1])
-				result = await self.give_item(user_id, item_id, qty)
+				result = self.give_item(user_id, item_id, qty)
 				rewards.append(result)
 			except:
 				continue
@@ -215,49 +215,49 @@ class PokemonManager:
 		party = self.tk.get_user_party(owner_id)
 		return any(p.get("held_item") == "exp-share" for p in party)
 	
-	async def get_item(self, item_id: str) -> Optional[object]:
-		return await self.item_manager.get_item(item_id)
+	def get_item(self, item_id: str) -> Optional[object]:
+		return self.item_manager.get_item(item_id)
 
-	async def validate_item(self, item_id: str) -> bool:
-		return await self.item_manager.validate_item(item_id)
+	def validate_item(self, item_id: str) -> bool:
+		return self.item_manager.validate_item(item_id)
 
-	async def get_item_attributes(self, item_id: str) -> List[str]:
-		return await self.item_manager.get_item_attributes(item_id)
+	def get_item_attributes(self, item_id: str) -> List[str]:
+		return self.item_manager.get_item_attributes(item_id)
 
-	async def is_battle_only_item(self, item_id: str) -> bool:
-		return await self.item_manager.is_battle_only_item(item_id)
+	def is_battle_only_item(self, item_id: str) -> bool:
+		return self.item_manager.is_battle_only_item(item_id)
 
-	async def is_consumable(self, item_id: str) -> bool:
-		return await self.item_manager.is_consumable(item_id)
+	def is_consumable(self, item_id: str) -> bool:
+		return self.item_manager.is_consumable(item_id)
 
-	async def is_holdable(self, item_id: str) -> bool:
-		return await self.item_manager.is_holdable(item_id)
+	def is_holdable(self, item_id: str) -> bool:
+		return self.item_manager.is_holdable(item_id)
 
-	async def get_item_category(self, item_id: str) -> str:
-		return await self.item_manager.get_item_category(item_id)
+	def get_item_category(self, item_id: str) -> str:
+		return self.item_manager.get_item_category(item_id)
 
-	async def get_item_name(self, item_id: str, language: str = None) -> str:
-		return await self.item_manager.get_item_name(item_id, language)
+	def get_item_name(self, item_id: str, language: str = None) -> str:
+		return self.item_manager.get_item_name(item_id, language)
 
-	async def get_item_effect(self, item_id: str, language: str = None) -> Optional[str]:
-		return await self.item_manager.get_item_effect(item_id, language)
+	def get_item_effect(self, item_id: str, language: str = None) -> Optional[str]:
+		return self.item_manager.get_item_effect(item_id, language)
 
-	async def get_item_cost(self, item_id: str) -> int:
-		return await self.item_manager.get_item_cost(item_id)
+	def get_item_cost(self, item_id: str) -> int:
+		return self.item_manager.get_item_cost(item_id)
 
-	async def give_item(self, user_id: str, item_id: str, quantity: int = 1) -> Dict:
-		return await self.item_manager.give_item(user_id, item_id, quantity)
+	def give_item(self, user_id: str, item_id: str, quantity: int = 1) -> Dict:
+		return self.item_manager.give_item(user_id, item_id, quantity)
 
-	async def give_random_item(self, user_id: str, item_pool: Optional[List[str]] = None, quantity: int = 1) -> Dict:
-		return await self.item_manager.give_random_item(user_id, item_pool, quantity)
+	def give_random_item(self, user_id: str, item_pool: Optional[List[str]] = None, quantity: int = 1) -> Dict:
+		return self.item_manager.give_random_item(user_id, item_pool, quantity)
 
-	async def give_level_up_reward(self, user_id: str, pokemon_level: int) -> Optional[Dict]:
-		return await self.item_manager.give_level_up_reward(user_id, pokemon_level)
+	def give_level_up_reward(self, user_id: str, pokemon_level: int) -> Optional[Dict]:
+		return self.item_manager.give_level_up_reward(user_id, pokemon_level)
 
-	async def give_capture_reward(self, user_id: str, pokemon: Dict) -> List[Dict]:
-		return await self.item_manager.give_capture_reward(user_id, pokemon)
+	def give_capture_reward(self, user_id: str, pokemon: Dict) -> List[Dict]:
+		return self.item_manager.give_capture_reward(user_id, pokemon)
 
-	async def _build_pokemon_data(
+	def _build_pokemon_data(
 		self,
 		species_id: int,
 		level: int = None,
@@ -276,8 +276,8 @@ class PokemonManager:
 		level = level or self.config.default_level
 		status = status or StatusConfig().default_status
 		
-		poke = await self.service.get_pokemon(species_id)
-		species = await self.service.get_species(species_id)
+		poke = self.service.get_pokemon(species_id)
+		species = self.service.get_species(species_id)
 		base_stats = self.service.get_base_stats(poke)
 	
 		final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
@@ -286,7 +286,7 @@ class PokemonManager:
 		
 		gen = generate_pokemon_data(base_stats, level=final_level, nature=final_nature, ivs=final_ivs)
 		final_ability = ability or self.service.choose_ability(poke)
-		final_moves = moves or await self.service.select_level_up_moves(poke, final_level)
+		final_moves = moves or self.service.select_level_up_moves(poke, final_level)
 		final_gender = self.service.roll_gender(species, forced=forced_gender)
 		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
 	
@@ -324,10 +324,10 @@ class PokemonManager:
 		del poke, species, base_stats
 		return result
 
-	async def generate_temp_pokemon(self, **kwargs) -> Dict:
-		return await self._build_pokemon_data(**kwargs)
+	def generate_temp_pokemon(self, **kwargs) -> Dict:
+		return self._build_pokemon_data(**kwargs)
 
-	async def create_pokemon(
+	def create_pokemon(
 		self,
 		owner_id: str,
 		species_id: int,
@@ -336,7 +336,7 @@ class PokemonManager:
 		give_rewards: bool = True,
 		**kwargs
 	) -> Dict:
-		pkmn = await self._build_pokemon_data(
+		pkmn = self._build_pokemon_data(
 			species_id=species_id,
 			level=level,
 			owner_id=owner_id,
@@ -371,21 +371,21 @@ class PokemonManager:
 		)
 
 		if give_rewards:
-			await self.give_capture_reward(owner_id, created)
+			self.give_capture_reward(owner_id, created)
 
 		return created
 	
-	async def check_evolution(
+	def check_evolution(
 		self,
 		owner_id: str,
 		pokemon_id: int,
 		trigger: str = EvolutionTriggers.LEVEL_UP,
 		item_id: Optional[str] = None
 	) -> Optional[Dict]:
-		return await self.evolution.check_evolution(owner_id, pokemon_id, trigger, item_id)
+		return self.evolution.check_evolution(owner_id, pokemon_id, trigger, item_id)
 	
-	async def evolve_pokemon(self, owner_id: str, pokemon_id: int, new_species_id: int) -> Dict:
-		return await self.evolution.evolve_pokemon(owner_id, pokemon_id, new_species_id)
+	def evolve_pokemon(self, owner_id: str, pokemon_id: int, new_species_id: int) -> Dict:
+		return self.evolution.evolve_pokemon(owner_id, pokemon_id, new_species_id)
 	
 	async def process_evolution(
 		self,
@@ -396,7 +396,7 @@ class PokemonManager:
 		if not self._acquire_lock(owner_id):
 			return None
 			
-		evolution_data = await self.evolution.check_evolution(
+		evolution_data = self.evolution.check_evolution(
 			owner_id,
 			pokemon_id,
 			EvolutionTriggers.LEVEL_UP
@@ -421,7 +421,7 @@ class PokemonManager:
 		self._release_lock(owner_id)
 		return evolution_data
 
-	async def give_held_item(
+	def give_held_item(
 		self,
 		owner_id: str,
 		pokemon_id: int,
@@ -430,14 +430,14 @@ class PokemonManager:
 		if not self.tk.has_item(owner_id, item_id):
 			raise ValueError(f"Você não tem o item `{item_id}`.")
 		
-		if not await self.is_holdable(item_id):
-			item_name = await self.get_item_name(item_id)
+		if not self.is_holdable(item_id):
+			item_name = self.get_item_name(item_id)
 			raise ValueError(f"**{item_name}** não pode ser segurado por Pokémon.")
 		
 		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 		
 		if pokemon.get("held_item"):
-			current_item_name = await self.get_item_name(pokemon["held_item"])
+			current_item_name = self.get_item_name(pokemon["held_item"])
 			raise ValueError(
 				f"{format_pokemon_display(pokemon, bold_name=True, show_gender=False)} "
 				f"já está segurando **{current_item_name}**."
@@ -446,7 +446,7 @@ class PokemonManager:
 		self.tk.remove_item(owner_id, item_id, 1)
 		self.tk.set_pokemon_held_item(owner_id, pokemon_id, item_id)
 		
-		item_name = await self.get_item_name(item_id)
+		item_name = self.get_item_name(item_id)
 		
 		return {
 			"pokemon": pokemon,
@@ -454,7 +454,7 @@ class PokemonManager:
 			"item_name": item_name
 		}
 	
-	async def take_held_item(
+	def take_held_item(
 		self,
 		owner_id: str,
 		pokemon_id: int
@@ -468,10 +468,10 @@ class PokemonManager:
 			)
 		
 		item_id = pokemon["held_item"]
-		item_name = await self.get_item_name(item_id)
+		item_name = self.get_item_name(item_id)
 		
 		self.tk.set_pokemon_held_item(owner_id, pokemon_id, None)
-		await self.give_item(owner_id, item_id, 1)
+		self.give_item(owner_id, item_id, 1)
 		
 		return {
 			"pokemon": pokemon,
@@ -479,7 +479,7 @@ class PokemonManager:
 			"item_name": item_name
 		}
 	
-	async def swap_held_item(
+	def swap_held_item(
 		self,
 		owner_id: str,
 		pokemon_id: int,
@@ -488,8 +488,8 @@ class PokemonManager:
 		if not self.tk.has_item(owner_id, new_item_id):
 			raise ValueError(f"Você não tem o item `{new_item_id}`.")
 		
-		if not await self.is_holdable(new_item_id):
-			new_item_name = await self.get_item_name(new_item_id)
+		if not self.is_holdable(new_item_id):
+			new_item_name = self.get_item_name(new_item_id)
 			raise ValueError(f"**{new_item_name}** não pode ser segurado por Pokémon.")
 		
 		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
@@ -498,13 +498,13 @@ class PokemonManager:
 		self.tk.remove_item(owner_id, new_item_id, 1)
 		
 		if old_item_id:
-			await self.give_item(owner_id, old_item_id, 1)
-			old_item_name = await self.get_item_name(old_item_id)
+			self.give_item(owner_id, old_item_id, 1)
+			old_item_name = self.get_item_name(old_item_id)
 		else:
 			old_item_name = None
 		
 		self.tk.set_pokemon_held_item(owner_id, pokemon_id, new_item_id)
-		new_item_name = await self.get_item_name(new_item_id)
+		new_item_name = self.get_item_name(new_item_id)
 		
 		return {
 			"pokemon": pokemon,
@@ -514,7 +514,7 @@ class PokemonManager:
 			"new_item_name": new_item_name
 		}
 	
-	async def add_evs(
+	def add_evs(
 		self,
 		owner_id: str,
 		pokemon_id: int,
@@ -543,7 +543,7 @@ class PokemonManager:
 			return self._empty_level_up_result()
 		
 		pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
-		poke = await self.service.get_pokemon(pokemon["species_id"])
+		poke = self.service.get_pokemon(pokemon["species_id"])
 		
 		all_moves = self.service.get_level_up_moves(poke)
 		new_moves = {move_id: level for move_id, level in all_moves if level in levels_gained}
@@ -554,7 +554,7 @@ class PokemonManager:
 		
 		del poke
 		
-		rewards = [reward for level in levels_gained if (reward := await self.give_level_up_reward(owner_id, level))]
+		rewards = [reward for level in levels_gained if (reward := self.give_level_up_reward(owner_id, level))]
 		
 		evolution_data = None
 		if message:
@@ -595,7 +595,7 @@ class PokemonManager:
 			if self.tk.has_move(owner_id, pokemon_id, move_id):
 				continue
 			
-			pp_max = await self._get_move_pp(move_id)
+			pp_max = self._get_move_pp(move_id)
 			
 			if self.tk.can_learn_move(owner_id, pokemon_id):
 				self.tk.learn_move(owner_id, pokemon_id, move_id, pp_max)
@@ -619,9 +619,9 @@ class PokemonManager:
 		
 		return learned, needs_choice
 	
-	async def _get_move_pp(self, move_id: str, default: int = 10) -> int:
+	def _get_move_pp(self, move_id: str, default: int = 10) -> int:
 		try:
-			move_detail = await self.service.get_move(move_id)
+			move_detail = self.service.get_move(move_id)
 			return move_detail.pp if move_detail.pp else default
 		except:
 			return default
@@ -796,7 +796,5 @@ class PokemonManager:
 		
 		return result
 		
-	async def close(self):
-
-		await self.service.close()
-
+	def close(self):
+		self.service.close()

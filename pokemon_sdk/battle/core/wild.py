@@ -40,7 +40,7 @@ class WildBattle(BattleEngine):
 		self.battle_participants: Set[int] = set()
 		self.run_attempts: int = 0
 	
-	async def _generate_wild_held_item(self) -> None:
+	def _generate_wild_held_item(self) -> None:
 		if not self.wild_api or not hasattr(self.wild_api, 'held_items'):
 			return
 		
@@ -108,32 +108,18 @@ class WildBattle(BattleEngine):
 			await self._handle_forced_switch()
 	
 	async def setup(self) -> bool:
-		w_api, w_spec = await asyncio.gather(
-			pm.service.get_pokemon(self.wild_raw["species_id"]),
-			pm.service.get_species(self.wild_raw["species_id"])
-		)
+		w_api = pm.service.get_pokemon(self.wild_raw["species_id"])
+		w_spec = pm.service.get_species(self.wild_raw["species_id"])
 		
 		self.wild_api = w_api
 		
-		await self._generate_wild_held_item()
-		
+		self._generate_wild_held_item()
 		self.wild = BattlePokemon(self.wild_raw, w_api, w_spec)
 		
-		party_coros = []
 		for p in self.player_party_raw:
-			party_coros.extend([
-				pm.service.get_pokemon(p["species_id"]),
-				pm.service.get_species(p["species_id"])
-			])
-		
-		party_data = await asyncio.gather(*party_coros)
-		for i in range(0, len(party_data), 2):
-			idx = i // 2
-			self.player_team.append(BattlePokemon(
-				self.player_party_raw[idx],
-				party_data[i],
-				party_data[i + 1]
-			))
+			pokemon = pm.service.get_pokemon(p["species_id"])
+			species = pm.service.get_species(p["species_id"])
+			self.player_team.append(BattlePokemon(p, pokemon, species))
 		
 		if not self._validate_party(self.player_team):
 			await self.interaction.followup.send(
@@ -165,9 +151,11 @@ class WildBattle(BattleEngine):
 		for p in self.player_team:
 			for mv in p.moves:
 				move_ids.add(_slug(mv["id"]))
-		
+
 		if move_ids:
-			await asyncio.gather(*[self._fetch_move(mid) for mid in move_ids if mid])
+			for mid in move_ids:
+				if mid:
+					self._fetch_move(mid)
 	
 	async def _compose_image(self) -> discord.File:
 		pb = None
@@ -691,7 +679,7 @@ class WildBattle(BattleEngine):
 		
 		return distribution
 	
-	async def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
+	def _calculate_experience_distribution(self) -> List[Tuple[int, str, int]]:
 		base_exp = BattleRewards.calculate_base_experience(self.wild, is_trainer_battle=False)
 		participant_count = len(self.battle_participants)
 		
@@ -717,7 +705,7 @@ class WildBattle(BattleEngine):
 				has_lucky_egg=has_lucky_egg
 			)
 			
-			await pm.add_experience(
+			pm.add_experience(
 				self.user_id,
 				pokemon_data["id"],
 				exp_to_give,
@@ -732,7 +720,7 @@ class WildBattle(BattleEngine):
 	async def _handle_victory(self) -> None:
 		await self._apply_battle_happiness_bonus()
 		await self._distribute_evs()
-		exp_distribution = await self._calculate_experience_distribution()
+		exp_distribution = self._calculate_experience_distribution()
 		
 		wild_held_item = self.wild_raw.get("held_item")
 		
@@ -752,7 +740,7 @@ class WildBattle(BattleEngine):
 		if wild_held_item:
 			item_display = format_item_display(wild_held_item)
 			victory_message += f"\n🎁 {self.wild.display_name} dropou {item_display}!"
-			await pm.give_item(self.user_id, wild_held_item, 1)
+			pm.give_item(self.user_id, wild_held_item, 1)
 		
 		await self.interaction.channel.send(victory_message)
 		await self.cleanup()

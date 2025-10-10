@@ -43,7 +43,7 @@ class StarterButton(discord.ui.Button):
 		toolkit.add_user(self.user_id, "Male")
 		user = toolkit.get_user(self.user_id)
 		trainer_gender = norm_trainer_gender(user.get("gender"))
-		poke = await pm.service.get_pokemon(self.species_id)
+		poke = pm.service.get_pokemon(self.species_id)
 		base_stats = pm.service.get_base_stats(poke)
 
 		ivs = {k: random.randint(0, 31) for k in base_stats.keys()}
@@ -53,9 +53,9 @@ class StarterButton(discord.ui.Button):
 		calculated_stats = calculate_stats(base_stats, ivs, evs, 5, nature)
 		
 		ability = pm.service.choose_ability(poke)
-		moves = await pm.service.select_level_up_moves(poke, 5)
+		moves = pm.service.select_level_up_moves(poke, 5)
 
-		await pm.create_pokemon(
+		pm.create_pokemon(
 			owner_id=self.user_id,
 			species_id=self.species_id,
 			level=5,

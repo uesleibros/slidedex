@@ -36,7 +36,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 	except ValueError:
 		return None
 
-	pokemon = await pm.service.get_pokemon(user_pokemon["species_id"])
+	pokemon = pm.service.get_pokemon(user_pokemon["species_id"])
 	
 	base_stats = {s.stat.name: s.base_stat for s in pokemon.stats}
 	stats = calculate_stats(base_stats, user_pokemon["ivs"], user_pokemon.get("evs", {}), user_pokemon["level"], user_pokemon["nature"])

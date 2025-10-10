@@ -188,7 +188,7 @@ class TradeManager:
                     return False, f"Quantidade inválida para {item_id}"
                 
                 if not self.tk.has_item(user_id, item_id, quantity):
-                    item_name = await self.pm.get_item_name(item_id)
+                    item_name = self.pm.get_item_name(item_id)
                     user_qty = self.tk.get_item_quantity(user_id, item_id)
                     return False, f"Você não tem {quantity}x **{item_name}** (você tem: {user_qty})"
             
@@ -459,7 +459,7 @@ class TradeManager:
                 try:
                     pokemon = self.tk.get_pokemon(new_owner_id, pid)
                     
-                    evolution_data = await self.pm.check_evolution(
+                    evolution_data = self.pm.check_evolution(
                         new_owner_id,
                         pid,
                         EvolutionTriggers.TRADE
@@ -471,7 +471,7 @@ class TradeManager:
                         
                         if "name" not in evolution_data:
                             try:
-                                evo_species = await self.pm.service.get_species(evolution_data["species_id"])
+                                evo_species = self.pm.service.get_species(evolution_data["species_id"])
                                 evolution_data["name"] = evo_species.name.title()
                             except:
                                 evolution_data["name"] = f"#{evolution_data['species_id']}"

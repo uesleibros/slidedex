@@ -6,7 +6,7 @@ class EvolutionTriggerHandler:
     def __init__(self, validator: EvolutionValidator):
         self.validator = validator
     
-    async def check_level_up(
+    def check_level_up(
         self,
         pokemon: Dict,
         evolution_link: Any,
@@ -28,7 +28,7 @@ class EvolutionTriggerHandler:
         
         return None
     
-    async def check_use_item(
+    def check_use_item(
         self,
         pokemon: Dict,
         evolution_link: Any,
@@ -51,7 +51,7 @@ class EvolutionTriggerHandler:
         
         return None
     
-    async def check_trade(
+    def check_trade(
         self,
         pokemon: Dict,
         evolution_link: Any,

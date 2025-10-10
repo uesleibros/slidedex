@@ -1,13 +1,13 @@
 from typing import Dict, Optional, List, Tuple
 from pokemon_sdk.calculations import calculate_max_hp
-from .effects import get_item_effect, ItemEffect
+from .effects import get_item_effect
 
 class ItemHandler:
 	def __init__(self, toolkit, pm):
 		self.toolkit = toolkit
 		self.pm = pm
 	
-	async def use_healing_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
+	def use_healing_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type not in ["heal", "berry"]:
 			raise ValueError("Item não é curativo")
@@ -53,7 +53,7 @@ class ItemHandler:
 			"max_hp": max_hp
 		}
 	
-	async def use_revive_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
+	def use_revive_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type != "revive":
 			raise ValueError("Item não é revive")
@@ -83,7 +83,7 @@ class ItemHandler:
 			"max_hp": max_hp
 		}
 	
-	async def use_status_heal_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
+	def use_status_heal_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type != "status_heal":
 			raise ValueError("Item não cura status")
@@ -110,7 +110,7 @@ class ItemHandler:
 		else:
 			raise ValueError(f"Este item não cura {current_status}")
 	
-	async def use_pp_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict, move_slot: Optional[int] = None) -> Dict:
+	def use_pp_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict, move_slot: Optional[int] = None) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type not in ["pp_restore", "pp_boost"]:
 			raise ValueError("Item não restaura PP")
@@ -169,7 +169,7 @@ class ItemHandler:
 			
 			return {"move": move, "move_name": move["id"]}
 	
-	async def use_vitamin(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
+	def use_vitamin(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type != "vitamin":
 			raise ValueError("Item não é vitamina")
@@ -200,7 +200,7 @@ class ItemHandler:
 			"total_evs": sum(new_evs.values())
 		}
 	
-	async def use_ev_reducing_berry(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
+	def use_ev_reducing_berry(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type != "ev_reducer":
 			raise ValueError("Item não reduz EVs")
@@ -227,18 +227,18 @@ class ItemHandler:
 			"total_evs": sum(new_evs.values())
 		}
 	
-	async def use_evolution_stone(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Optional[Dict]:
-		evolution_data = await self.pm.check_evolution(uid, pokemon_id, trigger="use-item", item_id=item_id)
+	def use_evolution_stone(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Optional[Dict]:
+		evolution_data = self.pm.check_evolution(uid, pokemon_id, trigger="use-item", item_id=item_id)
 		
 		if not evolution_data or evolution_data.get("item") != item_id:
 			raise ValueError("Pokémon não pode evoluir com este item")
 		
 		self.toolkit.remove_item(uid, item_id, 1)
-		evolved = await self.pm.evolve_pokemon(uid, pokemon_id, evolution_data["species_id"])
+		evolved = self.pm.evolve_pokemon(uid, pokemon_id, evolution_data["species_id"])
 		
 		return {"evolved": evolved, "from_species": pokemon["species_id"]}
 	
-	async def use_flute(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
+	def use_flute(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type != "flute":
 			raise ValueError("Item não é uma flauta")
@@ -257,7 +257,7 @@ class ItemHandler:
 		else:
 			raise ValueError(f"Esta flauta não cura {current_status}")
 	
-	async def use_sacred_ash(self, uid: str) -> Dict:
+	def use_sacred_ash(self, uid: str) -> Dict:
 		party = self.toolkit.get_user_party(uid)
 		
 		if not party:
@@ -295,7 +295,7 @@ class ItemHandler:
 			"revived_pokemon": revived
 		}
 	
-	async def use_confusion_berry(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
+	def use_confusion_berry(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
 		if not effect or effect.type != "confusion_heal_restore":
 			raise ValueError("Item não é berry de cura com restauração")

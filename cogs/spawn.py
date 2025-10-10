@@ -67,13 +67,12 @@ class Spawn(commands.Cog):
 			if result is not None:
 				return result
 
-	async def get_pokemon_min_level(self, species) -> int:
+	def get_pokemon_min_level(self, species) -> int:
 		if not species.evolution_chain:
 			return 1
 		
 		try:
-			chain_id = int(species.evolution_chain.url.rstrip('/').split('/')[-1])
-			chain_data = await pm.service.client.get_evolution_chain(chain_id)
+			chain_data = pm.service.client.get_evolution_chain(species.evolution_chain.id)
 			return self.find_min_level_in_chain(chain_data.chain, species.name) or 1
 		except:
 			return 1
@@ -84,13 +83,13 @@ class Spawn(commands.Cog):
 		is_shiny = random.randint(1, SHINY_ROLL) == 1
 		pokemon_id = random.randint(1, 386)
 		
-		species = await pm.service.get_species(pokemon_id)
+		species = pm.service.get_species(pokemon_id)
 
 		is_legendary = bool(getattr(species, "is_legendary", False))
 		is_mythical = bool(getattr(species, "is_mythical", False))
 		habitat_name = species.habitat.name if species.habitat else ("rare" if (is_legendary or is_mythical) else "grassland")
 
-		pokemon_min_level = await self.get_pokemon_min_level(species)
+		pokemon_min_level = self.get_pokemon_min_level(species)
 
 		author_id = str(ctx.author.id)
 		try:
@@ -102,8 +101,20 @@ class Spawn(commands.Cog):
 		except ValueError:
 			level = random.randint(pokemon_min_level, max(pokemon_min_level, 15))
 
-		wild = await pm.generate_temp_pokemon(owner_id="wild", species_id=pokemon_id, level=level, on_party=False, shiny=is_shiny)
-		sprite_bytes = pm.service.get_pokemon_sprite(wild)[0]
+		wild = pm.generate_temp_pokemon(
+			owner_id="wild",
+			species_id=pokemon_id,
+			level=level,
+			on_party=False,
+			shiny=is_shiny
+		)
+
+		sprite_bytes = pm.service.get_pokemon_sprite({
+			"species_id": pokemon_id,
+			"is_shiny": is_shiny,
+			"gender": "Male"
+		})[0]
+
 		buffer = await compose_pokemon_async(sprite_bytes, self.preloaded_backgrounds[habitat_name])
 		
 		title = "✨ Um Pokémon Shiny Selvagem Apareceu! ✨" if is_shiny else "Um Pokémon Selvagem Apareceu!"

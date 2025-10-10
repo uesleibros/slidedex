@@ -146,8 +146,8 @@ class HeldItems(commands.Cog):
         return text.strip()
 
     async def _build_item_info_embed(self, pokemon: Dict, item_id: str) -> discord.Embed:
-        item_name = await pm.get_item_name(item_id)
-        item_effect = await pm.get_item_effect(item_id)
+        item_name = pm.get_item_name(item_id)
+        item_effect = pm.get_item_effect(item_id)
         emoji = self.manager.get_item_emoji(item_id)
         
         embed = discord.Embed(
@@ -174,7 +174,7 @@ class HeldItems(commands.Cog):
             inline=True
         )
         
-        category = await pm.get_item_category(item_id)
+        category = pm.get_item_category(item_id)
         embed.add_field(
             name="Categoria",
             value=category.title(),
