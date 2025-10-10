@@ -54,14 +54,14 @@ class HeldItemManager:
         
         return party[party_pos - 1], None
     
-    async def validate_item(self, uid: str, item_id: str) -> Tuple[bool, Optional[str]]:
+    def validate_item(self, uid: str, item_id: str) -> Tuple[bool, Optional[str]]:
         if not self.tk.has_item(uid, item_id):
             return False, ERROR_MESSAGES['no_item'].format(item_id=item_id)
         
-        if not await self.pm.validate_item(item_id):
+        if not self.pm.validate_item(item_id):
             return False, ERROR_MESSAGES['invalid_item'].format(item_id=item_id)
         
-        if not await self.pm.is_holdable(item_id):
+        if not self.pm.is_holdable(item_id):
             return False, ERROR_MESSAGES['not_holdable'].format(item_name=format_item_display(item_id))
         
         return True, None
@@ -71,29 +71,29 @@ class HeldItemManager:
             return NO_ITEM_EMOJI
         return ITEM_EMOJIS.get(item_id, DEFAULT_ITEM_EMOJI)
     
-    async def get_item_display(self, item_id: Optional[str]) -> Tuple[str, str]:
+    def get_item_display(self, item_id: Optional[str]) -> Tuple[str, str]:
         if not item_id:
             return NO_ITEM_EMOJI, "Sem item"
         
         emoji = self.get_item_emoji(item_id)
-        name = await self.pm.get_item_name(item_id)
+        name = self.pm.get_item_name(item_id)
         return emoji, name
     
-    async def equip_item(self, uid: str, pokemon_id: int, item_id: str) -> Dict:
+    def equip_item(self, uid: str, pokemon_id: int, item_id: str) -> Dict:
         self.tk.remove_item(uid, item_id, 1)
         self.tk.set_pokemon_held_item(uid, pokemon_id, item_id)
         
         emoji = self.get_item_emoji(item_id)
-        name = await self.pm.get_item_name(item_id)
+        name = self.pm.get_item_name(item_id)
         
         return {"emoji": emoji, "name": name}
     
-    async def unequip_item(self, uid: str, pokemon_id: int, item_id: str) -> Dict:
+    def unequip_item(self, uid: str, pokemon_id: int, item_id: str) -> Dict:
         self.tk.set_pokemon_held_item(uid, pokemon_id, None)
-        await self.pm.give_item(uid, item_id, 1)
+        self.pm.give_item(uid, item_id, 1)
         
         emoji = self.get_item_emoji(item_id)
-        name = await self.pm.get_item_name(item_id)
+        name = self.pm.get_item_name(item_id)
         
         return {"emoji": emoji, "name": name}
     
@@ -107,13 +107,13 @@ class HeldItemManager:
         self.tk.remove_item(uid, new_item_id, 1)
         
         if old_item_id:
-            await self.pm.give_item(uid, old_item_id, 1)
-            old_emoji, old_name = await self.get_item_display(old_item_id)
+            self.pm.give_item(uid, old_item_id, 1)
+            old_emoji, old_name = self.get_item_display(old_item_id)
         else:
             old_emoji, old_name = NO_ITEM_EMOJI, "Nenhum"
         
         self.tk.set_pokemon_held_item(uid, pokemon_id, new_item_id)
-        new_emoji, new_name = await self.get_item_display(new_item_id)
+        new_emoji, new_name = self.get_item_display(new_item_id)
         
         return {
             "old_emoji": old_emoji,
@@ -131,7 +131,7 @@ class HeldItems(commands.Cog):
     def format_pokemon(self, pokemon: Dict) -> str:
         return format_pokemon_display(pokemon, bold_name=True, show_gender=False, show_item=False)
 
-    async def _build_party_items(self, party: List[Dict]) -> str:        
+    def _build_party_items(self, party: List[Dict]) -> str:        
         equipped_count = sum(1 for p in party if p.get("held_item"))
         text = ''
         
@@ -145,7 +145,7 @@ class HeldItems(commands.Cog):
         text += f"\n-# {equipped_count}/{len(party)} Pokémon com itens equipados"
         return text.strip()
 
-    async def _build_item_info_embed(self, pokemon: Dict, item_id: str) -> discord.Embed:
+    def _build_item_info_embed(self, pokemon: Dict, item_id: str) -> discord.Embed:
         item_name = pm.get_item_name(item_id)
         item_effect = pm.get_item_effect(item_id)
         emoji = self.manager.get_item_emoji(item_id)
@@ -183,7 +183,7 @@ class HeldItems(commands.Cog):
         
         return embed
 
-    async def _build_cleared_items(self, removed_items: List[Dict]) -> str:
+    def _build_cleared_items(self, removed_items: List[Dict]) -> str:
         text = ''
 
         for i, pokemon in enumerate(removed_items, 1):
@@ -206,7 +206,7 @@ class HeldItems(commands.Cog):
             await ctx.send(ERROR_MESSAGES['empty_party'])
             return
         
-        party_items = await self._build_party_items(party)
+        party_items = self._build_party_items(party)
         await ctx.send(party_items)
 
     @hold_root.command(name="give", aliases=["equip", "add", "set"])
@@ -219,7 +219,7 @@ class HeldItems(commands.Cog):
             await ctx.send(error)
             return
         
-        is_valid, error = await self.manager.validate_item(uid, item_id)
+        is_valid, error = self.manager.validate_item(uid, item_id)
         if not is_valid:
             await ctx.send(error)
             return
@@ -233,7 +233,7 @@ class HeldItems(commands.Cog):
             )
             return
         
-        result = await self.manager.equip_item(uid, pokemon["id"], item_id)
+        result = self.manager.equip_item(uid, pokemon["id"], item_id)
         
         await ctx.send(
             SUCCESS_MESSAGES['item_equipped'].format(
@@ -260,7 +260,7 @@ class HeldItems(commands.Cog):
             )
             return
         
-        result = await self.manager.unequip_item(uid, pokemon["id"], item_id)
+        result = self.manager.unequip_item(uid, pokemon["id"], item_id)
         
         await ctx.send(
             SUCCESS_MESSAGES['item_unequipped'].format(
@@ -280,14 +280,14 @@ class HeldItems(commands.Cog):
             await ctx.send(error)
             return
         
-        is_valid, error = await self.manager.validate_item(uid, new_item_id)
+        is_valid, error = self.manager.validate_item(uid, new_item_id)
         if not is_valid:
             await ctx.send(error)
             return
         
         old_item_id = pokemon.get("held_item")
         
-        result = await self.manager.swap_item(uid, pokemon["id"], old_item_id, new_item_id)
+        result = self.manager.swap_item(uid, pokemon["id"], old_item_id, new_item_id)
         
         await ctx.send(
             SUCCESS_MESSAGES['item_swapped'].format(
@@ -316,7 +316,7 @@ class HeldItems(commands.Cog):
             )
             return
         
-        embed = await self._build_item_info_embed(pokemon, item_id)
+        embed = self._build_item_info_embed(pokemon, item_id)
         await ctx.send(embed=embed)
 
     @hold_root.command(name="clear", aliases=["removeall", "unequipall"])
@@ -334,14 +334,14 @@ class HeldItems(commands.Cog):
         for pokemon in party:
             item_id = pokemon.get("held_item")
             if item_id:
-                result = await self.manager.unequip_item(uid, pokemon["id"], item_id)
+                result = self.manager.unequip_item(uid, pokemon["id"], item_id)
                 removed_items.append(pokemon)
         
         if not removed_items:
             await ctx.send(ERROR_MESSAGES['no_equipped_items'])
             return
         
-        cleared_items = await self._build_cleared_items(removed_items)
+        cleared_items = self._build_cleared_items(removed_items)
         await ctx.send(cleared_items)
 
 
