@@ -12,6 +12,7 @@ from ..pokeballs import PokeBallSystem, BallType
 from ..rewards import BattleRewards
 from ...constants import VERSION_GROUPS
 from .engine import BattleEngine, BattleState
+from typing import List, Dict, Any, Optional, Union
 
 class WildBattle(BattleEngine):
 	def __init__(
@@ -823,3 +824,4 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
