@@ -1,5 +1,4 @@
 import discord
-import random
 from __main__ import toolkit, pm
 from discord.ext import commands
 from pokemon_sdk.constants import NATURES, STAT_KEYS
@@ -46,13 +45,13 @@ class StarterButton(discord.ui.Button):
 		poke = pm.service.get_pokemon(self.species_id)
 		base_stats = pm.service.get_base_stats(poke)
 
-		ivs = {k: random.randint(0, 31) for k in base_stats.keys()}
+		ivs = toolkit.roll_ivs(self.user_id)
 		evs = {k: 0 for k in base_stats.keys()}
-		nature = random.choice(list(NATURES.keys()))
+		nature = toolkit.roll_nature(self.user_id)
 		
 		calculated_stats = calculate_stats(base_stats, ivs, evs, 5, nature)
 		
-		ability = pm.service.choose_ability(poke)
+		ability = pm.service.choose_ability(poke, toolkit, self.user_id)
 		moves = pm.service.select_level_up_moves(poke, 5)
 
 		pm.create_pokemon(
@@ -97,6 +96,4 @@ class Start(commands.Cog):
 		await ctx.send(f"{ctx.author.mention}, escolha seu inicial:", view=view)
 
 async def setup(bot: commands.Bot):
-
 	await bot.add_cog(Start(bot))
-
