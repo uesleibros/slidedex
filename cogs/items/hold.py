@@ -97,7 +97,7 @@ class HeldItemManager:
         
         return {"emoji": emoji, "name": name}
     
-    async def swap_item(
+    def swap_item(
         self,
         uid: str,
         pokemon_id: int,
@@ -347,3 +347,4 @@ class HeldItems(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(HeldItems(bot))
+
