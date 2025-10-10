@@ -326,7 +326,9 @@ class Toolkit:
 	def roll_shiny(self, user_id: str) -> bool:
 		return self.roll_chance(user_id, 1/SHINY_ROLL)
 
-	def roll_gender(self, user_id: str, male_ratio: float = 0.5) -> str:
+	def roll_gender(self, user_id: str, male_ratio: float = 0.5, forced: Optonal[str] = None) -> str:
+		if forced in ("Male", "Female", "Genderless"):
+			return forced
 		if male_ratio < 0:
 			return "genderless"
 		is_male = self.roll_chance(user_id, male_ratio)
@@ -1330,4 +1332,5 @@ class Toolkit:
 				self._save()
 			
 			return updated
+
 
