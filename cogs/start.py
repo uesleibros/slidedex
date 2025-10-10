@@ -3,6 +3,7 @@ from __main__ import toolkit, pm
 from discord.ext import commands
 from pokemon_sdk.constants import NATURES, STAT_KEYS
 from pokemon_sdk.calculations import generate_pokemon_data, calculate_stats
+from utils.formatting import format_pokemon_display
 
 STARTERS = {"bulbasaur": 1, "charmander": 4, "squirtle": 7, "pikachu": 25, "eevee": 133}
 
@@ -70,10 +71,11 @@ class StarterButton(discord.ui.Button):
 		await interaction.followup.edit_message(
 			message_id=interaction.message.id,
 			content=(
-				f"Você escolheu **{poke.name.capitalize()}** como seu inicial!\n"
+				f"Você escolheu **{format_pokemon_display(poke)}** como seu inicial!\n"
 				f"Natureza: **{nature}**\n"
-				f"Gênero: **{trainer_gender}**\n"
-				f"HP: **{calculated_stats['hp']} / {calculated_stats['hp']}**"
+				f"Habilidade: **{ability}**\n"
+				f"HP: **{calculated_stats['hp']} / {calculated_stats['hp']}**\n"
+				"-# Use !help para ver os comandos disponíveis • Boa sorte na sua jornada!"
 			),
 			view=None
 		)
@@ -97,4 +99,5 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
 
