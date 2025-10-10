@@ -337,9 +337,9 @@ class Toolkit:
 		if forced in ("Male", "Female", "Genderless"):
 			return forced
 		if male_ratio < 0:
-			return "genderless"
+			return "Genderless"
 		is_male = self.roll_chance(user_id, male_ratio)
-		return "male" if is_male else "female"
+		return "Male" if is_male else "Female"
 
 	def roll_ivs(self, user_id: str) -> Dict[str, int]:
 		with self._lock:
@@ -1339,6 +1339,7 @@ class Toolkit:
 				self._save()
 			
 			return updated
+
 
 
 
