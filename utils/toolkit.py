@@ -326,6 +326,14 @@ class Toolkit:
 	def roll_shiny(self, user_id: str) -> bool:
 		return self.roll_chance(user_id, 1/SHINY_ROLL)
 
+	def roll_ability(self, poke, user_id: str) -> str:
+		regular = [a.ability.name for a in poke.abilities if not a.is_hidden]
+		if not regular:
+			return poke.abilities[0].ability.name
+		
+		idx = self.roll_random(user_id, 0, len(regular))
+		return regular[idx]
+
 	def roll_gender(self, user_id: str, male_ratio: float = 0.5, forced: Optonal[str] = None) -> str:
 		if forced in ("Male", "Female", "Genderless"):
 			return forced
@@ -1332,5 +1340,6 @@ class Toolkit:
 				self._save()
 			
 			return updated
+
 
 
