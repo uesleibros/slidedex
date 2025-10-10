@@ -2,7 +2,6 @@ import random
 import orjson
 from typing import Dict, List, Optional, Union, Tuple, Any
 from munch import Munch, munchify
-from .constants import SHINY_ROLL
 import logging
 import os
 
@@ -158,3 +157,4 @@ class PokeAPIService:
 	def get_future_moves(self, poke, current_level: int) -> List[Tuple[int, str]]:
 		moves = self.get_level_up_moves(poke, min_level=current_level)
 		return [(lvl, mid) for mid, lvl in moves]
+
