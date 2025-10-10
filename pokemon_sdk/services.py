@@ -134,15 +134,6 @@ class PokeAPIService:
 		return {s.stat.name: s.base_stat for s in poke.stats}
 
 	@staticmethod
-	def choose_ability(poke, toolkit, user_id: str) -> str:
-		regular = [a.ability.name for a in poke.abilities if not a.is_hidden]
-		if not regular:
-			return poke.abilities[0].ability.name
-		
-		idx = toolkit.roll_random(user_id, 0, len(regular))
-		return regular[idx]
-
-	@staticmethod
 	def get_level_up_moves(poke, max_level: Optional[int] = None, min_level: Optional[int] = None) -> List[Tuple[str, int]]:
 		moves_data = {}
 		for move_entry in poke.moves:
@@ -167,17 +158,3 @@ class PokeAPIService:
 	def get_future_moves(self, poke, current_level: int) -> List[Tuple[int, str]]:
 		moves = self.get_level_up_moves(poke, min_level=current_level)
 		return [(lvl, mid) for mid, lvl in moves]
-
-	@staticmethod
-	def roll_gender(species, forced: Optional[str] = None) -> str:
-		if forced in ("Male", "Female", "Genderless"):
-			return forced
-		gr = getattr(species, "gender_rate", -1)
-		if gr == -1:
-			return "Genderless"
-		return "Female" if random.random() * 100 < gr * 12.5 else "Male"
-
-	@staticmethod
-	def roll_shiny() -> bool:
-
-		return random.randint(1, SHINY_ROLL) == 1
