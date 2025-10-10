@@ -75,7 +75,7 @@ class StarterButton(discord.ui.Button):
 				f"Natureza: **{nature}**\n"
 				f"Habilidade: **{ability}**\n"
 				f"HP: **{calculated_stats['hp']} / {calculated_stats['hp']}**\n"
-				"-# Use !help para ver os comandos disponíveis • Boa sorte na sua jornada!"
+				"-# Use .help para ver os comandos disponíveis • Boa sorte na sua jornada!"
 			),
 			view=None
 		)
@@ -99,3 +99,4 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
