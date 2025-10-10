@@ -337,8 +337,11 @@ class PokemonManager:
 		level: int = None,
 		on_party: bool = True,
 		give_rewards: bool = True,
+		user_id: str = None
 		**kwargs
 	) -> Dict:
+		if not user_id: 
+			user_id = owner_id
 		pkmn = self._build_pokemon_data(
 			user_id=owner_id,
 			species_id=species_id,
@@ -802,6 +805,7 @@ class PokemonManager:
 		
 	def close(self):
 		self.service.close()
+
 
 
 
