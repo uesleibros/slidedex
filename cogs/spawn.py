@@ -1,4 +1,3 @@
-import random
 import asyncio
 import discord
 from discord.ext import commands
@@ -80,8 +79,10 @@ class Spawn(commands.Cog):
 	@commands.command(name="spawn", aliases=["sp"])
 	@requires_account()
 	async def spawn_command(self, ctx: commands.Context) -> None:
-		is_shiny = random.randint(1, SHINY_ROLL) == 1
-		pokemon_id = random.randint(1, 386)
+		author_id = str(ctx.author.id)
+		
+		is_shiny = pm.tk.roll_shiny(author_id)
+		pokemon_id = pm.tk.roll_random(author_id, 1, 387)
 		
 		species = pm.service.get_species(pokemon_id)
 
@@ -91,15 +92,14 @@ class Spawn(commands.Cog):
 
 		pokemon_min_level = self.get_pokemon_min_level(species)
 
-		author_id = str(ctx.author.id)
 		try:
 			player_party = pm.tk.get_user_party(author_id)
 			active_level = player_party[0]["level"]
 			min_level = max(pokemon_min_level, active_level - 5)
 			max_level = max(min_level, min(100, active_level + 5))
-			level = random.randint(min_level, max_level)
+			level = pm.tk.roll_random(author_id, min_level, max_level + 1)
 		except ValueError:
-			level = random.randint(pokemon_min_level, max(pokemon_min_level, 15))
+			level = pm.tk.roll_random(author_id, pokemon_min_level, max(pokemon_min_level, 15) + 1)
 
 		wild = pm.generate_temp_pokemon(
 			owner_id="wild",
