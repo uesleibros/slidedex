@@ -73,7 +73,7 @@ class StarterButton(discord.ui.Button):
 			content=(
 				f"Você escolheu **{format_pokemon_display(upoke)}** como seu inicial!\n"
 				f"Natureza: **{nature}**\n"
-				f"Habilidade: **{ability}**\n"
+				f"Habilidade: **{ability.capitalize()}**\n"
 				f"HP: **{calculated_stats['hp']} / {calculated_stats['hp']}**\n"
 				"-# Use .help para ver os comandos disponíveis • Boa sorte na sua jornada!"
 			),
@@ -99,4 +99,5 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
 
