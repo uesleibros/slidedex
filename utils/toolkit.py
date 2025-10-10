@@ -5,7 +5,6 @@ import copy
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
-
 from pokemon_sdk.constants import NATURES, STAT_KEYS, HAPPINESS_MAX, SHINY_ROLL
 from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
 from helpers.growth import GrowthRate
@@ -1340,6 +1339,7 @@ class Toolkit:
 				self._save()
 			
 			return updated
+
 
 
 
