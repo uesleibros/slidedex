@@ -2,6 +2,7 @@ from utils.pokemon_emojis import get_app_emoji
 from typing import Optional
 from pokemon_sdk.constants import HAPPINESS_MAX, NATURES
 from pokemon_sdk.battle.constants import STATUS_TAGS
+from __main__ import pm
 
 def format_nature_info(nature: str) -> str:
 	nature_key = nature.title()
@@ -34,7 +35,7 @@ def format_item_display(item_id: Optional[str], bold_name: Optional[bool] = Fals
 		return "Nenhum item"
 
 	emoji = ITEM_EMOJIS.get(item_id, "📦")
-	name = item_id.replace('-', ' ').title()
+	name = pm.item_manager.get_item_name(item_id)
 
 	if bold_name:
 		return f"{emoji} **{name}**"
@@ -111,5 +112,6 @@ def format_pokemon_display(
 
 	if show_fav and pokemon["is_favorite"]:
 		parts.append("❤️")
+
 
 	return " ".join(parts)
