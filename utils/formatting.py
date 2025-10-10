@@ -2,7 +2,6 @@ from utils.pokemon_emojis import get_app_emoji
 from typing import Optional
 from pokemon_sdk.constants import HAPPINESS_MAX, NATURES
 from pokemon_sdk.battle.constants import STATUS_TAGS
-from __main__ import pm
 
 def format_nature_info(nature: str) -> str:
 	nature_key = nature.title()
@@ -30,6 +29,7 @@ def format_nature_info(nature: str) -> str:
 
 def format_item_display(item_id: Optional[str], bold_name: Optional[bool] = False) -> str:
 	from cogs.bag.constants import ITEM_EMOJIS
+	from __main__ import pm
 
 	if not item_id:
 		return "Nenhum item"
@@ -115,3 +115,4 @@ def format_pokemon_display(
 
 
 	return " ".join(parts)
+
