@@ -134,9 +134,13 @@ class PokeAPIService:
 		return {s.stat.name: s.base_stat for s in poke.stats}
 
 	@staticmethod
-	def choose_ability(poke) -> str:
+	def choose_ability(poke, toolkit, user_id: str) -> str:
 		regular = [a.ability.name for a in poke.abilities if not a.is_hidden]
-		return random.choice(regular) if regular else poke.abilities[0].ability.name
+		if not regular:
+			return poke.abilities[0].ability.name
+		
+		idx = toolkit.roll_random(user_id, 0, len(regular))
+		return regular[idx]
 
 	@staticmethod
 	def get_level_up_moves(poke, max_level: Optional[int] = None, min_level: Optional[int] = None) -> List[Tuple[str, int]]:
@@ -175,4 +179,5 @@ class PokeAPIService:
 
 	@staticmethod
 	def roll_shiny() -> bool:
+
 		return random.randint(1, SHINY_ROLL) == 1
