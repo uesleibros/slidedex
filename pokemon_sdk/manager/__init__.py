@@ -1,5 +1,4 @@
 import discord
-import random
 from typing import List, Optional, Dict, Tuple
 from utils.formatting import format_pokemon_display, format_item_display
 from ..services import PokeAPIService
@@ -116,7 +115,8 @@ class ItemManager:
 	
 	def give_random_item(self, user_id: str, item_pool: Optional[List[str]] = None, quantity: int = 1) -> Dict:
 		item_pool = item_pool or ItemPool.RANDOM_ITEMS
-		item_id = random.choice(item_pool)
+		idx = self.tk.roll_random(user_id, 0, len(item_pool))
+		item_id = item_pool[idx]
 		return self.give_item(user_id, item_id, quantity)
 	
 	def give_level_up_reward(self, user_id: str, pokemon_level: int) -> Optional[Dict]:
@@ -130,6 +130,8 @@ class ItemManager:
 		given_items = []
 		for item_id, qty in level_rewards:
 			try:
+				if isinstance(qty, tuple):
+					qty = self.tk.roll_random(user_id, qty[0], qty[1] + 1)
 				result = self.give_item(user_id, item_id, qty)
 				given_items.append(result)
 			except:
@@ -153,7 +155,7 @@ class ItemManager:
 		for item_id, qty in reward_list:
 			try:
 				if isinstance(qty, tuple):
-					qty = random.randint(qty[0], qty[1])
+					qty = self.tk.roll_random(user_id, qty[0], qty[1] + 1)
 				result = self.give_item(user_id, item_id, qty)
 				rewards.append(result)
 			except:
@@ -259,6 +261,7 @@ class PokemonManager:
 
 	def _build_pokemon_data(
 		self,
+		user_id: str,
 		species_id: int,
 		level: int = None,
 		forced_gender: Optional[str] = None,
@@ -279,16 +282,16 @@ class PokemonManager:
 		poke = self.service.get_pokemon(species_id)
 		species = self.service.get_species(species_id)
 		base_stats = self.service.get_base_stats(poke)
-	
-		final_ivs = ivs or {k: random.randint(0, 31) for k in base_stats.keys()}
-		final_nature = nature or random.choice(list(NATURES.keys()))
+
+		final_ivs = ivs or self.tk.roll_ivs(user_id)
+		final_nature = nature or self.tk.roll_nature(user_id)
 		final_level = max(self.config.min_level, min(level, self.config.max_level))
 		
 		gen = generate_pokemon_data(base_stats, level=final_level, nature=final_nature, ivs=final_ivs)
-		final_ability = ability or self.service.choose_ability(poke)
+		final_ability = ability or self.service.choose_ability(poke, self.tk, user_id)
 		final_moves = moves or self.service.select_level_up_moves(poke, final_level)
-		final_gender = self.service.roll_gender(species, forced=forced_gender)
-		final_shiny = shiny if shiny is not None else self.service.roll_shiny()
+		final_gender = self.service.roll_gender(species, self.tk, user_id, forced=forced_gender)
+		final_shiny = shiny if shiny is not None else self.service.roll_shiny(self.tk, user_id)
 	
 		exp = GrowthRate.calculate_exp(species.growth_rate.name, final_level)
 		
@@ -324,8 +327,8 @@ class PokemonManager:
 		del poke, species, base_stats
 		return result
 
-	def generate_temp_pokemon(self, **kwargs) -> Dict:
-		return self._build_pokemon_data(**kwargs)
+	def generate_temp_pokemon(self, user_id: str, **kwargs) -> Dict:
+		return self._build_pokemon_data(user_id=user_id, **kwargs)
 
 	def create_pokemon(
 		self,
@@ -337,6 +340,7 @@ class PokemonManager:
 		**kwargs
 	) -> Dict:
 		pkmn = self._build_pokemon_data(
+			user_id=owner_id,
 			species_id=species_id,
 			level=level,
 			owner_id=owner_id,
