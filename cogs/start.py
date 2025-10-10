@@ -55,7 +55,7 @@ class StarterButton(discord.ui.Button):
 		ability = pm.tk.roll_ability(poke, self.user_id)
 		moves = pm.service.select_level_up_moves(poke, 5)
 
-		pm.create_pokemon(
+		upoke = pm.create_pokemon(
 			owner_id=self.user_id,
 			species_id=self.species_id,
 			level=5,
@@ -71,7 +71,7 @@ class StarterButton(discord.ui.Button):
 		await interaction.followup.edit_message(
 			message_id=interaction.message.id,
 			content=(
-				f"Você escolheu **{format_pokemon_display(poke)}** como seu inicial!\n"
+				f"Você escolheu **{format_pokemon_display(upoke)}** como seu inicial!\n"
 				f"Natureza: **{nature}**\n"
 				f"Habilidade: **{ability}**\n"
 				f"HP: **{calculated_stats['hp']} / {calculated_stats['hp']}**\n"
@@ -99,5 +99,3 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
-
-
