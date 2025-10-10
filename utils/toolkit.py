@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
 
-from pokemon_sdk.constants import NATURES, STAT_KEYS, HAPPINESS_MAX
+from pokemon_sdk.constants import NATURES, STAT_KEYS, HAPPINESS_MAX, SHINY_ROLL
 from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
 from helpers.growth import GrowthRate
 
@@ -324,7 +324,7 @@ class Toolkit:
 			return result
 
 	def roll_shiny(self, user_id: str) -> bool:
-		return self.roll_chance(user_id, 1/4096)
+		return self.roll_chance(user_id, 1/SHINY_ROLL)
 
 	def roll_gender(self, user_id: str, male_ratio: float = 0.5) -> str:
 		if male_ratio < 0:
@@ -1330,3 +1330,4 @@ class Toolkit:
 				self._save()
 			
 			return updated
+
