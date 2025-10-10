@@ -196,14 +196,14 @@ class TradeView(discord.ui.View):
 		if self.trade.partner_offer.items:
 			items_list = []
 			for item_id, qty in self.trade.partner_offer.items.items():
-				item_name = await self.tm.pm.get_item_name(item_id)
+				item_name = self.tm.pm.get_item_name(item_id)
 				items_list.append(f"• {item_name} x{qty}")
 			initiator_received.append(f"**Itens:**\n" + "\n".join(items_list))
 		
 		if self.trade.initiator_offer.items:
 			items_list = []
 			for item_id, qty in self.trade.initiator_offer.items.items():
-				item_name = await self.tm.pm.get_item_name(item_id)
+				item_name = self.tm.pm.get_item_name(item_id)
 				items_list.append(f"• {item_name} x{qty}")
 			partner_received.append(f"**Itens:**\n" + "\n".join(items_list))
 		
