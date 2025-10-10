@@ -62,7 +62,7 @@ class Trade(commands.Cog):
 			return
 		
 		try:
-			trade = await self.tm.create_trade(initiator_id, partner_id)
+			trade = self.tm.create_trade(initiator_id, partner_id)
 		except ValueError as e:
 			return await ctx.send(f"{str(e)}")
 		
@@ -100,7 +100,7 @@ class Trade(commands.Cog):
 			except ValueError:
 				return await ctx.send("IDs inválidos! Use apenas números.")
 			
-			success, error = await self.tm.add_pokemon_to_offer(trade.trade_id, user_id, pokemon_ids)
+			success, error = self.tm.add_pokemon_to_offer(trade.trade_id, user_id, pokemon_ids)
 			
 			if not success:
 				return await ctx.send(f"{error}")
@@ -120,7 +120,7 @@ class Trade(commands.Cog):
 				except ValueError:
 					return await ctx.send("Quantidade inválida!")
 			
-			success, error = await self.tm.add_items_to_offer(
+			success, error = self.tm.add_items_to_offer(
 				trade.trade_id,
 				user_id,
 				{item_id: quantity}
@@ -141,7 +141,7 @@ class Trade(commands.Cog):
 			except ValueError:
 				return await ctx.send("Quantidade inválida!")
 			
-			success, error = await self.tm.set_money_offer(trade.trade_id, user_id, amount)
+			success, error = self.tm.set_money_offer(trade.trade_id, user_id, amount)
 			
 			if not success:
 				return await ctx.send(f"{error}")
@@ -179,7 +179,7 @@ class Trade(commands.Cog):
 			except ValueError:
 				return await ctx.send("IDs inválidos!")
 			
-			await self.tm.remove_pokemon_from_offer(trade.trade_id, user_id, pokemon_ids)
+			self.tm.remove_pokemon_from_offer(trade.trade_id, user_id, pokemon_ids)
 			await ctx.send(f"{len(pokemon_ids)} Pokémon removido(s)!")
 		
 		elif type in ["item", "i"]:
@@ -195,7 +195,7 @@ class Trade(commands.Cog):
 				except ValueError:
 					pass
 			
-			await self.tm.remove_items_from_offer(
+			self.tm.remove_items_from_offer(
 				trade.trade_id,
 				user_id,
 				{item_id: quantity}
@@ -222,7 +222,7 @@ class Trade(commands.Cog):
 		if not trade:
 			return await ctx.send("Você não está em uma trade ativa!")
 		
-		await self.tm.cancel_trade(trade.trade_id)
+		self.tm.cancel_trade(trade.trade_id)
 		await ctx.send("Trade cancelada!")
 	
 	@trade.command(name="info", aliases=["i"])
