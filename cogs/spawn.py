@@ -7,7 +7,6 @@ from utils.spawn_text import get_spawn_text
 from utils.canvas import compose_pokemon_async
 from utils.formatting import format_pokemon_display
 from pokemon_sdk.battle.core.wild import WildBattle
-from pokemon_sdk.constants import SHINY_ROLL
 from helpers.checks import requires_account
 
 class BattleView(discord.ui.View):
@@ -130,3 +129,4 @@ class Spawn(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Spawn(bot))
+
