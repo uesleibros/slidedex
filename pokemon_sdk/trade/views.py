@@ -76,7 +76,7 @@ class TradeView(discord.ui.View):
 		return True
 	
 	async def on_timeout(self) -> None:
-		await self.tm.cancel_trade(self.trade.trade_id, "expirada")
+		self.tm.cancel_trade(self.trade.trade_id, "expirada")
 		
 		if self.message:
 			for item in self.children:
@@ -90,30 +90,6 @@ class TradeView(discord.ui.View):
 				await self.message.edit(embed=embed, view=self)
 			except:
 				pass
-	
-	@discord.ui.button(label="Como Adicionar Pokémon", style=discord.ButtonStyle.primary, row=0)
-	async def add_pokemon(self, interaction: discord.Interaction, button: discord.ui.Button):
-		await interaction.response.send_message(
-			"Use: `!trade add pokemon <ID1> [ID2] [ID3]...`\n"
-			"Exemplo: `!trade add pokemon 1 5 23`",
-			ephemeral=True
-		)
-	
-	@discord.ui.button(label="Como Adicionar Item", style=discord.ButtonStyle.primary, row=0)
-	async def add_item(self, interaction: discord.Interaction, button: discord.ui.Button):
-		await interaction.response.send_message(
-			"Use: `!trade add item <nome> [quantidade]`\n"
-			"Exemplo: `!trade add item rare-candy 5`",
-			ephemeral=True
-		)
-	
-	@discord.ui.button(label="Como Adicionar Dinheiro", style=discord.ButtonStyle.primary, row=0)
-	async def add_money(self, interaction: discord.Interaction, button: discord.ui.Button):
-		await interaction.response.send_message(
-			"Use: `!trade add money <quantidade>`\n"
-			"Exemplo: `!trade add money 5000`",
-			ephemeral=True
-		)
 	
 	@discord.ui.button(label="Limpar Oferta", style=discord.ButtonStyle.secondary, row=1)
 	async def clear_offer(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -134,7 +110,7 @@ class TradeView(discord.ui.View):
 	async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
 		user_id = str(interaction.user.id)
 		
-		success, error = await self.tm.confirm_offer(self.trade.trade_id, user_id)
+		success, error = self.tm.confirm_offer(self.trade.trade_id, user_id)
 		
 		if not success:
 			return await interaction.response.send_message(f"{error}", ephemeral=True)
@@ -148,7 +124,7 @@ class TradeView(discord.ui.View):
 	
 	@discord.ui.button(label="Cancelar", style=discord.ButtonStyle.danger, row=2)
 	async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-		await self.tm.cancel_trade(self.trade.trade_id)
+		self.tm.cancel_trade(self.trade.trade_id)
 		
 		for item in self.children:
 			item.disabled = True
@@ -280,7 +256,7 @@ class TradeView(discord.ui.View):
 			timestamp=discord.utils.utcnow()
 		)
 		
-		initiator_offer_text = await self._format_offer(self.trade.initiator_offer)
+		initiator_offer_text = self._format_offer(self.trade.initiator_offer)
 		embed.add_field(
 			name=f"{'[OK]' if self.trade.initiator_offer.confirmed else '[...]'} {initiator.display_name}",
 			value=initiator_offer_text or "*Nada oferecido*",
@@ -317,7 +293,7 @@ class TradeView(discord.ui.View):
 		
 		return embed
 	
-	async def _format_offer(self, offer) -> str:
+	def _format_offer(self, offer) -> str:
 		parts = []
 		
 		if offer.pokemon_ids:
@@ -331,7 +307,7 @@ class TradeView(discord.ui.View):
 		if offer.items:
 			parts.append(f"\n**Itens ({len(offer.items)}):**")
 			for item_id, qty in list(offer.items.items())[:5]:
-				item_name = await self.tm.pm.get_item_name(item_id)
+				item_name = self.tm.pm.get_item_name(item_id)
 				parts.append(f"• {format_item_display(item_id)} x{qty}")
 			
 			if len(offer.items) > 5:
