@@ -51,7 +51,7 @@ class StarterButton(discord.ui.Button):
 		
 		calculated_stats = calculate_stats(base_stats, ivs, evs, 5, nature)
 		
-		ability = pm.service.choose_ability(poke, toolkit, self.user_id)
+		ability = pm.tk.roll_ability(poke, self.user_id)
 		moves = pm.service.select_level_up_moves(poke, 5)
 
 		pm.create_pokemon(
@@ -97,3 +97,4 @@ class Start(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Start(bot))
+
