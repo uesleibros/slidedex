@@ -522,8 +522,12 @@ class WildBattle(BattleEngine):
 				b_value = 1
 			
 			f_value = ((player_speed * 128) // b_value) + (30 * self.run_attempts)
+
+			rng = pm.tk.get_user_rng(self.user_id)
+			roll = rng.randint(0, 256)
+			pm.tk.save_user_rng(self.user_id, rng)
 			
-			if f_value >= 256 or f_value > random.randint(0, 255):
+			if f_value >= 256 or f_value > roll:
 				self.lines = ["💨 Você fugiu com sucesso!"]
 				self.ended = True
 				
@@ -564,6 +568,7 @@ class WildBattle(BattleEngine):
 	
 			already_caught = pm.tk.has_caught_species(self.user_id, self.wild.species_id)
 			success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
+				user_id=self.user_id,
 				wild=self.wild,
 				ball_type=self.ball_type,
 				turn=self.turn,
@@ -818,3 +823,4 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
