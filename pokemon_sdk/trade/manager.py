@@ -103,7 +103,7 @@ class TradeManager:
         trade_id = self._user_trades[user_id]
         return self._active_trades.get(trade_id)
     
-    async def create_trade(self, initiator_id: str, partner_id: str) -> TradeSession:
+    def create_trade(self, initiator_id: str, partner_id: str) -> TradeSession:
         if self.is_trading(initiator_id):
             raise ValueError("Você já está em uma trade ativa!")
         
@@ -138,7 +138,7 @@ class TradeManager:
         
         del self._active_trades[trade_id]
     
-    async def cancel_trade(self, trade_id: str, reason: str = "cancelada") -> None:
+    def cancel_trade(self, trade_id: str, reason: str = "cancelada") -> None:
         if trade_id not in self._active_trades:
             return
         
@@ -147,7 +147,7 @@ class TradeManager:
         
         self._cleanup_trade(trade_id)
     
-    async def validate_pokemon_offer(
+    def validate_pokemon_offer(
         self, 
         user_id: str, 
         pokemon_ids: List[int]
@@ -174,7 +174,7 @@ class TradeManager:
         except Exception as e:
             return False, f"Erro ao validar Pokémon: {str(e)}"
     
-    async def validate_item_offer(
+    def validate_item_offer(
         self,
         user_id: str,
         items: Dict[str, int]
@@ -197,7 +197,7 @@ class TradeManager:
         except Exception as e:
             return False, f"Erro ao validar itens: {str(e)}"
     
-    async def validate_money_offer(
+    def validate_money_offer(
         self,
         user_id: str,
         amount: int
@@ -215,7 +215,7 @@ class TradeManager:
         except Exception as e:
             return False, f"Erro ao validar dinheiro: {str(e)}"
     
-    async def add_pokemon_to_offer(
+    def add_pokemon_to_offer(
         self,
         trade_id: str,
         user_id: str,
@@ -229,7 +229,7 @@ class TradeManager:
         
         pokemon_ids = list(set(pokemon_ids))
         
-        valid, error = await self.validate_pokemon_offer(user_id, pokemon_ids)
+        valid, error = self.validate_pokemon_offer(user_id, pokemon_ids)
         if not valid:
             return False, error
         
@@ -242,7 +242,7 @@ class TradeManager:
         
         return True, None
     
-    async def remove_pokemon_from_offer(
+    def remove_pokemon_from_offer(
         self,
         trade_id: str,
         user_id: str,
@@ -262,7 +262,7 @@ class TradeManager:
         
         return True, None
     
-    async def add_items_to_offer(
+    def add_items_to_offer(
         self,
         trade_id: str,
         user_id: str,
@@ -274,7 +274,7 @@ class TradeManager:
         
         offer = trade.get_offer(user_id)
         
-        valid, error = await self.validate_item_offer(user_id, items)
+        valid, error = self.validate_item_offer(user_id, items)
         if not valid:
             return False, error
         
@@ -286,7 +286,7 @@ class TradeManager:
         
         return True, None
     
-    async def remove_items_from_offer(
+    def remove_items_from_offer(
         self,
         trade_id: str,
         user_id: str,
@@ -308,7 +308,7 @@ class TradeManager:
         
         return True, None
     
-    async def set_money_offer(
+    def set_money_offer(
         self,
         trade_id: str,
         user_id: str,
@@ -321,7 +321,7 @@ class TradeManager:
         if amount < 0:
             return False, "Quantidade inválida"
         
-        valid, error = await self.validate_money_offer(user_id, amount)
+        valid, error = self.validate_money_offer(user_id, amount)
         if not valid:
             return False, error
         
@@ -333,7 +333,7 @@ class TradeManager:
         
         return True, None
     
-    async def confirm_offer(
+    def confirm_offer(
         self,
         trade_id: str,
         user_id: str
@@ -349,17 +349,17 @@ class TradeManager:
             return False, "Ambas as ofertas estão vazias!"
         
         if offer.pokemon_ids:
-            valid, error = await self.validate_pokemon_offer(user_id, offer.pokemon_ids)
+            valid, error = self.validate_pokemon_offer(user_id, offer.pokemon_ids)
             if not valid:
                 return False, f"Sua oferta não é mais válida: {error}"
         
         if offer.items:
-            valid, error = await self.validate_item_offer(user_id, offer.items)
+            valid, error = self.validate_item_offer(user_id, offer.items)
             if not valid:
                 return False, f"Sua oferta não é mais válida: {error}"
         
         if offer.money > 0:
-            valid, error = await self.validate_money_offer(user_id, offer.money)
+            valid, error = self.validate_money_offer(user_id, offer.money)
             if not valid:
                 return False, f"Sua oferta não é mais válida: {error}"
         
@@ -388,38 +388,38 @@ class TradeManager:
                         (trade.partner_id, trade.partner_offer)
                     ]:
                         if offer.pokemon_ids:
-                            valid, error = await self.validate_pokemon_offer(user_id, offer.pokemon_ids)
+                            valid, error = self.validate_pokemon_offer(user_id, offer.pokemon_ids)
                             if not valid:
                                 self._cleanup_trade(trade_id)
                                 return False, f"Oferta inválida: {error}"
                         
                         if offer.items:
-                            valid, error = await self.validate_item_offer(user_id, offer.items)
+                            valid, error = self.validate_item_offer(user_id, offer.items)
                             if not valid:
                                 self._cleanup_trade(trade_id)
                                 return False, f"Oferta inválida: {error}"
                         
                         if offer.money > 0:
-                            valid, error = await self.validate_money_offer(user_id, offer.money)
+                            valid, error = self.validate_money_offer(user_id, offer.money)
                             if not valid:
                                 self._cleanup_trade(trade_id)
                                 return False, f"Oferta inválida: {error}"
                     
-                    await self._transfer_pokemon(
+                    self._transfer_pokemon(
                         trade.initiator_id,
                         trade.partner_id,
                         trade.initiator_offer.pokemon_ids,
                         trade.partner_offer.pokemon_ids
                     )
                     
-                    await self._transfer_items(
+                    self._transfer_items(
                         trade.initiator_id,
                         trade.partner_id,
                         trade.initiator_offer.items,
                         trade.partner_offer.items
                     )
                     
-                    await self._transfer_money(
+                    self._transfer_money(
                         trade.initiator_id,
                         trade.partner_id,
                         trade.initiator_offer.money,
@@ -492,7 +492,7 @@ class TradeManager:
                     print(f"Erro ao verificar evolução por trade: {e}")
                     continue
     
-    async def _transfer_pokemon(
+    def _transfer_pokemon(
         self,
         user1_id: str,
         user2_id: str,
@@ -505,7 +505,7 @@ class TradeManager:
         for pid in user2_pokemon:
             self.tk.transfer_pokemon(user2_id, pid, user1_id)
     
-    async def _transfer_items(
+    def _transfer_items(
         self,
         user1_id: str,
         user2_id: str,
@@ -518,7 +518,7 @@ class TradeManager:
         for item_id, quantity in user2_items.items():
             self.tk.transfer_item(user2_id, user1_id, item_id, quantity)
     
-    async def _transfer_money(
+    def _transfer_money(
         self,
         user1_id: str,
         user2_id: str,
