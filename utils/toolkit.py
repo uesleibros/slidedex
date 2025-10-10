@@ -2,12 +2,34 @@ import json
 import os
 import threading
 import copy
+import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
 
 from pokemon_sdk.constants import NATURES, STAT_KEYS, HAPPINESS_MAX
 from pokemon_sdk.calculations import calculate_max_hp, adjust_hp_on_level_up
 from helpers.growth import GrowthRate
+
+class FireRedRNG:
+    def __init__(self, seed: int):
+        self.seed = seed & 0xFFFFFFFF
+
+    def next(self) -> int:
+        self.seed = (self.seed * 0x41C64E6D + 0x6073) & 0xFFFFFFFF
+        return (self.seed >> 16) & 0xFFFF
+
+    def randint(self, min_val: int, max_val: int) -> int:
+        rnd = self.next() / 0xFFFF
+        return min_val + int(rnd * (max_val - min_val))
+    
+    def random(self) -> float:
+        return self.next() / 0xFFFF
+
+    def get_seed(self) -> int:
+        return self.seed
+    
+    def set_seed(self, seed: int) -> None:
+        self.seed = seed & 0xFFFFFFFF
 
 PARTY_LIMIT = 6
 MOVES_LIMIT = 4
@@ -19,9 +41,9 @@ MIN_LEVEL = 1
 
 HAPPINESS_GAINS = {
 	"level_up": {
-		"low": 5,      # < 100
-		"medium": 3,   # 100-199
-		"high": 2      # >= 200
+		"low": 5,
+		"medium": 3,
+		"high": 2
 	},
 	"vitamin": {
 		"low": 5,
@@ -234,12 +256,15 @@ class Toolkit:
 	def add_user(self, user_id: str, gender: str) -> Dict:
 		with self._lock:
 			if user_id not in self.db["users"]:
+				seed = (int(time.time()) + hash(user_id)) & 0xFFFFFFFF
+				
 				self.db["users"][user_id] = {
 					"id": user_id,
 					"gender": gender,
 					"money": 0,
 					"last_pokemon_id": 0,
 					"badges": [],
+					"rng_seed": seed,
 					"created_at": datetime.utcnow().isoformat()
 				}
 				self._save()
@@ -248,6 +273,76 @@ class Toolkit:
 	def get_user(self, user_id: str) -> Optional[Dict]:
 		with self._lock:
 			return self._deepcopy(self.db["users"].get(user_id))
+
+	def get_user_rng(self, user_id: str) -> FireRedRNG:
+		with self._lock:
+			self._ensure_user(user_id)
+			seed = self.db["users"][user_id].get("rng_seed")
+			if seed is None:
+				seed = (int(time.time()) + hash(user_id)) & 0xFFFFFFFF
+				self.db["users"][user_id]["rng_seed"] = seed
+				self._save()
+			return FireRedRNG(seed)
+
+	def save_user_rng(self, user_id: str, rng: FireRedRNG) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			current_seed = rng.get_seed()
+			self.db["users"][user_id]["rng_seed"] = current_seed
+			self._save()
+			return current_seed
+
+	def get_user_seed(self, user_id: str) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			return self.db["users"][user_id].get("rng_seed", 0)
+
+	def set_user_seed(self, user_id: str, seed: int) -> int:
+		with self._lock:
+			self._ensure_user(user_id)
+			seed = seed & 0xFFFFFFFF
+			self.db["users"][user_id]["rng_seed"] = seed
+			self._save()
+			return seed
+
+	def reset_user_seed(self, user_id: str) -> int:
+		new_seed = (int(time.time()) + hash(user_id)) & 0xFFFFFFFF
+		return self.set_user_seed(user_id, new_seed)
+
+	def roll_random(self, user_id: str, min_val: int, max_val: int) -> int:
+		with self._lock:
+			rng = self.get_user_rng(user_id)
+			result = rng.randint(min_val, max_val)
+			self.save_user_rng(user_id, rng)
+			return result
+
+	def roll_chance(self, user_id: str, chance: float) -> bool:
+		with self._lock:
+			rng = self.get_user_rng(user_id)
+			result = rng.random() < chance
+			self.save_user_rng(user_id, rng)
+			return result
+
+	def roll_shiny(self, user_id: str) -> bool:
+		return self.roll_chance(user_id, 1/4096)
+
+	def roll_gender(self, user_id: str, male_ratio: float = 0.5) -> str:
+		if male_ratio < 0:
+			return "genderless"
+		is_male = self.roll_chance(user_id, male_ratio)
+		return "male" if is_male else "female"
+
+	def roll_ivs(self, user_id: str) -> Dict[str, int]:
+		with self._lock:
+			rng = self.get_user_rng(user_id)
+			ivs = {stat: rng.randint(0, 32) for stat in STAT_KEYS}
+			self.save_user_rng(user_id, rng)
+			return ivs
+
+	def roll_nature(self, user_id: str) -> str:
+		natures = list(NATURES.keys())
+		idx = self.roll_random(user_id, 0, len(natures))
+		return natures[idx]
 
 	def set_money(self, user_id: str, amount: int) -> int:
 		with self._lock:
