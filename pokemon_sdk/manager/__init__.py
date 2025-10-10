@@ -290,7 +290,7 @@ class PokemonManager:
 		gen = generate_pokemon_data(base_stats, level=final_level, nature=final_nature, ivs=final_ivs)
 		final_ability = ability or self.tk.roll_ability(poke, user_id)
 		final_moves = moves or self.service.select_level_up_moves(poke, final_level)
-		final_gender = self.tk.roll_gender(species, user_id=user_id, forced=forced_gender)
+		final_gender = self.tk.roll_gender(species, user_id, forced=forced_gender)
 		final_shiny = shiny if shiny is not None else self.service.roll_shiny(self.tk, user_id)
 	
 		exp = GrowthRate.calculate_exp(species.growth_rate.name, final_level)
@@ -802,5 +802,6 @@ class PokemonManager:
 		
 	def close(self):
 		self.service.close()
+
 
 
