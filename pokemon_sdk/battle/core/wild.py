@@ -569,7 +569,6 @@ class WildBattle(BattleEngine):
 			already_caught = pm.tk.has_caught_species(self.user_id, self.wild.species_id)
 			success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
 				wild=self.wild,
-				toolkit=pm.tk,
 				user_id=self.user_id,
 				ball_type=self.ball_type,
 				turn=self.turn,
@@ -824,5 +823,6 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
 
 
