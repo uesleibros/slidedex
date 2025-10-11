@@ -724,7 +724,7 @@ class WildBattle(BattleEngine):
 	
 	async def _handle_victory(self) -> None:
 		await self._apply_battle_happiness_bonus()
-		await self._distribute_evs()
+		self._distribute_evs()
 		exp_distribution = self._calculate_experience_distribution()
 		
 		wild_held_item = self.wild_raw.get("held_item")
@@ -823,6 +823,7 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
 
 
 
