@@ -78,8 +78,8 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 		f"<:emojigg_ID:1424200976557932685> **ID da Espécie:** #{user_pokemon.get('species_id')}",
 		f"<:level:1424200489637118042> **Nível:** {current_level}",
 		f"<:CometShard:1424200074463805551> **Experiência:** {current_exp}/{exp_next_level} | Próximo: {exp_needed} XP ({exp_progress_percent}%)",
-		f"<:speechbubble_heart:1424195141199204467> **Amizade:** {format_happiness_status(user_pokemon['happiness'])}",
 		f":leaves: **Natureza:** {format_nature_info(user_pokemon['nature'])}",
+		f"<:speechbubble_heart:1424195141199204467> **Amizade:** {format_happiness_status(user_pokemon['happiness'])}",
 		f":kite: **Tipo de Crescimento:** {user_pokemon['growth_type'].replace('-', ' ').title()}",
 		f"🧬 **Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
 		f":rock: **Tipos:** {' / '.join(TYPE_EMOJIS.get(t, TYPE_EMOJIS['unknown']) for t in user_pokemon['types'])}",
@@ -135,5 +135,6 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 
 
 	return embed, files
+
 
 
