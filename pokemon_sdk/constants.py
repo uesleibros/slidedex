@@ -58,6 +58,28 @@ TYPE_CHART = {
 	"fairy":    {"super": {"fighting","dragon","dark"},       "not": {"fire","poison","steel"},       "immune": set()},
 }
 
+TYPE_EMOJIS = {
+	"normal": "<:normaltype:1426413368365027359>",
+	"fire": "<:firetype:1426412699780382813>",
+	"water": "<:watertype:1426414048811024445>",
+	"grass": "<:grasstype:1426413067171790930>",
+	"electric": "<:electrictype:1426412453134078024>",
+	"ice": "<:icetype:1426413247929782313>",
+	"fighting": "<:fightingtype:1426412576333627484>",
+	"poison": "<:poisontype:1426413473943785502>",
+	"ground": "<:groundtype:1426413157760630875>",
+	"flying": "<:flyingtype:1426412802402291813>",
+	"psychic": "<:psychictype:1426413565442523229>",
+	"bug": "<:bugtype:1426412146551554068>",
+	"rock": "<:rocktype:1426413727242260591>",
+	"ghost": "<:ghosttype:1426412982715420724>",
+	"dragon": "<:dragontype:1426412357017665566>",
+	"dark": "<:darktype:1426412246891888731>",
+	"steel": "<:steeltype:1426413826001338449>",
+	"fairy": "<:fairytype:1426415748292808835>",
+	"unknown": "<:unknowntype:1426413949313749054>"
+}
+
 STAT_ALIASES = {
 	"hp": ["hp"],
 	"atk": ["atk","attack"],
@@ -86,3 +108,4 @@ STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "sp
 
 SHINY_ROLL = 8192
 HAPPINESS_MAX = 255
+
