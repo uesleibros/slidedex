@@ -101,7 +101,7 @@ def format_pokemon_display(
 
 	if show_gender:
 		if pokemon["gender"] != "Genderless":
-			gender = "<:sign_male:1422816545029099621>" if pokemon["gender"] == "Male" else "<:sign_female:1422816627136663582>"
+			gender = "<:sign_male:1426401235606700165>" if pokemon["gender"] == "Male" else "<:sign_female:1426401284994367539>"
 		else:
 			gender = "<:keroppiquestion2:1424099265797689395>"
 		parts.append(gender)
@@ -115,4 +115,5 @@ def format_pokemon_display(
 
 
 	return " ".join(parts)
+
 
