@@ -69,7 +69,7 @@ def format_pokemon_display(
 	parts: list = []
 
 	if pokemon.get("is_shiny", False):
-		parts.append("<:shinystar:1422797880036429855>")
+		parts.append("<:shiny:1426407359151996939>")
 
 	if show_poke:
 		emoji = get_app_emoji(f"p_{pokemon['species_id']}")
@@ -114,3 +114,4 @@ def format_pokemon_display(
 
 
 	return " ".join(parts)
+
