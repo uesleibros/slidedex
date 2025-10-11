@@ -583,7 +583,7 @@ class WildBattle(BattleEngine):
 			if success:
 				await self._apply_battle_happiness_bonus()
 				
-				exp_distribution = await self._calculate_experience_distribution()
+				exp_distribution = self._calculate_experience_distribution()
 				await self._distribute_evs()
 				
 				captured_pokemon = pm.tk.add_pokemon(
@@ -823,6 +823,7 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
 
 
 
