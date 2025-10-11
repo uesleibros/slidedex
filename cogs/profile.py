@@ -32,10 +32,10 @@ class Profile(commands.Cog):
 			title=f"Perfil de {user.display_name}"
 		)
 
-		embed.add_field(name="Dinheiro", value=f"₽{user_info['money']}")
-		embed.add_field(name="Pokémon", value=f"{len(user_pokemon)}")
-		embed.set_footer(text=f"Seed do Usuário: {pm.tk.get_user_seed(str(user.id))}")
-
+		embed.add_field(name="₽ Dinheiro", value=f"{user_info['money']}")
+		embed.add_field(name="<:pokeball:1424443006626431109> Pokémon", value=f"{len(user_pokemon):,.2f}x")
+		embed.add_field(name="<:seed:1426286504694648882> Seed", value=pm.tk.get_user_seed(str(user.id)))
+		
 		del user_pokemon
 		del user_party
 		del party_sprites
@@ -45,6 +45,7 @@ class Profile(commands.Cog):
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Profile(bot))
+
 
 
 
