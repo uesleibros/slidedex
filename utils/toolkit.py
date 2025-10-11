@@ -512,6 +512,7 @@ class Toolkit:
 		base_stats: Dict,
 		level: int = 1,
 		exp: int = 0,
+		caught_with: str = "poke-ball",
 		held_item: Optional[str] = None,
 		moves: Optional[List[Dict]] = None,
 		status: Optional[dict] = None,
@@ -555,6 +556,7 @@ class Toolkit:
 				"base_stats": base_stats,
 				"region": region,
 				"gender": gender,
+				"caught_with": caught_with,
 				"is_shiny": bool(shiny),
 				"growth_type": growth_type,
 				"happiness": self._clamp_happiness(int(happiness)),
@@ -1339,6 +1341,7 @@ class Toolkit:
 				self._save()
 			
 			return updated
+
 
 
 
