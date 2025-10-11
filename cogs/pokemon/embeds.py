@@ -114,8 +114,8 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 
 	embed = discord.Embed(title=title, color=discord.Color.blurple())
 	
-	embed.add_field(name="Informacoes Gerais", value="\n".join(details_lines), inline=False)
-	embed.add_field(name="Estatisticas Finais", value="\n".join(stats_lines), inline=False)
+	embed.add_field(name="Informações Gerais", value="\n".join(details_lines), inline=False)
+	embed.add_field(name="Estatísticas Finais", value="\n".join(stats_lines), inline=False)
 	
 	if moves_lines:
 		embed.add_field(name=f"Movimentos Atuais ({len(moves_lines)}/4)", value="\n".join(moves_lines) if moves_lines else "Nenhum", inline=True)
@@ -123,18 +123,14 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 		embed.add_field(name="Movimentos Atuais (0/4)", value="Nenhum movimento aprendido", inline=True)
 		
 	if future_moves_lines:
-		embed.add_field(name="Proximos Movimentos", value="\n".join(future_moves_lines), inline=True)
+		embed.add_field(name="Próximos Movimentos", value="\n".join(future_moves_lines), inline=True)
 	else:
-		embed.add_field(name="Proximos Movimentos", value="Nenhum movimento disponivel", inline=True)
+		embed.add_field(name="Próximos Movimentos", value="Nenhum movimento disponivel", inline=True)
 
-	caught_date = datetime.fromisoformat(user_pokemon['caught_at']).strftime('%d/%m/%Y as %H:%M')
+	caught_date = datetime.fromisoformat(user_pokemon['caught_at']).strftime('%d/%m/%Y às %H:%M')
 	embed.set_footer(text=f"Capturado em {caught_date}")
 	
 	if files and any(f.filename == "pokemon.png" for f in files):
 		embed.set_image(url="attachment://pokemon.png")
 
-
 	return embed, files
-
-
-
