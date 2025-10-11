@@ -85,7 +85,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 		f":rock: **Tipos:** {' / '.join(TYPE_EMOJIS.get(t, TYPE_EMOJIS['unknown']) for t in user_pokemon['types'])}",
 		f"<:research_encounter:1424202205757444096> **Região:** {user_pokemon['region'].replace('-', ' ').title()}",
 		f":empty_nest: **Item Segurado:** {format_item_display(user_pokemon.get('held_item'))}\n"
-		f"Capturado com: {ITEM_EMOJIS.get(user_pokemon.get('caught_with'), 'poke-ball')}"
+		f"🧺 **Capturado com**: {ITEM_EMOJIS.get(user_pokemon.get('caught_with'), 'poke-ball')}"
 	]
 
 	stats_lines = [f"<:stats:1424204552910929920> **IV Total:** {iv_total}/186 ({iv_percent_val}%)"]
@@ -135,4 +135,5 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 
 
 	return embed, files
+
 
