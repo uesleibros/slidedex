@@ -19,8 +19,20 @@ INFO_BACKGROUNDS: Dict[str, str] = {
 }
 
 TEXTURES: Dict[str, str] = {
-	"battle": "resources/textures/battle.png",
 	"profile": "resources/textures/profile.png"
+}
+
+BATTLE_TEXTURES_ARENA: Dict[str, str] = {
+	"grassland": "resources/textures/battle/route.png",
+	"forest": "resources/textures/battle/route.png",
+	"waters-edge": "resources/textures/battle/waters-edge.png",
+	"cave": "resources/textures/battle/cave.png",
+	"mountain": "resources/textures/battle/cave.png",
+	"rough-terrain": "resources/textures/battle/rough_terrain.png",
+	"rare": "resources/textures/battle/rare.png",
+	"sea": "resources/textures/battle/sea.png",
+	"gym": "resources/textures/battle/gym.png",
+	"urban": "resources/textures/battle/urban.png",
 }
 
 preloaded_backgrounds: Dict[str, Image.Image] = {}

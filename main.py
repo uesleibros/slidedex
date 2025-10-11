@@ -33,10 +33,10 @@ async def on_ready():
 						continue
 					
 					await bot.load_extension(module)
-					print(f"📂 Cog carregada: {module}")
+					print(f"Cog carregada: {module}")
 				elif "__init__.py" not in files:
 					await bot.load_extension(module)
-					print(f"📂 Cog carregada: {module}")
+					print(f"Cog carregada: {module}")
 
 	preload_backgrounds()
 	preload_info_backgrounds()
