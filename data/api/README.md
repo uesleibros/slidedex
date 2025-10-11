@@ -17,22 +17,8 @@ Os arquivos foram extraídos e filtrados para incluir **apenas informações rel
 
 - Todos os arquivos estão no formato **JSON** e codificados em **UTF-8**.
 - A estrutura segue o formato **simplificado e limpo**, removendo campos redundantes da PokéAPI para reduzir o tamanho final dos dados.
-- Cada arquivo é uma **lista de objetos JSON** (`[ {...}, {...}, ... ]`) para permitir leitura **streaming** com baixo uso de memória (via [`ijson`](https://pypi.org/project/ijson/)).
+- Cada arquivo é uma **lista de objetos JSON** (`[ {...}, {...}, ... ]`) para permitir leitura com baixo uso de memória (via [`orjson`](https://pypi.org/project/orjson/)).
 - Apenas as **versões de jogos da Geração III** são consideradas (Ruby/Sapphire, FireRed/LeafGreen, Emerald).
-
-## Uso Recomendado
-
-Para leitura eficiente dos dados:
-
-```python
-import ijson
-
-with open("data/api/pokemon.json", "r", encoding="utf-8") as f:
-	for pokemon in ijson.items(f, "item"):
-		if pokemon["id"] == 257:
-			print(pokemon["name"])  # blaziken
-			break
-```
 
 Este método processa o JSON sem carregá-lo totalmente na RAM, ideal para ambientes com memória limitada (ex: 350MB).
 
