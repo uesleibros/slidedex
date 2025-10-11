@@ -584,7 +584,7 @@ class WildBattle(BattleEngine):
 				await self._apply_battle_happiness_bonus()
 				
 				exp_distribution = self._calculate_experience_distribution()
-				await self._distribute_evs()
+				self._distribute_evs()
 				
 				captured_pokemon = pm.tk.add_pokemon(
 					owner_id=self.user_id,
@@ -664,7 +664,7 @@ class WildBattle(BattleEngine):
 			if not pokemon_battle.fainted:
 				pm.tk.increase_happiness_battle(self.user_id, pokemon_data["id"])
 	
-	async def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
+	def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
 		ev_yield = BattleRewards.calculate_ev_yield(self.wild)
 		distribution = []
 		
@@ -823,6 +823,7 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
 
 
 
