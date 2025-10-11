@@ -599,6 +599,7 @@ class WildBattle(BattleEngine):
 					is_mythical=self.wild_raw["is_mythical"],
 					types=self.wild_raw["types"],
 					region=self.wild_raw["region"],
+					caught_with=ball_type,
 					base_stats=self.wild_raw["base_stats"],
 					exp=self.wild_raw.get("exp", 0),
 					growth_type=self.wild_raw.get("growth_type", "medium"),
@@ -823,6 +824,7 @@ class WildBattleView(discord.ui.View):
 		await interaction.response.defer()
 
 		await self.battle.attempt_run()
+
 
 
 
