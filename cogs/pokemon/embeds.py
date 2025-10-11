@@ -2,7 +2,7 @@ import discord
 from typing import Optional
 from datetime import datetime
 from pokemon_sdk.calculations import calculate_stats, iv_percent
-from pokemon_sdk.constants import STAT_KEYS, STAT_LABELS
+from pokemon_sdk.constants import STAT_KEYS, STAT_LABELS, TYPE_EMOJIS
 from utils.formatting import format_poke_id, format_pokemon_display, format_happiness_status, format_nature_info, format_item_display
 from utils.canvas import compose_pokemon_async
 from utils.preloaded import preloaded_info_backgrounds
@@ -81,7 +81,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 		f":leaves: **Natureza:** {format_nature_info(user_pokemon['nature'])}",
 		f":kite: **Tipo de Crescimento:** {user_pokemon['growth_type'].replace('-', ' ').title()}",
 		f"🧬 **Habilidade:** {str(user_pokemon.get('ability') or '-').replace('-', ' ').title()}",
-		f":rock: **Tipos:** {' / '.join(t.title() for t in user_pokemon['types'])}",
+		f":rock: **Tipos:** {' / '.join(TYPE_EMOJIS.get(t, TYPE_EMOJIS['unknown']) for t in user_pokemon['types'])}",
 		f"<:research_encounter:1424202205757444096> **Região:** {user_pokemon['region'].replace('-', ' ').title()}",
 		f":empty_nest: **Item Segurado:** {format_item_display(user_pokemon.get('held_item'))}"
 	]
@@ -130,5 +130,6 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 	
 	if files and any(f.filename == "pokemon.png" for f in files):
 		embed.set_image(url="attachment://pokemon.png")
+
 
 	return embed, files
