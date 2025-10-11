@@ -107,13 +107,10 @@ def format_pokemon_display(
 		parts.append(gender)
 
 	if show_item and pokemon.get("held_item"):
-		from cogs.bag.constants import ITEM_EMOJIS
-		parts.append(ITEM_EMOJIS.get(pokemon["held_item"]))
+		parts.append("<:item_held:1426403303725469717>")
 
 	if show_fav and pokemon["is_favorite"]:
 		parts.append("❤️")
 
 
 	return " ".join(parts)
-
-
