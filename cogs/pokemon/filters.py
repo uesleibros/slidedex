@@ -1,7 +1,7 @@
 import random
 from typing import Dict, List
 from pokemon_sdk.calculations import iv_percent
-from __main__ import toolkit
+from pokemon_sdk.config import tk
 
 
 def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
@@ -169,7 +169,7 @@ def apply_filters(pokemons: List[Dict], flags) -> List[Dict]:
 		percent_values = [int(v) for group in flags["exp_percent"] for v in group]
 		filtered = []
 		for p in res:
-			progress = toolkit.get_exp_progress(p.get("growth_type", "medium"), p.get("exp", 0))
+			progress = tk.get_exp_progress(p.get("growth_type", "medium"), p.get("exp", 0))
 			if int(progress["progress_percent"]) in percent_values:
 				filtered.append(p)
 		res = filtered

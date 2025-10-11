@@ -6,10 +6,6 @@ from discord.ext.flags import ArgumentParsingError
 from dotenv import load_dotenv
 from utils.pokemon_emojis import load_application_emojis
 from utils.preloaded import preload_backgrounds, preload_info_backgrounds, preload_textures
-from utils.toolkit import Toolkit
-from utils.battling import BattleTracker
-from pokemon_sdk.manager import PokemonManager
-from pokemon_sdk.trade.manager import TradeManager
 
 load_dotenv()
 TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
@@ -19,16 +15,9 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
-toolkit = Toolkit()
-pm: PokemonManager | None = None
-trade_manager: TradeManager | None = None
-battle_tracker: BattleTracker = BattleTracker()
 
 @bot.event
 async def on_ready():
-	global pm, trade_manager
-	pm = PokemonManager(toolkit)
-	trade_manager = TradeManager(toolkit, pm)
 	await load_application_emojis(bot)
 
 	for root, _, files in os.walk("./cogs"):

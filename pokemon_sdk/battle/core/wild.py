@@ -1,7 +1,5 @@
-import asyncio
 import discord
-from discord.ext import commands
-from __main__ import pm, battle_tracker
+from pokemon_sdk.config import pm, battle_tracker, tk
 from utils.canvas import compose_battle_async
 from utils.preloaded import preloaded_textures
 from utils.formatting import format_pokemon_display, format_item_display
@@ -12,7 +10,7 @@ from ..pokeballs import PokeBallSystem, BallType
 from ..rewards import BattleRewards
 from ...constants import VERSION_GROUPS
 from .engine import BattleEngine, BattleState
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 
 class WildBattle(BattleEngine):
 	def __init__(
@@ -67,7 +65,7 @@ class WildBattle(BattleEngine):
 		for item_id, rarity in possible_items:
 			chance = rarity / 100.0
 			
-			if pm.tk.roll_chance(self.user_id, chance):
+			if tk.roll_chance(self.user_id, chance):
 				self.wild_raw["held_item"] = item_id
 				return
 		
@@ -103,7 +101,7 @@ class WildBattle(BattleEngine):
 			
 			if self.player_active.fainted:
 				pokemon_id = self.player_party_raw[self.active_player_idx]["id"]
-				pm.tk.decrease_happiness_faint(self.user_id, pokemon_id)
+				tk.decrease_happiness_faint(self.user_id, pokemon_id)
 			
 			await self._handle_forced_switch()
 	
@@ -341,8 +339,8 @@ class WildBattle(BattleEngine):
 	async def _save_battle_state(self) -> None:
 		for idx, pokemon in enumerate(self.player_team):
 			pokemon_id = self.player_party_raw[idx]["id"]
-			pm.tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
-			pm.tk.set_status(
+			tk.set_current_hp(self.user_id, pokemon_id, pokemon.current_hp)
+			tk.set_status(
 				self.user_id, 
 				pokemon_id, 
 				pokemon.status.get("name"), 
@@ -351,13 +349,13 @@ class WildBattle(BattleEngine):
 
 			self.player_party_raw[idx]["status"] = pokemon.status
 			
-			current_pokemon = pm.tk.get_pokemon(self.user_id, pokemon_id)
+			current_pokemon = tk.get_pokemon(self.user_id, pokemon_id)
 			for battle_move in pokemon.moves:
 				for db_move in current_pokemon["moves"]:
 					if db_move["id"] == battle_move["id"]:
 						db_move["pp"] = battle_move["pp"]
 			
-			pm.tk.set_moves(self.user_id, pokemon_id, current_pokemon["moves"])
+			tk.set_moves(self.user_id, pokemon_id, current_pokemon["moves"])
 		
 		if self.wild:
 			self.wild_raw["current_hp"] = self.wild.current_hp
@@ -523,9 +521,9 @@ class WildBattle(BattleEngine):
 			
 			f_value = ((player_speed * 128) // b_value) + (30 * self.run_attempts)
 
-			rng = pm.tk.get_user_rng(self.user_id)
+			rng = tk.get_user_rng(self.user_id)
 			roll = rng.randint(0, 256)
-			pm.tk.save_user_rng(self.user_id, rng)
+			tk.save_user_rng(self.user_id, rng)
 			
 			if f_value >= 256 or f_value > roll:
 				self.lines = ["💨 Você fugiu com sucesso!"]
@@ -566,7 +564,7 @@ class WildBattle(BattleEngine):
 				await self.refresh()
 				return False
 	
-			already_caught = pm.tk.has_caught_species(self.user_id, self.wild.species_id)
+			already_caught = tk.has_caught_species(self.user_id, self.wild.species_id)
 			success, shake_count, modifier = CaptureSystem.attempt_capture_gen3(
 				wild=self.wild,
 				user_id=self.user_id,
@@ -586,7 +584,7 @@ class WildBattle(BattleEngine):
 				exp_distribution = self._calculate_experience_distribution()
 				self._distribute_evs()
 				
-				captured_pokemon = pm.tk.add_pokemon(
+				captured_pokemon = tk.add_pokemon(
 					owner_id=self.user_id,
 					species_id=self.wild_raw["species_id"],
 					ivs=self.wild_raw["ivs"],
@@ -609,7 +607,7 @@ class WildBattle(BattleEngine):
 					name=self.wild_raw.get("name"),
 					current_hp=self.wild_raw.get("current_hp"),
 					held_item=self.wild_raw.get("held_item"),
-					on_party=pm.tk.can_add_to_party(self.user_id)
+					on_party=tk.can_add_to_party(self.user_id)
 				)
 				
 				self.ended = True
@@ -663,7 +661,7 @@ class WildBattle(BattleEngine):
 			pokemon_battle = self.player_team[participant_index]
 			
 			if not pokemon_battle.fainted:
-				pm.tk.increase_happiness_battle(self.user_id, pokemon_data["id"])
+				tk.increase_happiness_battle(self.user_id, pokemon_data["id"])
 	
 	def _distribute_evs(self) -> List[Tuple[int, str, Dict[str, int]]]:
 		ev_yield = BattleRewards.calculate_ev_yield(self.wild)
@@ -678,7 +676,7 @@ class WildBattle(BattleEngine):
 			evs_to_give = BattleRewards.apply_ev_modifiers(ev_yield, has_macho_brace=has_macho_brace)
 			
 			try:
-				pm.tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
+				tk.add_evs(self.user_id, pokemon_data["id"], evs_to_give)
 				distribution.append((participant_index, pokemon_battle.display_name, evs_to_give))
 			except ValueError:
 				pass

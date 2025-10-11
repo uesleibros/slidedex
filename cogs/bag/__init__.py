@@ -8,7 +8,7 @@ from utils.formatting import format_pokemon_display, format_item_display
 from .constants import CATEGORY_NAMES
 from .effects import get_item_effect, requires_target_pokemon
 from .handlers import ItemHandler
-from __main__ import toolkit, pm, battle_tracker
+from pokemon_sdk.config import tk, pm, battle_tracker
 
 EMBED_COLOR = 0x2F3136
 MAX_ITEM_QUANTITY = 999
@@ -47,7 +47,7 @@ STAT_NAMES = {
 class Bag(commands.Cog):
 	def __init__(self, bot: commands.Bot) -> None:
 		self.bot = bot
-		self.item_handler = ItemHandler(toolkit, pm)
+		self.item_handler = ItemHandler()
 
 	async def _generate_bag_embed(self, items: list, start: int, end: int, total: int, current_page: int) -> discord.Embed:
 		embed = discord.Embed(title="Sua Mochila", color=EMBED_COLOR)
@@ -78,7 +78,7 @@ class Bag(commands.Cog):
 	@requires_account()
 	async def bag_root(self, ctx: commands.Context) -> None:
 		uid = str(ctx.author.id)
-		bag = toolkit.get_bag(uid)
+		bag = tk.get_bag(uid)
 		
 		if not bag:
 			await ctx.send(ERROR_MESSAGES['empty_bag'])
@@ -110,7 +110,7 @@ class Bag(commands.Cog):
 			return
 		
 		try:
-			current_qty = toolkit.get_item_quantity(uid, item_id)
+			current_qty = tk.get_item_quantity(uid, item_id)
 			
 			if current_qty + quantity > MAX_ITEM_QUANTITY:
 				await ctx.send(
@@ -144,11 +144,11 @@ class Bag(commands.Cog):
 			return
 		
 		try:
-			if not toolkit.has_item(uid, item_id, quantity):
+			if not tk.has_item(uid, item_id, quantity):
 				await ctx.send(f"Você não tem {quantity}x `{item_id}`.")
 				return
 			
-			new_qty = toolkit.remove_item(uid, item_id, quantity)
+			new_qty = tk.remove_item(uid, item_id, quantity)
 			
 			await ctx.send(
 				f"Removeu {format_item_display(item_id, bold_name=True)} x{quantity}\n"
@@ -208,7 +208,7 @@ class Bag(commands.Cog):
 			await ctx.send(ERROR_MESSAGES['specify_position'].format(item_id=item_id))
 			return
 		
-		party = toolkit.get_user_party(uid)
+		party = tk.get_user_party(uid)
 		error = self._validate_party_position(party, party_pos)
 		if error:
 			await ctx.send(error)
@@ -477,7 +477,7 @@ class Bag(commands.Cog):
 			await ctx.send(f"{str(e)}")
 
 	async def _use_repel(self, ctx: commands.Context, uid: str, item_id: str) -> None:
-		toolkit.remove_item(uid, item_id, 1)
+		tk.remove_item(uid, item_id, 1)
 		item_name = pm.get_item_name(item_id)
 		await ctx.send(f"Sistema de Repel ainda não implementado.")
 
@@ -531,11 +531,11 @@ class Bag(commands.Cog):
 		ball_name = PokeBallSystem.get_ball_name(item_id)
 		ball_emoji = PokeBallSystem.get_ball_emoji(item_id)
 		
-		if not toolkit.has_item(uid, item_id, 1):
+		if not tk.has_item(uid, item_id, 1):
 			await ctx.send(f"Você não tem {ball_emoji} **{ball_name}**!")
 			return
 		
-		toolkit.remove_item(uid, item_id, 1)
+		tk.remove_item(uid, item_id, 1)
 		battle.ball_type = item_id
 		
 		await ctx.send(f"{ball_emoji} Você lançou uma **{ball_name}**!")
@@ -550,7 +550,7 @@ class Bag(commands.Cog):
 		party_pos: Optional[int],
 		effect
 	) -> None:
-		toolkit.remove_item(uid, item_id, 1)
+		tk.remove_item(uid, item_id, 1)
 		item_name = pm.get_item_name(item_id)
 		
 		battle.ended = True
@@ -575,7 +575,7 @@ class Bag(commands.Cog):
 			await ctx.send(ERROR_MESSAGES['specify_position'].format(item_id=item_id))
 			return
 		
-		party = toolkit.get_user_party(uid)
+		party = tk.get_user_party(uid)
 		error = self._validate_party_position(party, party_pos)
 		if error:
 			await ctx.send(error)
@@ -587,7 +587,7 @@ class Bag(commands.Cog):
 			await ctx.send(ERROR_MESSAGES['battle_item_active_only'])
 			return
 		
-		toolkit.remove_item(uid, item_id, 1)
+		tk.remove_item(uid, item_id, 1)
 		
 		if effect.stat == "guard_spec":
 			battle.player_active.volatile["mist"] = effect.stages
@@ -623,7 +623,7 @@ class Bag(commands.Cog):
 			await ctx.send(ERROR_MESSAGES['specify_position'].format(item_id=item_id))
 			return
 		
-		party = toolkit.get_user_party(uid)
+		party = tk.get_user_party(uid)
 		error = self._validate_party_position(party, party_pos)
 		if error:
 			await ctx.send(error)
@@ -696,7 +696,7 @@ class Bag(commands.Cog):
 	) -> None:
 		uid = str(ctx.author.id)
 		
-		if not toolkit.has_item(uid, item_id):
+		if not tk.has_item(uid, item_id):
 			await ctx.send(ERROR_MESSAGES['item_not_found'].format(item_id=item_id))
 			return
 		
@@ -714,9 +714,4 @@ class Bag(commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
-
 	await bot.add_cog(Bag(bot))
-
-
-
-

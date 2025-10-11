@@ -1,7 +1,7 @@
 import random
 import asyncio
 from enum import Enum
-from __main__ import pm
+from pokemon_sdk.config import pm
 from typing import List, Dict, Any, Optional
 from utils.formatting import format_pokemon_display
 from data.effect_mapper import effect_mapper

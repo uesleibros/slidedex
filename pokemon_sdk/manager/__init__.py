@@ -1,14 +1,17 @@
 import discord
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, TYPE_CHECKING
 from utils.formatting import format_pokemon_display, format_item_display
 from ..services import PokeAPIService
 from ..calculations import generate_pokemon_data
-from ..constants import NATURES, REGIONS_GENERATION
+from ..constants import REGIONS_GENERATION
 from .views import MoveChoiceView
 from .messages import Messages
 from ..evolution import EvolutionProcessor, EvolutionUIHandler, EvolutionConfig, EvolutionTriggers
 from .config import GameConfig, StatusConfig, ItemPool, ItemCategories, Emojis
 from helpers.growth import GrowthRate
+
+if TYPE_CHECKING:
+	from toolkit import Toolkit
 
 HELD_ITEM_EFFECTS = {
 	"lucky-egg": {"exp_multiplier": 1.5},
@@ -19,14 +22,28 @@ HELD_ITEM_EFFECTS = {
 }
 
 class ItemManager:
-	def __init__(self, service: PokeAPIService, toolkit, config: GameConfig = None):
-		self.service = service
-		self.tk = toolkit
+	def __init__(self, config: GameConfig = None):
 		self.config = config or GameConfig()
+		self._tk = None
+		self._pm = None
+	
+	@property
+	def tk(self) -> 'Toolkit':
+		if self._tk is None:
+			from pokemon_sdk.config import tk
+			self._tk = tk
+		return self._tk
+	
+	@property
+	def pm(self):
+		if self._pm is None:
+			from pokemon_sdk.config import pm
+			self._pm = pm
+		return self._pm
 	
 	def get_item(self, item_id: str) -> Optional[object]:
 		try:
-			return self.service.get_item(item_id)
+			return self.pm.service.get_item(item_id)
 		except:
 			return None
 	
@@ -164,12 +181,12 @@ class ItemManager:
 		return rewards
 
 class PokemonManager:
-	def __init__(self, toolkit, config: GameConfig = None):
-		self.tk = toolkit
+	def __init__(self, config: GameConfig = None):
 		self.service = PokeAPIService()
 		self._user_locks = {}
 		self.config = config or GameConfig()
-		self.item_manager = ItemManager(self.service, toolkit, self.config)
+		self.item_manager = ItemManager(self.config)
+		self._tk = None
 		
 		evolution_config = EvolutionConfig(
 			max_generation=self.config.max_generation,
@@ -177,10 +194,18 @@ class PokemonManager:
 			day_start_hour=self.config.day_start_hour,
 			day_end_hour=self.config.day_end_hour
 		)
-		self.evolution = EvolutionProcessor(toolkit, self.service, evolution_config)
+		self.evolution = EvolutionProcessor(evolution_config)
 		self.evolution_ui = EvolutionUIHandler(self.evolution)
 		
 		self.evolution.release_lock = self._release_lock
+	
+	@property
+	def tk(self) -> 'Toolkit':
+		"""Lazy import de tk para evitar import circular"""
+		if self._tk is None:
+			from pokemon_sdk.config import tk
+			self._tk = tk
+		return self._tk
 
 	def _is_locked(self, owner_id: str) -> bool:
 		return self._user_locks.get(owner_id, False)
@@ -817,10 +842,3 @@ class PokemonManager:
 		
 	def close(self):
 		self.service.close()
-
-
-
-
-
-
-

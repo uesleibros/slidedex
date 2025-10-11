@@ -71,7 +71,7 @@ class Messages:
     
     @staticmethod
     def item_not_found(item_id: str) -> str:
-        return f"Item '{item_id}' não encontrado na PokeAPI"
+        return f"Item '{item_id}' não encontrado no Banco de Dados"
     
     @staticmethod
     def item_unavailable(item_id: str) -> str:

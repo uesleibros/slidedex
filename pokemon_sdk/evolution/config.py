@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Set, Dict
+from typing import Dict
 
 @dataclass
 class EvolutionConfig:

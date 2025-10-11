@@ -1,14 +1,13 @@
 import discord
 from discord.ext import commands
 from typing import Optional
-from __main__ import pm, trade_manager
 from helpers.checks import requires_account
 from pokemon_sdk.trade.views import TradeView, TradeRequestView
+from pokemon_sdk.config import pm, tm, tk
 
 class Trade(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
-		self.tm = trade_manager
 	
 	@commands.group(name="trade", aliases=["t"], invoke_without_command=True)
 	@requires_account()
@@ -29,14 +28,14 @@ class Trade(commands.Cog):
 		partner_id = str(user.id)
 		
 		try:
-			pm.tk.get_user(partner_id)
+			tk.get_user(partner_id)
 		except ValueError:
 			return await ctx.send(f"{user.mention} ainda não tem uma conta!")
 		
-		if self.tm.is_trading(initiator_id):
+		if tm.is_trading(initiator_id):
 			return await ctx.send("Você já está em uma trade ativa!")
 		
-		if self.tm.is_trading(partner_id):
+		if tm.is_trading(partner_id):
 			return await ctx.send(f"{user.mention} já está em uma trade ativa!")
 		
 		request_view = TradeRequestView(ctx.author, user, timeout=60.0)
@@ -62,11 +61,11 @@ class Trade(commands.Cog):
 			return
 		
 		try:
-			trade = self.tm.create_trade(initiator_id, partner_id)
+			trade = tm.create_trade(initiator_id, partner_id)
 		except ValueError as e:
 			return await ctx.send(f"{str(e)}")
 		
-		view = TradeView(self.tm, trade)
+		view = TradeView(tm, trade)
 		
 		embed = await view._create_trade_embed()
 		
@@ -85,7 +84,7 @@ class Trade(commands.Cog):
 	async def trade_add(self, ctx: commands.Context, type: str, *args):
 		user_id = str(ctx.author.id)
 		
-		trade = self.tm.get_active_trade(user_id)
+		trade = tm.get_active_trade(user_id)
 		if not trade:
 			return await ctx.send("Você não está em uma trade ativa!")
 		
@@ -100,7 +99,7 @@ class Trade(commands.Cog):
 			except ValueError:
 				return await ctx.send("IDs inválidos! Use apenas números.")
 			
-			success, error = self.tm.add_pokemon_to_offer(trade.trade_id, user_id, pokemon_ids)
+			success, error = tm.add_pokemon_to_offer(trade.trade_id, user_id, pokemon_ids)
 			
 			if not success:
 				return await ctx.send(f"{error}")
@@ -120,7 +119,7 @@ class Trade(commands.Cog):
 				except ValueError:
 					return await ctx.send("Quantidade inválida!")
 			
-			success, error = self.tm.add_items_to_offer(
+			success, error = tm.add_items_to_offer(
 				trade.trade_id,
 				user_id,
 				{item_id: quantity}
@@ -141,7 +140,7 @@ class Trade(commands.Cog):
 			except ValueError:
 				return await ctx.send("Quantidade inválida!")
 			
-			success, error = self.tm.set_money_offer(trade.trade_id, user_id, amount)
+			success, error = tm.set_money_offer(trade.trade_id, user_id, amount)
 			
 			if not success:
 				return await ctx.send(f"{error}")
@@ -155,7 +154,7 @@ class Trade(commands.Cog):
 			)
 		
 		if trade.message:
-			view = TradeView(self.tm, trade)
+			view = TradeView(tm, trade)
 			view.message = trade.message
 			await view.update_embed()
 	
@@ -164,7 +163,7 @@ class Trade(commands.Cog):
 	async def trade_remove(self, ctx: commands.Context, type: str, *args):
 		user_id = str(ctx.author.id)
 		
-		trade = self.tm.get_active_trade(user_id)
+		trade = tm.get_active_trade(user_id)
 		if not trade:
 			return await ctx.send("Você não está em uma trade ativa!")
 		
@@ -179,7 +178,7 @@ class Trade(commands.Cog):
 			except ValueError:
 				return await ctx.send("IDs inválidos!")
 			
-			self.tm.remove_pokemon_from_offer(trade.trade_id, user_id, pokemon_ids)
+			tm.remove_pokemon_from_offer(trade.trade_id, user_id, pokemon_ids)
 			await ctx.send(f"{len(pokemon_ids)} Pokémon removido(s)!")
 		
 		elif type in ["item", "i"]:
@@ -195,7 +194,7 @@ class Trade(commands.Cog):
 				except ValueError:
 					pass
 			
-			self.tm.remove_items_from_offer(
+			tm.remove_items_from_offer(
 				trade.trade_id,
 				user_id,
 				{item_id: quantity}
@@ -205,11 +204,11 @@ class Trade(commands.Cog):
 			await ctx.send(f"**{item_name}** removido!")
 		
 		elif type in ["money", "m"]:
-			await self.tm.set_money_offer(trade.trade_id, user_id, 0)
+			await tm.set_money_offer(trade.trade_id, user_id, 0)
 			await ctx.send("Dinheiro removido da oferta!")
 		
 		if trade.message:
-			view = TradeView(self.tm, trade)
+			view = TradeView(tm, trade)
 			view.message = trade.message
 			await view.update_embed()
 	
@@ -218,11 +217,11 @@ class Trade(commands.Cog):
 	async def trade_cancel(self, ctx: commands.Context):
 		user_id = str(ctx.author.id)
 		
-		trade = self.tm.get_active_trade(user_id)
+		trade = tm.get_active_trade(user_id)
 		if not trade:
 			return await ctx.send("Você não está em uma trade ativa!")
 		
-		self.tm.cancel_trade(trade.trade_id)
+		tm.cancel_trade(trade.trade_id)
 		await ctx.send("Trade cancelada!")
 	
 	@trade.command(name="info", aliases=["i"])
@@ -230,11 +229,11 @@ class Trade(commands.Cog):
 	async def trade_info(self, ctx: commands.Context):
 		user_id = str(ctx.author.id)
 		
-		trade = self.tm.get_active_trade(user_id)
+		trade = tm.get_active_trade(user_id)
 		if not trade:
 			return await ctx.send("Você não está em uma trade ativa!")
 		
-		view = TradeView(self.tm, trade)
+		view = TradeView(tm, trade)
 		embed = await view._create_trade_embed()
 		
 		await ctx.send(embed=embed)

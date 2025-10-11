@@ -1,11 +1,11 @@
 from typing import Dict, Optional, List, Tuple
 from pokemon_sdk.calculations import calculate_max_hp
 from .effects import get_item_effect
+from pokemon_sdk.config import pm, tk
 
 class ItemHandler:
-	def __init__(self, toolkit, pm):
-		self.toolkit = toolkit
-		self.pm = pm
+	def __init__(self):
+		pass
 	
 	def use_healing_item(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Dict:
 		effect = get_item_effect(item_id)
@@ -36,16 +36,16 @@ class ItemHandler:
 		new_hp = min(current_hp + heal_amount, max_hp)
 		healed = new_hp - current_hp
 		
-		self.toolkit.set_current_hp(uid, pokemon_id, new_hp)
-		self.toolkit.remove_item(uid, item_id, 1)
+		tk.set_current_hp(uid, pokemon_id, new_hp)
+		tk.remove_item(uid, item_id, 1)
 		
 		if item_id in ["energy-powder", "energy-root"]:
 			if item_id == "energy-powder":
-				self.toolkit.decrease_happiness_energy_powder(uid, pokemon_id)
+				tk.decrease_happiness_energy_powder(uid, pokemon_id)
 			else:
-				self.toolkit.decrease_happiness_energy_root(uid, pokemon_id)
+				tk.decrease_happiness_energy_root(uid, pokemon_id)
 		elif effect.type == "berry":
-			self.toolkit.increase_happiness_berry(uid, pokemon_id)
+			tk.increase_happiness_berry(uid, pokemon_id)
 		
 		return {
 			"healed": healed,
@@ -71,12 +71,12 @@ class ItemHandler:
 		
 		restored_hp = int(max_hp * effect.percent)
 		
-		self.toolkit.set_current_hp(uid, pokemon_id, restored_hp)
-		self.toolkit.clear_pokemon_status(uid, pokemon_id)
-		self.toolkit.remove_item(uid, item_id, 1)
+		tk.set_current_hp(uid, pokemon_id, restored_hp)
+		tk.clear_pokemon_status(uid, pokemon_id)
+		tk.remove_item(uid, item_id, 1)
 		
 		if item_id == "revival-herb":
-			self.toolkit.decrease_happiness_revival_herb(uid, pokemon_id)
+			tk.decrease_happiness_revival_herb(uid, pokemon_id)
 		
 		return {
 			"restored_hp": restored_hp,
@@ -97,11 +97,11 @@ class ItemHandler:
 			raise ValueError("Pokémon está desmaiado. Use um Revive")
 		
 		if effect.cures_all or current_status in effect.cures:
-			self.toolkit.clear_pokemon_status(uid, pokemon_id)
-			self.toolkit.remove_item(uid, item_id, 1)
+			tk.clear_pokemon_status(uid, pokemon_id)
+			tk.remove_item(uid, item_id, 1)
 			
 			if item_id == "heal-powder":
-				self.toolkit.decrease_happiness_heal_powder(uid, pokemon_id)
+				tk.decrease_happiness_heal_powder(uid, pokemon_id)
 			
 			return {
 				"cured_status": current_status,
@@ -132,8 +132,8 @@ class ItemHandler:
 			if not updated:
 				raise ValueError("PP já está no máximo")
 			
-			self.toolkit.set_moves(uid, pokemon_id, moves)
-			self.toolkit.remove_item(uid, item_id, 1)
+			tk.set_moves(uid, pokemon_id, moves)
+			tk.remove_item(uid, item_id, 1)
 			
 			return {"moves": moves}
 		
@@ -164,8 +164,8 @@ class ItemHandler:
 				move["pp"] = min(move["pp"] + boost_amount, move["pp_max"])
 				move["pp_ups"] = current_pp_ups + 1
 			
-			self.toolkit.set_moves(uid, pokemon_id, moves)
-			self.toolkit.remove_item(uid, item_id, 1)
+			tk.set_moves(uid, pokemon_id, moves)
+			tk.remove_item(uid, item_id, 1)
 			
 			return {"move": move, "move_name": move["id"]}
 	
@@ -189,9 +189,9 @@ class ItemHandler:
 		new_evs = current_evs.copy()
 		new_evs[effect.stat] = current_stat_ev + ev_gain
 		
-		self.toolkit.set_evs(uid, pokemon_id, new_evs)
-		self.toolkit.remove_item(uid, item_id, 1)
-		self.toolkit.increase_happiness_vitamin(uid, pokemon_id)
+		tk.set_evs(uid, pokemon_id, new_evs)
+		tk.remove_item(uid, item_id, 1)
+		tk.increase_happiness_vitamin(uid, pokemon_id)
 		
 		return {
 			"stat": effect.stat,
@@ -216,9 +216,9 @@ class ItemHandler:
 		new_evs = current_evs.copy()
 		new_evs[effect.stat] = new_stat_ev
 		
-		self.toolkit.set_evs(uid, pokemon_id, new_evs)
-		self.toolkit.remove_item(uid, item_id, 1)
-		self.toolkit.increase_happiness_berry(uid, pokemon_id)
+		tk.set_evs(uid, pokemon_id, new_evs)
+		tk.remove_item(uid, item_id, 1)
+		tk.increase_happiness_berry(uid, pokemon_id)
 		
 		return {
 			"stat": effect.stat,
@@ -228,13 +228,13 @@ class ItemHandler:
 		}
 	
 	def use_evolution_stone(self, uid: str, pokemon_id: int, item_id: str, pokemon: Dict) -> Optional[Dict]:
-		evolution_data = self.pm.check_evolution(uid, pokemon_id, trigger="use-item", item_id=item_id)
+		evolution_data = pm.check_evolution(uid, pokemon_id, trigger="use-item", item_id=item_id)
 		
 		if not evolution_data or evolution_data.get("item") != item_id:
 			raise ValueError("Pokémon não pode evoluir com este item")
 		
-		self.toolkit.remove_item(uid, item_id, 1)
-		evolved = self.pm.evolve_pokemon(uid, pokemon_id, evolution_data["species_id"])
+		tk.remove_item(uid, item_id, 1)
+		evolved = pm.evolve_pokemon(uid, pokemon_id, evolution_data["species_id"])
 		
 		return {"evolved": evolved, "from_species": pokemon["species_id"]}
 	
@@ -249,7 +249,7 @@ class ItemHandler:
 			raise ValueError("Pokémon não está com status alterado")
 		
 		if current_status in effect.cures:
-			self.toolkit.clear_pokemon_status(uid, pokemon_id)
+			tk.clear_pokemon_status(uid, pokemon_id)
 			return {
 				"cured_status": current_status,
 				"item_used": item_id
@@ -258,7 +258,7 @@ class ItemHandler:
 			raise ValueError(f"Esta flauta não cura {current_status}")
 	
 	def use_sacred_ash(self, uid: str) -> Dict:
-		party = self.toolkit.get_user_party(uid)
+		party = tk.get_user_party(uid)
 		
 		if not party:
 			raise ValueError("Você não tem Pokémon no party")
@@ -278,9 +278,9 @@ class ItemHandler:
 				pokemon["level"]
 			)
 			
-			self.toolkit.set_current_hp(uid, pokemon["id"], max_hp)
-			self.toolkit.clear_pokemon_status(uid, pokemon["id"])
-			self.toolkit.restore_pp(uid, pokemon["id"])
+			tk.set_current_hp(uid, pokemon["id"], max_hp)
+			tk.clear_pokemon_status(uid, pokemon["id"])
+			tk.restore_pp(uid, pokemon["id"])
 			
 			revived.append({
 				"pokemon_id": pokemon["id"],
@@ -288,7 +288,7 @@ class ItemHandler:
 				"restored_hp": max_hp
 			})
 		
-		self.toolkit.remove_item(uid, "sacred-ash", 1)
+		tk.remove_item(uid, "sacred-ash", 1)
 		
 		return {
 			"revived_count": len(revived),
@@ -318,16 +318,16 @@ class ItemHandler:
 		new_hp = min(current_hp + heal_amount, max_hp)
 		healed = new_hp - current_hp
 		
-		self.toolkit.set_current_hp(uid, pokemon_id, new_hp)
-		self.toolkit.remove_item(uid, item_id, 1)
-		self.toolkit.increase_happiness_berry(uid, pokemon_id)
+		tk.set_current_hp(uid, pokemon_id, new_hp)
+		tk.remove_item(uid, item_id, 1)
+		tk.increase_happiness_berry(uid, pokemon_id)
 		
 		nature = pokemon.get("nature", "")
 		likes_flavor = effect.flavor in self._get_liked_flavors(nature)
 		
 		confusion_applied = False
 		if not likes_flavor:
-			self.toolkit.set_status(uid, pokemon_id, "confusion", 0)
+			tk.set_status(uid, pokemon_id, "confusion", 0)
 			confusion_applied = True
 		
 		return {

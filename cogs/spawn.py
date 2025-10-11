@@ -1,7 +1,6 @@
-import asyncio
 import discord
 from discord.ext import commands
-from __main__ import pm, battle_tracker
+from pokemon_sdk.config import pm, tk, battle_tracker
 from utils.preloaded import preloaded_backgrounds
 from utils.spawn_text import get_spawn_text
 from utils.canvas import compose_pokemon_async
@@ -22,7 +21,7 @@ class BattleView(discord.ui.View):
 			return await interaction.response.send_message("Você não pode ir para uma batalha enquanto já está em outra.", ephemeral=True)
 		
 		try:
-			player_party = pm.tk.get_user_party(author_id)
+			player_party = tk.get_user_party(author_id)
 		except ValueError:
 			return
 			
@@ -80,8 +79,8 @@ class Spawn(commands.Cog):
 	async def spawn_command(self, ctx: commands.Context) -> None:
 		author_id = str(ctx.author.id)
 		
-		is_shiny = pm.tk.roll_shiny(author_id)
-		pokemon_id = pm.tk.roll_random(author_id, 1, 387)
+		is_shiny = tk.roll_shiny(author_id)
+		pokemon_id = tk.roll_random(author_id, 1, 387)
 		
 		species = pm.service.get_species(pokemon_id)
 
@@ -92,13 +91,13 @@ class Spawn(commands.Cog):
 		pokemon_min_level = self.get_pokemon_min_level(species)
 
 		try:
-			player_party = pm.tk.get_user_party(author_id)
+			player_party = tk.get_user_party(author_id)
 			active_level = player_party[0]["level"]
 			min_level = max(pokemon_min_level, active_level - 5)
 			max_level = max(min_level, min(100, active_level + 5))
-			level = pm.tk.roll_random(author_id, min_level, max_level + 1)
+			level = tk.roll_random(author_id, min_level, max_level + 1)
 		except ValueError:
-			level = pm.tk.roll_random(author_id, pokemon_min_level, max(pokemon_min_level, 15) + 1)
+			level = tk.roll_random(author_id, pokemon_min_level, max(pokemon_min_level, 15) + 1)
 
 		wild = pm.generate_temp_pokemon(
 			user_id=author_id,

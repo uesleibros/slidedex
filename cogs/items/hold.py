@@ -5,7 +5,7 @@ from helpers.flags import flags
 from helpers.checks import requires_account
 from utils.formatting import format_pokemon_display, format_item_display
 from cogs.bag.constants import ITEM_EMOJIS
-from __main__ import toolkit, pm
+from pokemon_sdk.config import tk, pm
 
 EMBED_COLOR = 0x2F3136
 DEFAULT_ITEM_EMOJI = "📦"
@@ -29,9 +29,8 @@ SUCCESS_MESSAGES = {
 }
 
 class HeldItemManager:
-    def __init__(self, toolkit_instance, pokemon_manager):
-        self.tk = toolkit_instance
-        self.pm = pokemon_manager
+    def __init__(self):
+        pass
     
     def validate_party_position(self, party_pos: int, party_size: int) -> Optional[str]:
         if not party_size:
@@ -43,7 +42,7 @@ class HeldItemManager:
         return None
     
     def get_party_pokemon(self, uid: str, party_pos: int) -> Tuple[Optional[Dict], Optional[str]]:
-        party = self.tk.get_user_party(uid)
+        party = tk.get_user_party(uid)
         
         if not party:
             return None, ERROR_MESSAGES['empty_party']
@@ -55,13 +54,13 @@ class HeldItemManager:
         return party[party_pos - 1], None
     
     def validate_item(self, uid: str, item_id: str) -> Tuple[bool, Optional[str]]:
-        if not self.tk.has_item(uid, item_id):
+        if not tk.has_item(uid, item_id):
             return False, ERROR_MESSAGES['no_item'].format(item_id=item_id)
         
-        if not self.pm.validate_item(item_id):
+        if not pm.validate_item(item_id):
             return False, ERROR_MESSAGES['invalid_item'].format(item_id=item_id)
         
-        if not self.pm.is_holdable(item_id):
+        if not pm.is_holdable(item_id):
             return False, ERROR_MESSAGES['not_holdable'].format(item_name=format_item_display(item_id))
         
         return True, None
@@ -76,24 +75,24 @@ class HeldItemManager:
             return NO_ITEM_EMOJI, "Sem item"
         
         emoji = self.get_item_emoji(item_id)
-        name = self.pm.get_item_name(item_id)
+        name = pm.get_item_name(item_id)
         return emoji, name
     
     def equip_item(self, uid: str, pokemon_id: int, item_id: str) -> Dict:
-        self.tk.remove_item(uid, item_id, 1)
-        self.tk.set_pokemon_held_item(uid, pokemon_id, item_id)
+        tk.remove_item(uid, item_id, 1)
+        tk.set_pokemon_held_item(uid, pokemon_id, item_id)
         
         emoji = self.get_item_emoji(item_id)
-        name = self.pm.get_item_name(item_id)
+        name = pm.get_item_name(item_id)
         
         return {"emoji": emoji, "name": name}
     
     def unequip_item(self, uid: str, pokemon_id: int, item_id: str) -> Dict:
-        self.tk.set_pokemon_held_item(uid, pokemon_id, None)
-        self.pm.give_item(uid, item_id, 1)
+        tk.set_pokemon_held_item(uid, pokemon_id, None)
+        pm.give_item(uid, item_id, 1)
         
         emoji = self.get_item_emoji(item_id)
-        name = self.pm.get_item_name(item_id)
+        name = pm.get_item_name(item_id)
         
         return {"emoji": emoji, "name": name}
     
@@ -104,15 +103,15 @@ class HeldItemManager:
         old_item_id: Optional[str],
         new_item_id: str
     ) -> Dict:
-        self.tk.remove_item(uid, new_item_id, 1)
+        tk.remove_item(uid, new_item_id, 1)
         
         if old_item_id:
-            self.pm.give_item(uid, old_item_id, 1)
+            pm.give_item(uid, old_item_id, 1)
             old_emoji, old_name = self.get_item_display(old_item_id)
         else:
             old_emoji, old_name = NO_ITEM_EMOJI, "Nenhum"
         
-        self.tk.set_pokemon_held_item(uid, pokemon_id, new_item_id)
+        tk.set_pokemon_held_item(uid, pokemon_id, new_item_id)
         new_emoji, new_name = self.get_item_display(new_item_id)
         
         return {
@@ -126,7 +125,7 @@ class HeldItemManager:
 class HeldItems(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.manager = HeldItemManager(toolkit, pm)
+        self.manager = HeldItemManager()
 
     def format_pokemon(self, pokemon: Dict) -> str:
         return format_pokemon_display(pokemon, bold_name=True, show_gender=False, show_item=False)
@@ -200,7 +199,7 @@ class HeldItems(commands.Cog):
     @requires_account()
     async def hold_root(self, ctx: commands.Context) -> None:
         uid = str(ctx.author.id)
-        party = toolkit.get_user_party(uid)
+        party = tk.get_user_party(uid)
         
         if not party:
             await ctx.send(ERROR_MESSAGES['empty_party'])
@@ -323,7 +322,7 @@ class HeldItems(commands.Cog):
     @requires_account()
     async def hold_clear(self, ctx: commands.Context) -> None:
         uid = str(ctx.author.id)
-        party = toolkit.get_user_party(uid)
+        party = tk.get_user_party(uid)
         
         if not party:
             await ctx.send(ERROR_MESSAGES['empty_party'])

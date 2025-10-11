@@ -4,6 +4,7 @@ from typing import Optional, Dict, List, Set, Tuple
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
+from pokemon_sdk.config import pm, tk
 
 class TradeState(Enum):
     PENDING = "pending"
@@ -62,9 +63,7 @@ class TradeSession:
         self.partner_offer.confirmed = False
 
 class TradeManager:
-    def __init__(self, toolkit, pokemon_manager):
-        self.tk = toolkit
-        self.pm = pokemon_manager
+    def __init__(self):
         self._active_trades: Dict[str, TradeSession] = {}
         self._user_trades: Dict[str, str] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
@@ -156,14 +155,14 @@ class TradeManager:
             return True, None
         
         try:
-            user_pokemon = self.tk.list_pokemon_by_owner(user_id)
+            user_pokemon = tk.list_pokemon_by_owner(user_id)
             user_pokemon_ids = {p["id"] for p in user_pokemon}
             
             for pid in pokemon_ids:
                 if pid not in user_pokemon_ids:
                     return False, f"Você não possui o Pokémon #{pid}"
                 
-                pokemon = self.tk.get_pokemon(user_id, pid)
+                pokemon = tk.get_pokemon(user_id, pid)
                 
                 if pokemon.get("is_favorite"):
                     from utils.formatting import format_pokemon_display
@@ -187,9 +186,9 @@ class TradeManager:
                 if quantity <= 0:
                     return False, f"Quantidade inválida para {item_id}"
                 
-                if not self.tk.has_item(user_id, item_id, quantity):
-                    item_name = self.pm.get_item_name(item_id)
-                    user_qty = self.tk.get_item_quantity(user_id, item_id)
+                if not tk.has_item(user_id, item_id, quantity):
+                    item_name = pm.get_item_name(item_id)
+                    user_qty = tk.get_item_quantity(user_id, item_id)
                     return False, f"Você não tem {quantity}x **{item_name}** (você tem: {user_qty})"
             
             return True, None
@@ -206,7 +205,7 @@ class TradeManager:
             return True, None
         
         try:
-            user = self.tk.get_user(user_id)
+            user = tk.get_user(user_id)
             if user["money"] < amount:
                 return False, f"Você não tem ₽{amount:,} (você tem: ₽{user['money']:,})"
             
@@ -457,9 +456,9 @@ class TradeManager:
         for new_owner_id, pokemon_ids in all_traded_pokemon:
             for pid in pokemon_ids:
                 try:
-                    pokemon = self.tk.get_pokemon(new_owner_id, pid)
+                    pokemon = tk.get_pokemon(new_owner_id, pid)
                     
-                    evolution_data = self.pm.check_evolution(
+                    evolution_data = pm.check_evolution(
                         new_owner_id,
                         pid,
                         EvolutionTriggers.TRADE
@@ -471,7 +470,7 @@ class TradeManager:
                         
                         if "name" not in evolution_data:
                             try:
-                                evo_species = self.pm.service.get_species(evolution_data["species_id"])
+                                evo_species = pm.service.get_species(evolution_data["species_id"])
                                 evolution_data["name"] = evo_species.name.title()
                             except:
                                 evolution_data["name"] = f"#{evolution_data['species_id']}"
@@ -480,7 +479,7 @@ class TradeManager:
                             f"<@{new_owner_id}> {format_pokemon_display(pokemon, bold_name=True)} pode evoluir após a troca!"
                         )
                         
-                        await self.pm.evolution_ui.show_evolution_choice(
+                        await pm.evolution_ui.show_evolution_choice(
                             message=temp_message,
                             owner_id=new_owner_id,
                             pokemon_id=pid,
@@ -500,10 +499,10 @@ class TradeManager:
         user2_pokemon: List[int]
     ) -> None:
         for pid in user1_pokemon:
-            self.tk.transfer_pokemon(user1_id, pid, user2_id)
+            tk.transfer_pokemon(user1_id, pid, user2_id)
         
         for pid in user2_pokemon:
-            self.tk.transfer_pokemon(user2_id, pid, user1_id)
+            tk.transfer_pokemon(user2_id, pid, user1_id)
     
     def _transfer_items(
         self,
@@ -513,10 +512,10 @@ class TradeManager:
         user2_items: Dict[str, int]
     ) -> None:
         for item_id, quantity in user1_items.items():
-            self.tk.transfer_item(user1_id, user2_id, item_id, quantity)
+            tk.transfer_item(user1_id, user2_id, item_id, quantity)
         
         for item_id, quantity in user2_items.items():
-            self.tk.transfer_item(user2_id, user1_id, item_id, quantity)
+            tk.transfer_item(user2_id, user1_id, item_id, quantity)
     
     def _transfer_money(
         self,
@@ -526,9 +525,9 @@ class TradeManager:
         user2_money: int
     ) -> None:
         if user1_money > 0:
-            self.tk.adjust_money(user1_id, -user1_money)
-            self.tk.adjust_money(user2_id, user1_money)
+            tk.adjust_money(user1_id, -user1_money)
+            tk.adjust_money(user2_id, user1_money)
         
         if user2_money > 0:
-            self.tk.adjust_money(user2_id, -user2_money)
-            self.tk.adjust_money(user1_id, user2_money)
+            tk.adjust_money(user2_id, -user2_money)
+            tk.adjust_money(user1_id, user2_money)

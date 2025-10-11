@@ -5,11 +5,10 @@ import traceback
 from contextlib import redirect_stdout
 import discord
 from discord.ext import commands
-from __main__ import toolkit, pm
+from pokemon_sdk.config import tk, pm
 from PIL import Image
 import aiohttp
 import json
-import asyncio
 
 class Dev(commands.Cog):
 	hidden = True
@@ -38,7 +37,7 @@ class Dev(commands.Cog):
 			"message": ctx.message,
 			"discord": discord,
 			"commands": commands,
-			"toolkit": toolkit,
+			"tk": tk,
 			"pm": pm,
 		}
 		env.update(globals())

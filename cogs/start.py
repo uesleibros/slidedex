@@ -1,8 +1,7 @@
 import discord
-from __main__ import toolkit, pm
+from pokemon_sdk.config import pm, tk
 from discord.ext import commands
-from pokemon_sdk.constants import NATURES, STAT_KEYS
-from pokemon_sdk.calculations import generate_pokemon_data, calculate_stats
+from pokemon_sdk.calculations import calculate_stats
 from utils.formatting import format_pokemon_display
 
 STARTERS = {"bulbasaur": 1, "charmander": 4, "squirtle": 7, "pikachu": 25, "eevee": 133}
@@ -35,24 +34,24 @@ class StarterButton(discord.ui.Button):
 
 		await interaction.response.defer()
 
-		user = toolkit.get_user(self.user_id)
+		user = tk.get_user(self.user_id)
 		if user:
 			await interaction.followup.send("Você já escolheu seu inicial! Não dá para escolher outro.", ephemeral=True)
 			return
 
-		toolkit.add_user(self.user_id, "Male")
-		user = toolkit.get_user(self.user_id)
+		tk.add_user(self.user_id, "Male")
+		user = tk.get_user(self.user_id)
 		trainer_gender = norm_trainer_gender(user.get("gender"))
 		poke = pm.service.get_pokemon(self.species_id)
 		base_stats = pm.service.get_base_stats(poke)
 
-		ivs = toolkit.roll_ivs(self.user_id)
+		ivs = tk.roll_ivs(self.user_id)
 		evs = {k: 0 for k in base_stats.keys()}
-		nature = toolkit.roll_nature(self.user_id)
+		nature = tk.roll_nature(self.user_id)
 		
 		calculated_stats = calculate_stats(base_stats, ivs, evs, 5, nature)
 		
-		ability = pm.tk.roll_ability(poke, self.user_id)
+		ability = tk.roll_ability(poke, self.user_id)
 		moves = pm.service.select_level_up_moves(poke, 5)
 
 		upoke = pm.create_pokemon(
@@ -89,7 +88,7 @@ class Start(commands.Cog):
 	async def start_command(self, ctx: commands.Context):
 		user_id = str(ctx.author.id)
 
-		existing = toolkit.get_user(user_id)
+		existing = tk.get_user(user_id)
 		if existing:
 			await ctx.send("Você já começou sua jornada!")
 			return

@@ -1,6 +1,94 @@
 {
-  "users": {},
-  "pokemon": [],
-  "bags": [],
+  "users": {
+    "764259870563631114": {
+      "id": "764259870563631114",
+      "gender": "Male",
+      "money": 0,
+      "last_pokemon_id": 1,
+      "badges": [],
+      "rng_seed": 3272162811,
+      "created_at": "2025-10-11T20:38:45.188843"
+    }
+  },
+  "pokemon": [
+    {
+      "id": 1,
+      "species_id": 26,
+      "nickname": null,
+      "name": "raichu",
+      "owner_id": "764259870563631114",
+      "level": 5,
+      "exp": 125,
+      "ivs": {
+        "hp": 1,
+        "attack": 6,
+        "defense": 1,
+        "special-attack": 26,
+        "special-defense": 31,
+        "speed": 18
+      },
+      "evs": {
+        "hp": 0,
+        "attack": 0,
+        "defense": 0,
+        "special-attack": 1,
+        "special-defense": 0,
+        "speed": 0
+      },
+      "nature": "Careful",
+      "ability": "static",
+      "types": [
+        "electric"
+      ],
+      "is_legendary": false,
+      "is_mythical": false,
+      "base_stats": {
+        "hp": 60,
+        "attack": 90,
+        "defense": 55,
+        "special-attack": 90,
+        "special-defense": 80,
+        "speed": 110
+      },
+      "region": "Kanto",
+      "gender": "Male",
+      "caught_with": "poke-ball",
+      "is_shiny": false,
+      "growth_type": "medium",
+      "happiness": 73,
+      "background": "lab",
+      "held_item": null,
+      "is_favorite": false,
+      "caught_at": "2025-10-11T20:38:45.307358",
+      "moves": [
+        {
+          "id": "growl",
+          "pp": 40,
+          "pp_max": 40
+        },
+        {
+          "id": "thunder-shock",
+          "pp": 27,
+          "pp_max": 30
+        }
+      ],
+      "status": {
+        "name": null,
+        "counter": 0
+      },
+      "current_hp": 17,
+      "on_party": true,
+      "evolution_blocked": false,
+      "party_pos": 1
+    }
+  ],
+  "bags": [
+    {
+      "owner_id": "764259870563631114",
+      "item_id": "poke-ball",
+      "category": "pokeballs",
+      "quantity": 1
+    }
+  ],
   "custom_messages": {}
 }

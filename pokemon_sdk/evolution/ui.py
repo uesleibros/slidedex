@@ -5,6 +5,7 @@ from utils.formatting import format_pokemon_display
 from utils.canvas import compose_evolution_async
 from .config import EvolutionConfig, Emojis
 from .messages import EvolutionMessages, ButtonLabels
+from pokemon_sdk.config import tk
 
 class BaseEvolutionView(discord.ui.View):
 	def __init__(self, owner_id: str, processor, timeout: float = None):
@@ -122,7 +123,7 @@ class EvolutionChoiceView(BaseEvolutionView):
 		if not await self._validate_interaction(interaction):
 			return
 		
-		self.processor.tk.block_evolution(self.owner_id, self.pokemon_id, True)
+		tk.block_evolution(self.owner_id, self.pokemon_id, True)
 		current_name = self.current_pokemon.get("name", "").title()
 		
 		await interaction.response.edit_message(
@@ -149,9 +150,9 @@ class EvolutionUIHandler:
 		current_pokemon: Dict,
 		new_species_id: int
 	) -> BytesIO:	
-		old_sprite_bytes = self.processor.service.get_pokemon_sprite(current_pokemon)[0]
+		old_sprite_bytes = self.processor.pm.service.get_pokemon_sprite(current_pokemon)[0]
 		current_pokemon["species_id"] = new_species_id
-		new_sprite_bytes = self.processor.service.get_pokemon_sprite(current_pokemon)[0]
+		new_sprite_bytes = self.processor.pm.service.get_pokemon_sprite(current_pokemon)[0]
 		
 		return await compose_evolution_async(old_sprite_bytes, new_sprite_bytes)
 	

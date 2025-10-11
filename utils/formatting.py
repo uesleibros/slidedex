@@ -29,7 +29,7 @@ def format_nature_info(nature: str) -> str:
 
 def format_item_display(item_id: Optional[str], bold_name: Optional[bool] = False) -> str:
 	from cogs.bag.constants import ITEM_EMOJIS
-	from __main__ import pm
+	from pokemon_sdk.config import pm
 
 	if not item_id:
 		return "Nenhum item"

@@ -1,6 +1,6 @@
 from typing import Optional, Dict, List, Tuple, Any
 from pokemon_sdk.constants import STAT_ALIASES, TYPE_CHART
-from __main__ import pm
+from pokemon_sdk.config import tk
 import discord
 
 class PokeballsView(discord.ui.View):
@@ -13,7 +13,7 @@ class PokeballsView(discord.ui.View):
 	def load_pokeballs(self):
 		from .pokeballs import PokeBallSystem, BallType
 		
-		already_caught = pm.tk.has_caught_species(self.user_id, self.battle.wild.species_id)
+		already_caught = tk.has_caught_species(self.user_id, self.battle.wild.species_id)
 		
 		available_balls = [
 			BallType.POKE_BALL,

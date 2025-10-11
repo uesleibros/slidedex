@@ -5,7 +5,7 @@ from helpers.flags import flags
 from helpers.paginator import Paginator
 from helpers.checks import requires_account
 from utils.formatting import format_pokemon_display
-from __main__ import toolkit
+from pokemon_sdk.config import tk
 from .views import InfoView, ConfirmationView
 from .embeds import generate_pokemon_embed, generate_info_embed
 from .filters import apply_filters, apply_sort_limit
@@ -190,11 +190,11 @@ class Pokemon(commands.Cog):
 		user_id = str(user.id)
 
 		if flags.get("party") and not flags.get("box"):
-			pokemons = toolkit.get_user_party(user_id)
+			pokemons = tk.get_user_party(user_id)
 		elif flags.get("box") and not flags.get("party"):
-			pokemons = toolkit.get_user_box(user_id)
+			pokemons = tk.get_user_box(user_id)
 		else:
-			pokemons = toolkit.list_pokemon_by_owner(user_id)
+			pokemons = tk.list_pokemon_by_owner(user_id)
 		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
@@ -219,16 +219,16 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def favorite_pokemon(self, ctx, pokemon_id: int):
 		user_id = str(ctx.author.id)
-		user = toolkit.get_user(user_id)
+		user = tk.get_user(user_id)
 		if not user:
 			return
 		
 		try:
-			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+			pokemon = tk.get_pokemon(user_id, pokemon_id)
 			if pokemon.get("is_favorite"):
 				return await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
 			
-			toolkit.toggle_favorite(user_id, pokemon_id)
+			tk.toggle_favorite(user_id, pokemon_id)
 			await ctx.send(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
 		except ValueError:
 			return
@@ -237,16 +237,16 @@ class Pokemon(commands.Cog):
 	@requires_account()
 	async def unfavourite_pokemon(self, ctx, pokemon_id: int):
 		user_id = str(ctx.author.id)
-		user = toolkit.get_user(user_id)
+		user = tk.get_user(user_id)
 		if not user:
 			return
 		
 		try:
-			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+			pokemon = tk.get_pokemon(user_id, pokemon_id)
 			if not pokemon.get("is_favorite"):
 				return await ctx.send(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
 			
-			toolkit.toggle_favorite(user_id, pokemon_id)
+			tk.toggle_favorite(user_id, pokemon_id)
 			await ctx.send(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
 		except ValueError:
 			return
@@ -257,7 +257,7 @@ class Pokemon(commands.Cog):
 		user_id = str(ctx.author.id)
 		if nickname:
 			nickname = nickname.strip()
-		user = toolkit.get_user(user_id)
+		user = tk.get_user(user_id)
 		if not user:
 			return
 		
@@ -265,8 +265,8 @@ class Pokemon(commands.Cog):
 			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
 		
 		try:
-			toolkit.set_nickname(user_id, pokemon_id, nickname)
-			pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+			tk.set_nickname(user_id, pokemon_id, nickname)
+			pokemon = tk.get_pokemon(user_id, pokemon_id)
 			
 			if nickname:
 				await ctx.send(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
@@ -350,11 +350,11 @@ class Pokemon(commands.Cog):
 		user_id = str(ctx.author.id)
 		
 		if flags.get("party") and not flags.get("box"):
-			pokemons = toolkit.get_user_party(user_id)
+			pokemons = tk.get_user_party(user_id)
 		elif flags.get("box") and not flags.get("party"):
-			pokemons = toolkit.get_user_box(user_id)
+			pokemons = tk.get_user_box(user_id)
 		else:
-			pokemons = toolkit.list_pokemon_by_owner(user_id)
+			pokemons = tk.list_pokemon_by_owner(user_id)
 		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
@@ -403,7 +403,7 @@ class Pokemon(commands.Cog):
 			return
 
 		pokemon_ids = [p["id"] for p in pokemons_to_fav]
-		updated = toolkit.bulk_update_pokemon(user_id, pokemon_ids, {"is_favorite": True})
+		updated = tk.bulk_update_pokemon(user_id, pokemon_ids, {"is_favorite": True})
 		count = len(updated)
 
 		if count == 0:
@@ -491,11 +491,11 @@ class Pokemon(commands.Cog):
 		user_id = str(ctx.author.id)
 		
 		if flags.get("party") and not flags.get("box"):
-			pokemons = toolkit.get_user_party(user_id)
+			pokemons = tk.get_user_party(user_id)
 		elif flags.get("box") and not flags.get("party"):
-			pokemons = toolkit.get_user_box(user_id)
+			pokemons = tk.get_user_box(user_id)
 		else:
-			pokemons = toolkit.list_pokemon_by_owner(user_id)
+			pokemons = tk.list_pokemon_by_owner(user_id)
 		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
@@ -544,7 +544,7 @@ class Pokemon(commands.Cog):
 			return
 
 		pokemon_ids = [p["id"] for p in pokemons_to_unfav]
-		updated = toolkit.bulk_update_pokemon(user_id, pokemon_ids, {"is_favorite": False})
+		updated = tk.bulk_update_pokemon(user_id, pokemon_ids, {"is_favorite": False})
 		count = len(updated)
 
 		if count == 0:
@@ -640,11 +640,11 @@ class Pokemon(commands.Cog):
 			return await ctx.send("O nickname deve ter no máximo 20 caracteres!")
 		
 		if flags.get("party") and not flags.get("box"):
-			pokemons = toolkit.get_user_party(user_id)
+			pokemons = tk.get_user_party(user_id)
 		elif flags.get("box") and not flags.get("party"):
-			pokemons = toolkit.get_user_box(user_id)
+			pokemons = tk.get_user_box(user_id)
 		else:
-			pokemons = toolkit.list_pokemon_by_owner(user_id)
+			pokemons = tk.list_pokemon_by_owner(user_id)
 		
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
@@ -692,7 +692,7 @@ class Pokemon(commands.Cog):
 			return
 		
 		pokemon_ids = [p["id"] for p in pokemons]
-		updated = toolkit.bulk_update_pokemon(user_id, pokemon_ids, {"nickname": nickname if nickname else None})
+		updated = tk.bulk_update_pokemon(user_id, pokemon_ids, {"nickname": nickname if nickname else None})
 		count = len(updated)
 
 		if count == 0:
@@ -711,7 +711,7 @@ class Pokemon(commands.Cog):
 	async def info_command(self, ctx: commands.Context, user: Optional[discord.Member] = None, pokemon_id: Optional[int] = None) -> None:
 		user: discord.Member = user or ctx.author
 		user_id = str(user.id)
-		all_pokemons = toolkit.get_user_pokemon(user_id)
+		all_pokemons = tk.get_user_pokemon(user_id)
 		
 		if not all_pokemons:
 			await ctx.send("Voce nao possui nenhum Pokemon!")
@@ -721,7 +721,7 @@ class Pokemon(commands.Cog):
 		
 		current_pokemon_id = pokemon_id
 		if current_pokemon_id is None:
-			party = toolkit.get_user_party(user_id)
+			party = tk.get_user_party(user_id)
 			current_pokemon_id = party[0]['id'] if party else all_pokemon_ids[0]
 		
 		if current_pokemon_id not in all_pokemon_ids:

@@ -3,7 +3,7 @@ from utils.formatting import format_pokemon_display
 from pokemon_sdk.calculations import calculate_stats
 from helpers.checks import requires_account, not_in_battle
 from typing import Optional
-from __main__ import pm
+from pokemon_sdk.config import tk
 
 async def _fmt_party(party):
 	results = []
@@ -18,7 +18,6 @@ async def _fmt_party(party):
 
 
 class Party(commands.Cog):
-	""" Comandos relacionados a party. """
 	def __init__(self, bot: commands.Bot):
 		self.bot = bot
 
@@ -26,7 +25,7 @@ class Party(commands.Cog):
 	@requires_account()
 	async def party_root(self, ctx: commands.Context):
 		uid = str(ctx.author.id)
-		party = pm.tk.get_user_party(uid)
+		party = tk.get_user_party(uid)
 		text = await _fmt_party(party)
 		await ctx.send(f"Time de {ctx.author.name}:\n{text}")
 
@@ -42,7 +41,7 @@ class Party(commands.Cog):
 				"-# Use `.party` para ver os IDs dos seus Pokémon."
 			)
 		try:
-			reordered = pm.tk.reorder_party(uid, list(map(int, ids)))
+			reordered = tk.reorder_party(uid, list(map(int, ids)))
 		except Exception as e:
 			return await ctx.send(f"Erro: {e}")
 		text = await _fmt_party(reordered)
@@ -60,7 +59,7 @@ class Party(commands.Cog):
 				"-# Troca o Pokémon da posição 1 com o da posição 3."
 			)
 
-		party = pm.tk.get_user_party(uid)
+		party = tk.get_user_party(uid)
 		if not party:
 			return await ctx.send("Seu time está vazio.")
 		if not (1 <= a <= len(party) and 1 <= b <= len(party)):
@@ -74,7 +73,7 @@ class Party(commands.Cog):
 		ids = [int(p["id"]) for p in party]
 		ids[a-1], ids[b-1] = ids[b-1], ids[a-1]
 		try:
-			pm.tk.reorder_party(uid, ids)
+			tk.reorder_party(uid, ids)
 		except Exception as e:
 			return await ctx.send(f"Erro: {e}")
 		
@@ -92,7 +91,7 @@ class Party(commands.Cog):
 				"-# Use `.pokemon` para ver os IDs dos seus Pokémon."
 			)
 		try:
-			p = pm.tk.move_to_party(uid, pokemon_id)
+			p = tk.move_to_party(uid, pokemon_id)
 		except Exception as e:
 			return await ctx.send(f"Erro ao adicionar: {e}")
 		await ctx.send(f"{format_pokemon_display(p, bold_name=True, show_hp=False)} foi adicionado à sua party.")
@@ -109,7 +108,7 @@ class Party(commands.Cog):
 				"-# Remove o Pokémon da posição 3 do seu time.\n"
 				"-# Use `.party` para ver as posições."
 			)
-		party = pm.tk.get_user_party(uid)
+		party = tk.get_user_party(uid)
 		if not party:
 			return await ctx.send("Seu time está vazio.")
 		if not (1 <= position <= len(party)):
@@ -119,7 +118,7 @@ class Party(commands.Cog):
 		pokemon_id = pokemon_to_remove['id']
 
 		try:
-			p = pm.tk.move_to_box(uid, pokemon_id)
+			p = tk.move_to_box(uid, pokemon_id)
 		except Exception as e:
 			return await ctx.send(f"Erro ao remover: {e}")
 		await ctx.send(f"{format_pokemon_display(p, bold_name=True, show_hp=False)} foi removido da party e movido para a box.")

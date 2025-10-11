@@ -7,7 +7,7 @@ from pokemon_sdk.constants import STAT_KEYS, STAT_LABELS, TYPE_EMOJIS
 from utils.formatting import format_poke_id, format_pokemon_display, format_happiness_status, format_nature_info, format_item_display
 from utils.canvas import compose_pokemon_async
 from utils.preloaded import preloaded_info_backgrounds
-from __main__ import toolkit, pm
+from pokemon_sdk.config import tk, pm
 
 async def generate_pokemon_embed(pokemons, start, end, total, current_page, user: Optional[discord.Member] = None):
 	desc_lines = []
@@ -33,7 +33,7 @@ async def generate_pokemon_embed(pokemons, start, end, total, current_page, user
 
 async def generate_info_embed(user_id: str, pokemon_id: int):
 	try:
-		user_pokemon = toolkit.get_pokemon(user_id, pokemon_id)
+		user_pokemon = tk.get_pokemon(user_id, pokemon_id)
 	except ValueError:
 		return None
 
@@ -50,7 +50,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 	current_level = user_pokemon["level"]
 	growth_type = user_pokemon.get("growth_type")
 
-	exp_current_level = toolkit.get_exp_for_level(growth_type, current_level)
+	exp_current_level = tk.get_exp_for_level(growth_type, current_level)
 
 	if current_level >= 100:
 		exp_next_level = exp_current_level
@@ -58,7 +58,7 @@ async def generate_info_embed(user_id: str, pokemon_id: int):
 		exp_needed = 0
 		exp_progress_percent = 100.0
 	else:
-		exp_next_level = toolkit.get_exp_for_level(growth_type, current_level + 1)
+		exp_next_level = tk.get_exp_for_level(growth_type, current_level + 1)
 		exp_progress = current_exp - exp_current_level
 		exp_needed = exp_next_level - exp_current_level
 		exp_progress_percent = round((exp_progress / exp_needed) * 100, 1) if exp_needed > 0 else 0

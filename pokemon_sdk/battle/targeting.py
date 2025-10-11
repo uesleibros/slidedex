@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Dict, Any
 from enum import Enum
 from .pokemon import BattlePokemon
 

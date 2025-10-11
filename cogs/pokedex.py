@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from typing import Dict
 from collections import defaultdict
-from __main__ import pm
+from pokemon_sdk.config import pm, tk
 from utils.pokemon_emojis import get_app_emoji
 from helpers.checks import requires_account
 from helpers.paginator import Paginator
@@ -17,7 +17,7 @@ class Pokedex(commands.Cog):
         user = user or ctx.author
         user_id = str(user.id)
 
-        all_pokemon = pm.tk.get_user_pokemon(user_id)
+        all_pokemon = tk.get_user_pokemon(user_id)
 
         captured_species: Dict[int, Dict] = defaultdict(lambda: {"count": 0, "shiny_count": 0})
         for poke in all_pokemon:
@@ -28,10 +28,8 @@ class Pokedex(commands.Cog):
 
         total_species = 386
         captured_count = len(captured_species)
-        total_pokemon = len(all_pokemon)
         total_shinies = sum(v["shiny_count"] for v in captured_species.values())
 
-        # pega todas as espécies de uma vez
         all_species = pm.service.get_all_species(1, total_species)
         species_map = {s.id: s for s in all_species}
 

@@ -1,9 +1,13 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, TYPE_CHECKING
 from .config import EvolutionConfig, EvolutionTriggers
 from .validators import EvolutionValidator, TimeManager
 from .triggers import EvolutionTriggerHandler
 from .messages import EvolutionMessages
 from pokemon_sdk.constants import REGIONS_GENERATION
+
+if TYPE_CHECKING:
+	from toolkit import Toolkit
+	from pokemon_sdk.manager import PokemonManager
 
 class EvolutionChainNavigator:
 	@staticmethod
@@ -19,16 +23,30 @@ class EvolutionChainNavigator:
 		return None
 
 class EvolutionExecutor:
-	def __init__(self, toolkit, service):
-		self.tk = toolkit
-		self.service = service
+	def __init__(self):
+		self._tk = None
+		self._pm = None
+	
+	@property
+	def tk(self) -> 'Toolkit':
+		if self._tk is None:
+			from pokemon_sdk.config import tk
+			self._tk = tk
+		return self._tk
+	
+	@property
+	def pm(self) -> 'PokemonManager':
+		if self._pm is None:
+			from pokemon_sdk.config import pm
+			self._pm = pm
+		return self._pm
 	
 	def evolve(self, owner_id: str, pokemon_id: int, new_species_id: int) -> Dict:
 		old_pokemon = self.tk.get_pokemon(owner_id, pokemon_id)
 		
-		new_poke = self.service.get_pokemon(new_species_id)
-		new_species = self.service.get_species(new_species_id)
-		new_base_stats = self.service.get_base_stats(new_poke)
+		new_poke = self.pm.service.get_pokemon(new_species_id)
+		new_species = self.pm.service.get_species(new_species_id)
+		new_base_stats = self.pm.service.get_base_stats(new_poke)
 		
 		old_max_hp = old_pokemon["base_stats"]["hp"]
 		old_current_hp = old_pokemon.get("current_hp", old_max_hp)
@@ -45,7 +63,7 @@ class EvolutionExecutor:
 			"name": new_poke.name,
 			"types": [t.type.name for t in new_poke.types],
 			"base_stats": new_base_stats,
-			"ability": self.service.choose_ability(new_poke),
+			"ability": self.tk.roll_ability(new_poke, owner_id),
 			"is_legendary": new_species.is_legendary,
 			"is_mythical": new_species.is_mythical,
 			"growth_type": new_species.growth_rate.name,
@@ -62,16 +80,30 @@ class EvolutionExecutor:
 		return self.tk.get_pokemon(owner_id, pokemon_id)
 
 class EvolutionProcessor:
-	def __init__(self, toolkit, service, config: EvolutionConfig = None):
-		self.tk = toolkit
-		self.service = service
+	def __init__(self, config: EvolutionConfig = None):
 		self.config = config or EvolutionConfig()
 		
 		self.time_manager = TimeManager(self.config)
 		self.validator = EvolutionValidator(self.time_manager, self.config)
 		self.trigger_handler = EvolutionTriggerHandler(self.validator)
-		self.executor = EvolutionExecutor(toolkit, service)
+		self.executor = EvolutionExecutor()
 		self.navigator = EvolutionChainNavigator()
+		self._tk = None
+		self._pm = None
+	
+	@property
+	def tk(self) -> 'Toolkit':
+		if self._tk is None:
+			from pokemon_sdk.config import tk
+			self._tk = tk
+		return self._tk
+	
+	@property
+	def pm(self) -> 'PokemonManager':
+		if self._pm is None:
+			from pokemon_sdk.config import pm
+			self._pm = pm
+		return self._pm
 	
 	def check_evolution(
 		self,
@@ -85,8 +117,8 @@ class EvolutionProcessor:
 		if self.tk.is_evolution_blocked(owner_id, pokemon_id):
 			return None
 		
-		species = self.service.get_species(pokemon["species_id"])
-		chain = self.service.get_evolution_chain(species.evolution_chain.id)
+		species = self.pm.service.get_species(pokemon["species_id"])
+		chain = self.pm.service.get_evolution_chain(species.evolution_chain.id)
 		
 		current_link = self.navigator.find_current_in_chain(chain.chain, pokemon["species_id"])
 		
@@ -124,5 +156,3 @@ class EvolutionProcessor:
 			extra_info += EvolutionMessages.time_info(evolution_data["time_of_day"])
 		
 		return extra_info
-
-

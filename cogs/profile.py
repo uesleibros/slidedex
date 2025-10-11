@@ -1,6 +1,6 @@
 import discord
 from typing import List, Optional
-from __main__ import pm
+from pokemon_sdk.config import pm, tk
 from discord.ext import commands
 from utils.preloaded import preloaded_textures
 from utils.canvas import compose_profile_async
@@ -15,10 +15,10 @@ class Profile(commands.Cog):
 	@requires_account()
 	async def profile_command(self, ctx: commands.Context, user: Optional[discord.Member]) -> None:
 		user = ctx.author if not user else user
-		user_info = pm.tk.get_user(str(user.id))
+		user_info = tk.get_user(str(user.id))
 
-		user_party = pm.tk.get_user_party(str(user.id))
-		user_pokemon = pm.tk.get_user_pokemon(str(user.id))
+		user_party = tk.get_user_party(str(user.id))
+		user_pokemon = tk.get_user_pokemon(str(user.id))
 		party_sprites: List[bytes] = []
 
 		for poke in user_party:
@@ -34,7 +34,7 @@ class Profile(commands.Cog):
 
 		embed.add_field(name="₽ Dinheiro", value=f"{user_info['money']:,.2f}")
 		embed.add_field(name="<:pokeball:1424443006626431109> Pokémon", value=f"{len(user_pokemon)}x")
-		embed.set_footer(text=f"Seed: {pm.tk.get_user_seed(str(user.id))}")
+		embed.set_footer(text=f"Seed: {tk.get_user_seed(str(user.id))}")
 		
 		del user_pokemon
 		del user_party
