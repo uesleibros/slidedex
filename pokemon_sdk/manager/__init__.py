@@ -273,6 +273,7 @@ class PokemonManager:
 		held_item: Optional[str] = None,
 		nickname: Optional[str] = None,
 		status: Optional[dict] = None,
+		caught_with: str = "poke-ball",
 		owner_id: str = "wild",
 		on_party: bool = False
 	) -> Dict:
@@ -317,6 +318,7 @@ class PokemonManager:
 			"is_shiny": final_shiny,
 			"held_item": held_item,
 			"caught_at": "",
+			"caught_with": caught_with,
 			"types": [x.type.name for x in poke.types],
 			"region": REGIONS_GENERATION.get(species.generation.name, "generation-i"),
 			"is_legendary": species.is_legendary,
@@ -345,6 +347,7 @@ class PokemonManager:
 		level: int = None,
 		on_party: bool = True,
 		give_rewards: bool = True,
+		caught_with: str = "poke-ball",
 		user_id: str = None,
 		**kwargs
 	) -> Dict:
@@ -375,6 +378,7 @@ class PokemonManager:
 			types=pkmn["types"],
 			region=pkmn["region"],
 			on_party=pkmn["on_party"],
+			caught_with=pkmn["caught_with"],
 			current_hp=pkmn["current_hp"],
 			growth_type=pkmn["growth_type"],
 			held_item=pkmn["held_item"],
@@ -813,6 +817,7 @@ class PokemonManager:
 		
 	def close(self):
 		self.service.close()
+
 
 
 
