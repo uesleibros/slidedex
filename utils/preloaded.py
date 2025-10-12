@@ -19,7 +19,8 @@ INFO_BACKGROUNDS: Dict[str, str] = {
 }
 
 TEXTURES: Dict[str, str] = {
-	"profile": "resources/textures/profile.png"
+	"profile": "resources/textures/profile.png",
+	"battle": "resources/textures/battle/route.png"
 }
 
 BATTLE_TEXTURES_ARENA: Dict[str, str] = {
@@ -61,4 +62,5 @@ def preload_info_backgrounds() -> None:
 	preload(INFO_BACKGROUNDS, preloaded_info_backgrounds)
 
 def preload_textures() -> None:
+
 	preload(TEXTURES, preloaded_textures, False)
