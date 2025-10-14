@@ -194,9 +194,15 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 
 		moves_lines = []
 
-		for move in self.current_pokemon.get("moves", []):
-			move_name = move['id'].replace('-', ' ').title()
-			moves_lines.append(f"**{move_name}** ({move['pp']}/{move['pp_max']} PP)")
+		if self.show_future_moves:
+			future_moves = self.tk.api.get_future_moves(self.tk.api.get_pokemon(self.current_pokemon["species_id"]), self.current_pokemon["level"])
+			for lvl, name in future_moves[:8]:
+				move_name = name.replace('-', ' ').title()
+				moves_lines.append(f"**Lv. {lvl}:** {move_name}")
+		else:
+			for move in self.current_pokemon.get("moves", []):
+				move_name = move['id'].replace('-', ' ').title()
+				moves_lines.append(f"**{move_name}** ({move['pp']}/{move['pp_max']} PP)")
 
 		moves_section: discord.ui.Section = discord.ui.Section(
 			accessory=discord.ui.Thumbnail(
@@ -242,3 +248,4 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		self.build_page()
 		
 		await interaction.response.edit_message(view=self)
+
