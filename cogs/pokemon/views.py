@@ -199,16 +199,22 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 			for lvl, name in future_moves[:8]:
 				move_name = name.replace('-', ' ').title()
 				moves_lines.append(f"**Lv. {lvl}:** {move_name}")
+			moves_section: discord.ui.Section = discord.ui.Section(
+				accessory=discord.ui.Thumbnail(
+					"attachment://future_moves.png"
+				)
+			)
 		else:
 			for move in self.current_pokemon.get("moves", []):
 				move_name = move['id'].replace('-', ' ').title()
 				moves_lines.append(f"**{move_name}** ({move['pp']}/{move['pp_max']} PP)")
-
-		moves_section: discord.ui.Section = discord.ui.Section(
-			accessory=discord.ui.Thumbnail(
-				"attachment://special_move.png"
+			
+			moves_section: discord.ui.Section = discord.ui.Section(
+				accessory=discord.ui.Thumbnail(
+					"attachment://special_move.png"
+				)
 			)
-		)
+
 		moves_section.add_item(discord.ui.TextDisplay(
 			'\n'.join(moves_lines)
 		))
@@ -218,7 +224,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		moves_action_row: discord.ui.ActionRow = discord.ui.ActionRow()
 		toggle_future_moves_button: discord.ui.Button = discord.ui.Button(
 			style=discord.ButtonStyle.secondary,
-			label="Mostrar Próximos Movimentos" if self.show_future_moves else "Mostrar Movimentos Atuais",
+			label="Mostrar Movimentos Atuais" if self.show_future_moves else "Mostrar Próximos Movimentos",
 			custom_id="toggle_future_moves"
 		)
 		toggle_future_moves_button.callback = self.toggle_future_moves
@@ -248,4 +254,5 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		self.build_page()
 		
 		await interaction.response.edit_message(view=self)
+
 
