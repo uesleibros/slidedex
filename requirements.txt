@@ -4,6 +4,5 @@ psutil
 git+https://github.com/oliver-ni/Flag-Parsing.git
 pytz
 frozendict
-numpy
 orjson
 python-dotenv
