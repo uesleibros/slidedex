@@ -1,11 +1,14 @@
 import discord
+from typing import List, Optional
 from discord.ext import commands
 from helpers.flags import flags
-from helpers.paginator import DynamicPaginatorView
 from cogs.pokemon.filters import apply_filters, apply_sort_limit
-from cogs.pokemon.embeds import generate_pokemon_embed, generate_info_embed
 from cogs.pokemon.analysis import analyze_pokemons
+from cogs.pokemon.views import PokemonListLayout, PokemonInfoLayout
 from sdk.toolkit import Toolkit
+from utilities.formatting import format_pokemon_display
+from utilities.preloaded import preloaded_info_backgrounds
+from utilities.canvas import compose_pokemon_async
 import helpers.checks as checks
 
 class Pokemon(commands.Cog, name="Pokémon"):
@@ -89,7 +92,6 @@ class Pokemon(commands.Cog, name="Pokémon"):
 		help=(
 			"Lista os Pokémon do usuário com suporte a filtros, ordenação e paginação.\n\n"
 			"**BÁSICO**\n"
-			"  --user                  Lista as informações do usuário\n"
 			"  --party                 Lista apenas Pokémon que estão na party\n"
 			"  --box                   Lista apenas Pokémon que estão na box\n"
 			"  --shiny                 Filtra apenas Pokémon shiny\n"
@@ -168,7 +170,6 @@ class Pokemon(commands.Cog, name="Pokémon"):
 			"  --page_size N           Define o número de Pokémon por página (padrão: 20)\n"
 			"  --limit N               Define um limite máximo de Pokémon retornados\n\n"
 			"**EXEMPLOS**\n"
-			"  .pokemon --user @misty\n"
 			"  .pokemon --party\n"
 			"  .pokemon --box --shiny\n"
 			"  .pokemon --species 25 133 --min_iv 85 --sort level --reverse\n"
@@ -184,8 +185,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
 	)
 	@checks.require_account()
 	async def pokemon_command(self, ctx: commands.Context, **flags):
-		user = flags.get("user") or ctx.author
-		user_id = str(user.id)
+		user_id = str(ctx.author.id)
 
 		if flags.get("party") and not flags.get("box"):
 			pokemons = self.tk.pokemon.get_party(user_id)
@@ -193,65 +193,103 @@ class Pokemon(commands.Cog, name="Pokémon"):
 			pokemons = self.tk.pokemon.get_box(user_id)
 		else:
 			pokemons = self.tk.pokemon.get_all_by_owner(user_id)
-		
+
 		pokemons = apply_filters(pokemons, flags)
 		pokemons = apply_sort_limit(pokemons, flags)
 
 		if not pokemons:
-			await ctx.message.reply("Nenhum Pokémon encontrado com esses filtros.")
+			await ctx.message.reply("Nenhum Pokémon encontrado.")
 			return
 
-		current_page = max(0, flags.get("page", 1) - 1)
-		page_size = flags.get("page_size") if flags.get("page_size") and flags.get("page_size", 20) > 0 else 20
+		page_size: int = flags.get("page_size") if flags.get("page_size") and flags.get("page_size", 20) > 0 else 20
 
-		display_user = user if user.id != ctx.author.id else None
-		view = DynamicPaginatorView(
-			items=pokemons,
-			user_id=ctx.author.id,
-			embed_generator=lambda items, start, end, total, page: generate_pokemon_embed(
-				items, start, end, total, page, display_user
-			),
-			page_size=page_size,
-			current_page=current_page
-		)
-		embed = await view.get_embed()
-		await ctx.message.reply(embed=embed, view=view)
+		view: discord.ui.LayoutView = PokemonListLayout(pokemons, flags.get("page", 0), page_size)
+		await ctx.message.reply(view=view)
+
+	@commands.command(name="favorite", aliases=["fav"])
+	@checks.require_account()
+	async def favorite_pokemon(self, ctx, pokemon_id: int):
+		user_id = str(ctx.author.id)
+		
+		try:
+			pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+			if pokemon.get("is_favorite"):
+				return await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
+			
+			self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+			await ctx.message.reply(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
+		except ValueError:
+			return
+
+	@commands.command(name="unfavourite", aliases=["unfav", "unfavorite"])
+	@checks.require_account()
+	async def unfavourite_pokemon(self, ctx, pokemon_id: int):
+		user_id = str(ctx.author.id)
+
+		try:
+			pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+			if not pokemon.get("is_favorite"):
+				return await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
+			
+			self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+			await ctx.message.reply(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
+		except ValueError:
+			return
+
+	@commands.command(name="nickname", aliases=["nick"])
+	@checks.require_account()
+	async def set_nickname(self, ctx, pokemon_id: int, *, nickname: Optional[str] = None):
+		user_id = str(ctx.author.id)
+		if nickname:
+			nickname = nickname.strip()
+		
+		if nickname and len(nickname) > 20:
+			return await ctx.message.reply("O nickname deve ter no máximo 20 caracteres!")
+		
+		try:
+			self.tk.pokemon.set_nickname(user_id, pokemon_id, nickname)
+			pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+			
+			if nickname:
+				await ctx.message.reply(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
+			else:
+				await ctx.message.reply(f"Nickname do {format_pokemon_display(pokemon, bold_name=True)} removido!")
+		except ValueError:
+			return
 
 	@commands.cooldown(3, 5, commands.BucketType.user)
 	@commands.command(name="info", aliases=["i", "inf"])
-	async def info_command(self, ctx: commands.Context, user: Optional[discord.Member] = None, pokemon_id: Optional[int] = None) -> None:
-		user: discord.Member = user or ctx.author
-		user_id = str(user.id)
-		all_pokemons = self.tk.pokemon.get(user_id)
-		
+	async def info_command(self, ctx: commands.Context, pokemon_id: Optional[int] = None) -> None:
+		user_id = str(ctx.author.id)
+
+		all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
 		if not all_pokemons:
-			await ctx.send("Voce nao possui nenhum Pokemon!")
+			await ctx.message.reply("Voce nao possui nenhum Pokemon.")
 			return
-			
+
 		all_pokemon_ids = [p['id'] for p in all_pokemons]
-		
-		current_pokemon_id = pokemon_id
-		if current_pokemon_id is None:
-			party = tk.pokemon.get_party(user_id)
-			current_pokemon_id = party[0]['id'] if party else all_pokemon_ids[0]
-		
-		if current_pokemon_id not in all_pokemon_ids:
-			await ctx.send("Voce nao possui um Pokemon com este ID.")
+		if pokemon_id is None:
+			party = self.tk.pokemon.get_party(user_id)
+			pokemon_id = party[0]['id'] if party else all_pokemon_ids[0]
+
+		if pokemon_id not in all_pokemon_ids:
+			await ctx.message.reply("Voce nao possui um Pokemon com esse ID.")
 			return
 
-		current_index = all_pokemon_ids.index(current_pokemon_id)
-		pokemon = self.tk.api.get_pokemon(all_pokemon_ids[current_index]["species_id"])
-		result = await generate_info_embed(user_id, all_pokemons[current_pokemon_id], pokemon)
+		pokemon_id = all_pokemon_ids.index(pokemon_id)
+		current_pokemon = all_pokemons[pokemon_id]
 
-		if result:
-			embed, files = result
-			if str(ctx.author.id) != user_id:
-				embed.title += f"\nde {user.display_name}"
-				
-			view = None
-			await ctx.send(embed=embed, files=files, view=view)
-		else:
-			await ctx.send("Nao pude encontrar esse Pokemon!")
+		files: List[discord.File] = [
+			discord.File("resources/textures/icons/special_move.png", "special_move.png"),
+			discord.File("resources/textures/icons/iv.png", "iv.png"),
+			discord.File("resources/textures/icons/ev.png", "ev.png"),
+			discord.File("resources/textures/icons/stats.png", "stats.png"),
+			discord.File(await compose_pokemon_async(self.tk.api.get_pokemon_sprite(current_pokemon)[0], preloaded_info_backgrounds[current_pokemon["background"]]), "pokemon.png")
+		]
+
+		view: discord.ui.LayoutView = PokemonInfoLayout(current_pokemon, pokemon_id, len(all_pokemons), self.tk)
+		await ctx.message.reply(view=view, files=files)
+
 
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Pokemon(bot))

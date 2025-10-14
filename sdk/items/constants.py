@@ -114,18 +114,18 @@ CATEGORY_NAMES = {
 
 ITEM_EMOJIS = {
 	# Poké Balls
-	"poke-ball": BALL_DATA.get("poke-ball"),
-	"great-ball": BALL_DATA.get("great-ball"),
-	"ultra-ball": BALL_DATA.get("ultra-ball"),
-	"master-ball": BALL_DATA.get("master-ball"),
-	"safari-ball": BALL_DATA.get("safari-ball"),
-	"net-ball": BALL_DATA.get("net-ball"),
-	"nest-ball": BALL_DATA.get("nest-ball"),
-	"repeat-ball": BALL_DATA.get("repeat-ball"),
-	"timer-ball": BALL_DATA.get("timer-ball"),
-	"luxury-ball": BALL_DATA.get("luxury-ball"),
-	"dive-ball": BALL_DATA.get("dive-ball"),
-	"premier-ball": BALL_DATA.get("premier-ball"),
+	"poke-ball": BALL_DATA.get("poke-ball").get("emoji"),
+	"great-ball": BALL_DATA.get("great-ball").get("emoji"),
+	"ultra-ball": BALL_DATA.get("ultra-ball").get("emoji"),
+	"master-ball": BALL_DATA.get("master-ball").get("emoji"),
+	"safari-ball": BALL_DATA.get("safari-ball").get("emoji"),
+	"net-ball": BALL_DATA.get("net-ball").get("emoji"),
+	"nest-ball": BALL_DATA.get("nest-ball").get("emoji"),
+	"repeat-ball": BALL_DATA.get("repeat-ball").get("emoji"),
+	"timer-ball": BALL_DATA.get("timer-ball").get("emoji"),
+	"luxury-ball": BALL_DATA.get("luxury-ball").get("emoji"),
+	"dive-ball": BALL_DATA.get("dive-ball").get("emoji"),
+	"premier-ball": BALL_DATA.get("premier-ball").get("emoji"),
 
 	# Healing Items
 	"potion": "<:potion:1424449023900778549>",

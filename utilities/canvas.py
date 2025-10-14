@@ -4,14 +4,8 @@ import numpy as np
 from typing import List, Tuple, Optional
 from PIL import Image, ImageOps
 from functools import lru_cache
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
-
-try:
-	from PIL import ImageOps
-	SIMD_AVAILABLE = True
-except ImportError:
-	SIMD_AVAILABLE = False
 
 PROFILE_COORDS: List[Tuple[int, int, int, int]] = [
 	(5, -8, 137, 83),
@@ -22,19 +16,19 @@ PROFILE_COORDS: List[Tuple[int, int, int, int]] = [
 	(290, 71, 137, 83),
 ]
 
-_executor: Optional[ProcessPoolExecutor] = None
+_executor: Optional[ThreadPoolExecutor] = None
 
-def get_executor() -> ProcessPoolExecutor:
+def get_executor() -> ThreadPoolExecutor:
 	global _executor
 	if _executor is None:
-		_executor = ProcessPoolExecutor(max_workers=4)
+		_executor = ThreadPoolExecutor(max_workers=6)
 	return _executor
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=512)
 def _get_sprite_hash(sprite_bytes: bytes) -> str:
 	return hashlib.md5(sprite_bytes).hexdigest()[:16]
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=1024)
 def _load_and_convert(sprite_bytes: bytes) -> Image.Image:
 	return Image.open(io.BytesIO(sprite_bytes)).convert("RGBA")
 
@@ -122,7 +116,7 @@ def _compose_pokemon_optimized(
 	composed.paste(spr, ((composed.width - spr.width) // 2, ground_y - spr.height), spr)
 	
 	buf = io.BytesIO()
-	composed.save(buf, format="PNG", optimize=True, compress_level=3)
+	composed.save(buf, format="PNG", optimize=False, compress_level=1)
 	buf.seek(0)
 	return buf
 
@@ -167,7 +161,7 @@ def _compose_battle_optimized(
 		composed.paste(e, (enemy_x, enemy_ground_y - e.height), e)
 	
 	buf = io.BytesIO()
-	composed.save(buf, format="PNG", optimize=True, compress_level=3)
+	composed.save(buf, format="PNG", optimize=False, compress_level=1)
 	buf.seek(0)
 	return buf
 
@@ -197,19 +191,16 @@ def _compose_profile_optimized(
 		composed.paste(spr, (x + 30, y + 15), spr)
 	
 	buf = io.BytesIO()
-	composed.save(buf, format="PNG", optimize=True, compress_level=3)
+	composed.save(buf, format="PNG", optimize=False, compress_level=1)
 	buf.seek(0)
 	return buf
 
 def _colorize_sprite_numpy(sprite: Image.Image, color: Tuple[int, int, int]) -> Image.Image:
 	arr = np.array(sprite, dtype=np.uint8)
-	
 	mask = arr[:, :, 3] > 10
-	
 	result = np.zeros_like(arr)
 	result[:, :, :3][mask] = color
 	result[:, :, 3] = arr[:, :, 3]
-	
 	return Image.fromarray(result, 'RGBA')
 
 def _compose_evolution_optimized(
@@ -247,19 +238,19 @@ def _compose_evolution_optimized(
 	frames = []
 	durations = []
 	
-	for _ in range(5):
+	for _ in range(3):
 		frames.extend([canvas_from, white_canvas_from])
 		durations.extend([100, 100])
 	
-	for _ in range(22):
+	for _ in range(15):
 		frames.extend([white_canvas_from, white_canvas_to])
 		durations.extend([50, 50])
 	
 	white_canvas_np = np.array(Image.new('RGB', canvas_size, (255, 255, 255)), dtype=np.uint8)
 	canvas_to_np = np.array(canvas_to, dtype=np.uint8)
 	
-	for i in range(12):
-		alpha = 1.0 - (i / 11.0)
+	for i in range(8):
+		alpha = 1.0 - (i / 7.0)
 		blended = (canvas_to_np * (1 - alpha) + white_canvas_np * alpha).astype(np.uint8)
 		frames.append(Image.fromarray(blended, 'RGB'))
 		durations.append(60)
@@ -275,7 +266,7 @@ def _compose_evolution_optimized(
 		append_images=frames[1:],
 		duration=durations,
 		loop=0,
-		optimize=True,
+		optimize=False,
 		disposal=2
 	)
 	buf.seek(0)

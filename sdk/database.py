@@ -4,13 +4,28 @@ from pathlib import Path
 from typing import Any
 
 class Database:
-	__slots__ = ("path", "_lock", "_data")
+	__slots__ = ("path", "_lock", "_data", "_initialized")
+	_instance = None
+	_instance_lock = threading.Lock()
+	
+	def __new__(cls, path: str = "database.json"):
+		if cls._instance is None:
+			with cls._instance_lock:
+				if cls._instance is None:
+					instance = super().__new__(cls)
+					object.__setattr__(instance, '_initialized', False)
+					cls._instance = instance
+		return cls._instance
 	
 	def __init__(self, path: str = "database.json"):
+		if self._initialized:
+			return
+		
 		self.path = Path(path)
 		self._lock = threading.RLock()
 		self._data: dict = {}
 		self._load()
+		object.__setattr__(self, '_initialized', True)
 	
 	def _load(self) -> None:
 		with self._lock:
@@ -44,6 +59,10 @@ class Database:
 	def _save(self) -> None:
 		self.save()
 	
+	def reload(self) -> None:
+		with self._lock:
+			self._load_from_file()
+	
 	def get(self, key: str) -> Any:
 		with self._lock:
 			return self._data.get(key)
@@ -56,3 +75,10 @@ class Database:
 	def clear(self) -> None:
 		with self._lock:
 			self._initialize()
+	
+	@classmethod
+	def reset_instance(cls):
+		with cls._instance_lock:
+			if cls._instance is not None:
+				object.__setattr__(cls._instance, '_initialized', False)
+			cls._instance = None

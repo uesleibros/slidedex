@@ -19,7 +19,6 @@ class PokemonEmojis:
 	SHINY = "<:shiny:1426407359151996939>"
 	MALE = "<:sign_male:1426401235606700165>"
 	FEMALE = "<:sign_female:1426401284994367539>"
-	GENDERLESS = "<:keroppiquestion2:1424099265797689395>"
 	FAINTED = "<:fntstatus:1424616601801723914>"
 	HELD_ITEM = "<:item_held:1426403303725469717>"
 	FAVORITE = "❤️"
@@ -114,6 +113,19 @@ def _format_name(pokemon: dict, bold: bool, show_nick: bool) -> str:
 	
 	return name
 
+def format_happiness_status(happiness: int) -> str:
+	current_friendship = happiness
+	percent = int((current_friendship / HAPPINESS_MAX) * 100)
+	if percent >= 80:
+		status = "Muito feliz"
+	elif percent >= 60:
+		status = "Feliz"
+	elif percent >= 40:
+		status = "Normal"
+	else:
+		status = "Triste"
+	return f"{happiness}/{HAPPINESS_MAX} | {percent}% ({status})"
+
 def _get_status_tag(pokemon: dict) -> Optional[str]:
 	status = pokemon.get("status", {})
 	status_name = status.get("name", "")
@@ -126,7 +138,5 @@ def _get_gender_emoji(pokemon: dict) -> Optional[str]:
 		return PokemonEmojis.MALE
 	elif gender == "Female":
 		return PokemonEmojis.FEMALE
-	elif gender == "Genderless":
-		return PokemonEmojis.GENDERLESS
 	
 	return None

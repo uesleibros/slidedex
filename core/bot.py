@@ -32,12 +32,20 @@ class PokemonBot(commands.Bot):
 	
 	async def on_ready(self) -> None:
 		await self.event_handler.on_ready()
+		await self._set_activity()
 	
 	async def on_message(self, message: discord.Message) -> None:
 		await self.event_handler.on_message(message)
 	
 	async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
 		await self.error_handler.on_command_error(ctx, error)
+
+	async def _set_activity(self) -> None:
+		activity = discord.Activity(
+			type=discord.ActivityType.playing,
+			name="SlideDex v2.0 - Em Rewrite"
+		)
+		await self.change_presence(activity=activity, status=discord.Status.online)
 	
 	async def _load_extensions(self) -> None:
 		cogs_path = Path("./cogs")
@@ -54,7 +62,7 @@ class PokemonBot(commands.Bot):
 		if path.stem == "__init__":
 			try:
 				rel_path = path.parent.relative_to(Path("./cogs"))
-				module = f"cogs.{str(rel_path).replace('/', '.')}"
+				module = f"cogs.{rel_path.as_posix().replace('/', '.')}"
 				return module if module != "cogs" else None
 			except ValueError:
 				return None
@@ -64,7 +72,8 @@ class PokemonBot(commands.Bot):
 		
 		try:
 			rel_path = path.relative_to(Path("./cogs")).with_suffix("")
-			return f"cogs.{str(rel_path).replace('/', '.')}"
+			module = f"cogs.{rel_path.as_posix().replace('/', '.')}"
+			return module
 		except ValueError:
 			return None
 	
