@@ -82,6 +82,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		self.total_pages = total_pages
 		self.tk = tk
 		self.show_iv = True
+		self.show_future_moves = False
 
 		self.build_page()
 
@@ -207,7 +208,17 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		))
 
 		container.add_item(moves_section)
-
+		
+		moves_action_row: discord.ui.ActionRow = discord.ui.ActionRow()
+		toggle_future_moves_button: discord.ui.Button = discord.ui.Button(
+			style=discord.ButtonStyle.secondary,
+			label="Mostrar Próximos Movimentos" if self.show_future_moves else "Mostrar Movimentos Atuais",
+			custom_id="toggle_future_moves"
+		)
+		toggle_future_moves_button.callback = self.toggle_future_moves
+		moves_action_row.add_item(toggle_future_moves_button)
+		container.add_item(moves_action_row)
+		
 		container.add_item(discord.ui.Separator())
 		container.add_item(discord.ui.MediaGallery(
 			discord.MediaGalleryItem("attachment://pokemon.png")
@@ -215,7 +226,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		container.add_item(discord.ui.Separator())
 
 		container.add_item(discord.ui.TextDisplay(
-			f"-# Mostrando {self.current_index + 1} de {self.total_pages}"
+			f"-# Pokémon {self.current_index + 1} de {self.total_pages}"
 		))
 
 		self.add_item(container)
@@ -223,4 +234,11 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 	async def toggle_stats(self, interaction: discord.Interaction):
 		self.show_iv = not self.show_iv
 		self.build_page()
+
+		await interaction.response.edit_message(view=self)
+	
+	async def toggle_future_moves(self, interaction: discord.Interaction):
+		self.show_future_moves = not self.show_future_moves
+		self.build_page()
+		
 		await interaction.response.edit_message(view=self)
