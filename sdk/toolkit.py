@@ -9,9 +9,26 @@ from sdk.factories.pokemon_factory import PokemonFactory
 from sdk.constants import SHINY_ROLL, STAT_KEYS, NATURES
 from helpers.growth import ExperienceCalculator
 from typing import Optional
+import threading
 
 class Toolkit:
+	__slots__ = ("db", "api", "users", "pokemon", "bag", "happiness", "factory", "item_service", "_initialized")
+	_instance = None
+	_instance_lock = threading.Lock()
+	
+	def __new__(cls, path: str = "database.json"):
+		if cls._instance is None:
+			with cls._instance_lock:
+				if cls._instance is None:
+					instance = super().__new__(cls)
+					object.__setattr__(instance, '_initialized', False)
+					cls._instance = instance
+		return cls._instance
+	
 	def __init__(self, path: str = "database.json"):
+		if self._initialized:
+			return
+		
 		self.db = Database(path)
 		self.api = APIService()
 		self.users = UserRepository(self.db)
@@ -20,6 +37,8 @@ class Toolkit:
 		self.happiness = HappinessService()
 		self.factory = PokemonFactory(self.api)
 		self.item_service = ItemService(self.bag, self.api)
+		
+		object.__setattr__(self, '_initialized', True)
 	
 	def add_user(self, user_id: str, gender: str) -> dict:
 		return self.users.create(user_id, gender)
@@ -128,3 +147,10 @@ class Toolkit:
 		
 		female_chance = gender_rate / 8.0
 		return "Female" if self.roll_chance(user_id, female_chance) else "Male"
+	
+	@classmethod
+	def reset_instance(cls):
+		with cls._instance_lock:
+			if cls._instance is not None:
+				object.__setattr__(cls._instance, '_initialized', False)
+			cls._instance = None
