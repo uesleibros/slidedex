@@ -259,6 +259,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
 
 	@commands.cooldown(3, 5, commands.BucketType.user)
 	@commands.command(name="info", aliases=["i", "inf"])
+	@checks.require_account()
 	async def info_command(self, ctx: commands.Context, pokemon_id: Optional[int] = None) -> None:
 		user_id = str(ctx.author.id)
 
