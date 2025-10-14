@@ -43,7 +43,7 @@ class PokemonBot(commands.Bot):
 	async def _set_activity(self) -> None:
 		activity = discord.Activity(
 			type=discord.ActivityType.playing,
-			name="Rewrite v2.0"
+			name="Em Rewrite v2.0"
 		)
 		await self.change_presence(activity=activity, status=discord.Status.online)
 	
