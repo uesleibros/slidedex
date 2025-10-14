@@ -145,10 +145,10 @@ class APIService:
 				continue
 			
 			level = move_entry.get("level_learned_at", 0)
-			
+			if level is None:
+				continue
 			if max_level is not None and level > max_level:
 				continue
-			
 			if min_level is not None and level <= min_level:
 				continue
 			
@@ -203,4 +203,5 @@ class APIService:
 	
 	@staticmethod
 	def _extract_id_from_url(url: str) -> int:
+
 		return int(url.rstrip('/').split('/')[-1])
