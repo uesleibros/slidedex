@@ -282,6 +282,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
 
 		files: List[discord.File] = [
 			discord.File("resources/textures/icons/special_move.png", "special_move.png"),
+			discord.File("resources/textures/icons/future_moves.png", "future_moves.png"),
 			discord.File("resources/textures/icons/iv.png", "iv.png"),
 			discord.File("resources/textures/icons/ev.png", "ev.png"),
 			discord.File("resources/textures/icons/stats.png", "stats.png"),
@@ -293,4 +294,5 @@ class Pokemon(commands.Cog, name="Pokémon"):
 
 
 async def setup(bot: commands.Bot):
+
 	await bot.add_cog(Pokemon(bot))
