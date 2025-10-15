@@ -15,7 +15,7 @@ class BagRepository:
 		bags = self.db.get("bags")
 		
 		for item in bags:
-			if item["owner_id"] == user_id and item["item_id"] == item_id:
+			if item["owner_id"] == user_id and item["id"] == item_id:
 				return item["quantity"]
 		
 		return 0
@@ -30,7 +30,7 @@ class BagRepository:
 		bags = self.db.get("bags")
 		
 		for item in bags:
-			if item["owner_id"] == user_id and item["item_id"] == item_id:
+			if item["owner_id"] == user_id and item["id"] == item_id:
 				new_quantity = min(item["quantity"] + quantity, MAX_ITEM_QUANTITY)
 				added = new_quantity - item["quantity"]
 				
@@ -95,20 +95,20 @@ class BagRepository:
 		if quantity == 0:
 			bags[:] = [
 				item for item in bags 
-				if not (item["owner_id"] == user_id and item["item_id"] == item_id)
+				if not (item["owner_id"] == user_id and item["id"] == item_id)
 			]
 			self.db.save()
 			return 0
 		
 		for item in bags:
-			if item["owner_id"] == user_id and item["item_id"] == item_id:
+			if item["owner_id"] == user_id and item["id"] == item_id:
 				item["quantity"] = quantity
 				self.db.save()
 				return quantity
 		
 		bags.append({
 			"owner_id": user_id,
-			"item_id": item_id,
+			"id": item_id,
 			"category": category,
 			"quantity": quantity
 		})
@@ -169,4 +169,5 @@ class BagRepository:
 	
 	def can_add(self, user_id: str, item_id: str, quantity: int) -> bool:
 		current_qty = self.get_quantity(user_id, item_id)
+
 		return (current_qty + quantity) <= MAX_ITEM_QUANTITY
