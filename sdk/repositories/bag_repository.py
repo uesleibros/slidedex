@@ -65,7 +65,7 @@ class BagRepository:
 		bags = self.db.get("bags")
 		
 		for i, item in enumerate(bags):
-			if item["owner_id"] == user_id and item["item_id"] == item_id:
+			if item["owner_id"] == user_id and item["id"] == item_id:
 				if item["quantity"] < quantity:
 					raise ValueError(
 						f"Not enough items: has {item['quantity']}, needs {quantity}"
@@ -162,7 +162,7 @@ class BagRepository:
 		bags = self.db.get("bags")
 		
 		for item in bags:
-			if item["owner_id"] == user_id and item["item_id"] == item_id:
+			if item["owner_id"] == user_id and item["id"] == item_id:
 				return item.copy()
 		
 		return None
@@ -171,3 +171,4 @@ class BagRepository:
 		current_qty = self.get_quantity(user_id, item_id)
 
 		return (current_qty + quantity) <= MAX_ITEM_QUANTITY
+
