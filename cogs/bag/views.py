@@ -24,8 +24,8 @@ class BagItemsLayout(discord.ui.LayoutView):
 
 		for item in self.items:
 			if item["category"] != current_category:
-				if not current_category is None:
-					container.add_item(current_category)
+				if not current_section is None:
+					container.add_item(current_section)
 				current_category = item["category"]
 				category_name = CATEGORY_NAMES.get(current_category, current_category)
 				current_section = discord.ui.Section(
@@ -36,5 +36,5 @@ class BagItemsLayout(discord.ui.LayoutView):
 
 			current_section.add_item(f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'])} {item['name']}{item['quantity']:>4}x")
 		
-		if not current_category is None:
-			container.add_item(current_category)
+		if not current_section is None:
+			container.add_item(current_section)
