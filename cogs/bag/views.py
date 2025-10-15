@@ -14,8 +14,9 @@ class BagItemsLayout(discord.ui.LayoutView):
 
 		container: discord.ui.Container = discord.ui.Container()
 		container.add_item(discord.ui.TextDisplay("### Sua Mochila"))
-		self.create_categorized_items(container)
+		container.add_item(discord.ui.Separator())
 		
+		self.create_categorized_items(container)
 		self.add_item(container)
 
 	def create_categorized_items(self, container: discord.ui.Container) -> None:
@@ -26,6 +27,7 @@ class BagItemsLayout(discord.ui.LayoutView):
 			if item["category"] != current_category:
 				if not current_section is None:
 					container.add_item(current_section)
+					container.add_item(discord.ui.Separator())
 				current_category = item["category"]
 				category_name = CATEGORY_NAMES.get(current_category, current_category)
 				current_section = discord.ui.Section(
@@ -38,3 +40,4 @@ class BagItemsLayout(discord.ui.LayoutView):
 		
 		if not current_section is None:
 			container.add_item(current_section)
+			container.add_item(discord.ui.Separator())
