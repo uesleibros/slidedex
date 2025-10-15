@@ -1,5 +1,5 @@
 import discord
-import os
+import traceback
 from pathlib import Path
 from typing import Optional
 from discord.ext import commands
@@ -25,6 +25,7 @@ class PokemonBot(commands.Bot):
 		self.config = config
 		self.event_handler = EventHandler(self)
 		self.error_handler = ErrorHandler(self)
+		self.tree.on_error = self.on_app_command_error
 	
 	async def setup_hook(self) -> None:
 		await self._load_extensions()
@@ -39,6 +40,38 @@ class PokemonBot(commands.Bot):
 	
 	async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
 		await self.error_handler.on_command_error(ctx, error)
+	
+	async def on_app_command_error(self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError) -> None:
+		await self._handle_interaction_error(interaction, error)
+	
+	async def on_error(self, event: str, *args, **kwargs) -> None:
+		if args and isinstance(args[0], discord.Interaction):
+			interaction = args[0]
+			error = kwargs.get('error') or (args[1] if len(args) > 1 else None)
+			await self._handle_interaction_error(interaction, error)
+		else:
+			traceback.print_exc()
+	
+	async def _handle_interaction_error(self, interaction: discord.Interaction, error: Exception) -> None:
+		error_messages = {
+			"Unknown interaction": "Esta interação expirou. Use o comando novamente.",
+			"Unknown Message": "Esta mensagem não existe mais.",
+			"Interaction has already been responded to": "Esta interação já foi respondida.",
+			"This interaction failed": "A interação falhou."
+		}
+		
+		error_msg = next(
+			(msg for key, msg in error_messages.items() if key in str(error)),
+			"Algo deu errado com esta interação."
+		)
+		
+		try:
+			if not interaction.response.is_done():
+				await interaction.response.send_message(error_msg, ephemeral=True)
+			else:
+				await interaction.followup.send(error_msg, ephemeral=True)
+		except:
+			traceback.print_exc()
 
 	async def _set_activity(self) -> None:
 		activity = discord.Activity(
