@@ -42,7 +42,7 @@ class Bag(commands.Cog, name="Mochila"):
 			result = self.tk.item_service.give(user_id, item_id, quantity)
 
 			await ctx.message.reply(
-				f"Adicionado {ITEM_EMOJIS.get(result['id'])} **{result['name']}** {result['added']}x a sua mochila, contendo **{result['quantity']:>4}x** no total."
+				f"Adicionado {ITEM_EMOJIS.get(result['id'])} **{result['name']}** {result['added']}x a sua mochila, contendo **{result['quantity']}x** no total."
 			)
 		except ValueError as e:
 			await ctx.message.reply(e)
