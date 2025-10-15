@@ -35,9 +35,11 @@ class BagItemsLayout(discord.ui.LayoutView):
 						f"attachment://{current_category}.png"
 					)
 				)
+				current_section.add_item(discord.ui.TextDisplay(f"-# **{CATEGORY_NAMES.get(item['id'])}**"))
 
 			current_section.add_item(f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'])} {item['name']}{item['quantity']:>4}x")
 		
 		if not current_section is None:
 			container.add_item(current_section)
 			container.add_item(discord.ui.Separator())
+
