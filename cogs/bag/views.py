@@ -22,6 +22,9 @@ class BagItemsLayout(discord.ui.LayoutView):
 		container.add_item(discord.ui.Separator())
 		
 		self.create_categorized_items(container, page_items)
+		container.add_item(discord.ui.TextDisplay(
+			f"-# Mostrando {start_idx+1}–{end_idx} de {self.total_pages}"
+		))
 		self.add_item(container)
 		
 		action_row: discord.ui.ActionRow = discord.ui.ActionRow()
@@ -79,3 +82,4 @@ class BagItemsLayout(discord.ui.LayoutView):
 		self.current_page += 1
 		self.build_page()
 		await interaction.response.edit_message(view=self)
+
