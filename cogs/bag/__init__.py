@@ -17,6 +17,11 @@ class Bag(commands.Cog, name="Mochila"):
 	async def bag_root(self, ctx: commands.Context) -> None:
 		user_id: str = str(ctx.author.id)
 		bag_items: List = self.tk.bag.get_all(user_id)
+
+		if not bag_items:
+			await ctx.message.reply("Sua mochila está vazia.")
+			return
+			
 		view: discord.ui.LayoutView = BagItemsLayout(bag_items)
 
 		files: List[discord.File] = [
@@ -37,10 +42,11 @@ class Bag(commands.Cog, name="Mochila"):
 			result = self.tk.item_service.give(user_id, item_id, quantity)
 
 			await ctx.message.reply(
-				f"Item {ITEM_EMOJIS.get(result['id'])} **{result['name']}** adicionado a sua mochila."
+				f"Adicionado {ITEM_EMOJIS.get(result['id'])} **{result['name']}** {result['added']:>4}x a sua mochila, tendo **{result['quantity']:>4}x** no total."
 			)
 		except ValueError as e:
 			await ctx.message.reply(e)
 
 async def setup(bot: commands.Bot):
+
 	await bot.add_cog(Bag(bot))
