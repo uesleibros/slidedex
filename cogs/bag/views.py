@@ -7,7 +7,6 @@ class BagItemsLayout(discord.ui.LayoutView):
 		super().__init__()
 		self.items = items
 		self.categorized_items: Dict = {}
-		self.create_categorized_items()
 		self.build_page()
 
 	def build_page(self) -> None:
@@ -15,15 +14,18 @@ class BagItemsLayout(discord.ui.LayoutView):
 
 		container: discord.ui.Container = discord.ui.Container()
 		container.add_item(discord.ui.TextDisplay("### Sua Mochila"))
-
+		self.create_categorized_items(container)
+		
 		self.add_item(container)
 
-	def create_categorized_items(self) -> None:
+	def create_categorized_items(self, container: discord.ui.Container) -> None:
 		current_category: Optional[str] = None
 		current_section: Optional[discord.ui.Section] = None
 
 		for item in self.items:
 			if item["category"] != current_category:
+				if not current_category is None:
+					container.add_item(current_category)
 				current_category = item["category"]
 				category_name = CATEGORY_NAMES.get(current_category, current_category)
 				current_section = discord.ui.Section(
@@ -31,4 +33,8 @@ class BagItemsLayout(discord.ui.LayoutView):
 						f"attachment://{current_category}.png"
 					)
 				)
+
 			current_section.add_item(f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'])} {item['name']}{item['quantity']:>4}x")
+		
+		if not current_category is None:
+			container.add_item(current_category)
