@@ -42,7 +42,7 @@ class Bag(commands.Cog, name="Mochila"):
 			result = self.tk.item_service.give(user_id, item_id, quantity)
 
 			await ctx.message.reply(
-				f"Adicionado {ITEM_EMOJIS.get(result['id'])} **{result['name']}** {result['added']:>4}x a sua mochila, contendo **{result['quantity']:>4}x** no total."
+				f"Adicionado {ITEM_EMOJIS.get(result['id'])} **{result['name']}** {result['added']}x a sua mochila, contendo **{result['quantity']:>4}x** no total."
 			)
 		except ValueError as e:
 			await ctx.message.reply(e)
@@ -56,12 +56,10 @@ class Bag(commands.Cog, name="Mochila"):
 			result_quantity = self.tk.bag.remove(user_id, item_id, quantity)
 			item_name = self.tk.item_service.get_name(item_id)
 			await ctx.message.reply(
-				f"Removido {quantity:>4}x {ITEM_EMOJIS.get(item_id)} **{item_name}** da sua mochila, restando **{result_quantity:>4}x** no total."
+				f"Removido {quantity}x {ITEM_EMOJIS.get(item_id)} **{item_name}** da sua mochila, restando **{result_quantity}x** no total."
 			)
 		except ValueError as e:
 			await ctx.message.reply(e)
 
 async def setup(bot: commands.Bot):
-
 	await bot.add_cog(Bag(bot))
-
