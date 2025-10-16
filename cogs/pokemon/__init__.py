@@ -269,7 +269,6 @@ class Pokemon(commands.Cog, name="Pokémon"):
             nickname = nickname.strip()
             if len(nickname) > 20:
                 return await ctx.message.reply("O nickname deve ter no máximo 20 caracteres!")
-        
         try:
             await asyncio.to_thread(self.tk.pokemon.set_nickname, user_id, pokemon_id, nickname)
             pokemon = await asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id)
@@ -323,7 +322,6 @@ class Pokemon(commands.Cog, name="Pokémon"):
             view = PokemonInfoLayout(current_pokemon, pokemon_index, total_count, self.tk)
             
             await ctx.message.reply(view=view, files=files)
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Pokemon(bot))
