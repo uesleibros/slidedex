@@ -79,23 +79,23 @@ class StarterButton(discord.ui.Button):
 	async def callback(self, interaction: discord.Interaction) -> None:
 		await interaction.response.defer()
 
-		if await asyncio.to_thread(self.service.user_has_account(self.user_id)):
+		if await asyncio.to_thread(self.service.user_has_account, self.user_id):
 			await interaction.followup.send(
 				"Você já tem uma conta! Não pode escolher outro inicial.",
 				ephemeral=True
 			)
 			return
 
-		user = await asyncio.to_thread(self.service.create_account(self.user_id, Gender.MALE))
+		user = await asyncio.to_thread(self.service.create_account, self.user_id, Gender.MALE)
 		trainer_gender = Gender.normalize(user.get("gender", Gender.MALE))
 
-		pokemon = await asyncio.to_thread(self.service.create_starter_pokemon(
+		pokemon = await asyncio.to_thread(self.service.create_starter_pokemon,
 			self.user_id,
 			self.species_id,
 			trainer_gender
-		))
+		)
 
-		summary = await asyncio.to_thread(self.service.get_starter_summary(pokemon))
+		summary = await asyncio.to_thread(self.service.get_starter_summary, pokemon)
 		await interaction.followup.edit_message(
 			message_id=interaction.message.id,
 			content=summary,
@@ -120,3 +120,4 @@ class StarterView(discord.ui.View):
 
 	async def interaction_check(self, interaction: discord.Interaction) -> bool:
 		return str(interaction.user.id) == self.user_id
+
