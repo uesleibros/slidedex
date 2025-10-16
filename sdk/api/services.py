@@ -80,18 +80,25 @@ class APIService:
                 return str(sprite_path)
         
         return None
+
+    @lru_cache(maxsize=512)
+    def _load_sprite_bytes(self, sprite_path: str) -> bytes:
+        return Path(sprite_path).read_bytes()
     
-    def get_pokemon_sprite(self, poke: dict) -> tuple[Optional[str], Optional[str]]:
+    def get_pokemon_sprite(self, poke: dict) -> tuple[Optional[bytes], Optional[bytes]]:
         pokemon_id = int(poke["species_id"])
         gender = poke.get("gender", "").lower() if poke.get("gender") else None
         is_shiny = poke.get("is_shiny", False)
         
         gender_key = gender if gender == "female" else None
         
-        front = self._find_sprite_path(pokemon_id, "front", is_shiny, gender_key)
-        back = self._find_sprite_path(pokemon_id, "back", is_shiny, gender_key)
+        front_path = self._find_sprite_path(pokemon_id, "front", is_shiny, gender_key)
+        back_path = self._find_sprite_path(pokemon_id, "back", is_shiny, gender_key)
         
-        return (front, back)
+        front_bytes = self._load_sprite_bytes(front_path) if front_path else None
+        back_bytes = self._load_sprite_bytes(back_path) if back_path else None
+        
+        return (front_bytes, back_bytes)
     
     def get_pokemon(self, identifier: Identifier) -> Optional[dict]:
         id_index, name_index = self._parse_and_index(str(DataPaths.POKEMON))
@@ -216,3 +223,4 @@ class APIService:
     @staticmethod
     def _extract_id_from_url(url: str) -> int:
         return int(url.rstrip('/').split('/')[-1])
+
