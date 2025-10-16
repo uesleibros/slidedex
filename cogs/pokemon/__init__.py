@@ -220,11 +220,15 @@ class Pokemon(commands.Cog, name="Pokémon"):
         else:
             pokemons = await asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
 
-        pokemons = apply_filters(pokemons, flags)
-        pokemons = apply_sort_limit(pokemons, flags)
-
         if not pokemons:
             await ctx.message.reply("Nenhum Pokémon encontrado.")
+            return
+
+        pokemons = await asyncio.to_thread(apply_filters, pokemons, flags)
+        pokemons = await asyncio.to_thread(apply_sort_limit, pokemons, flags)
+
+        if not pokemons:
+            await ctx.message.reply("Nenhum Pokémon encontrado após filtros.")
             return
 
         page_size = max(1, flags.get("page_size", 20))
@@ -237,14 +241,13 @@ class Pokemon(commands.Cog, name="Pokémon"):
         user_id = str(ctx.author.id)
         
         try:
-            pokemon = await asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id)
-            if pokemon.get("is_favorite"):
-                return await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
-            
-            await asyncio.to_thread(self.tk.pokemon.toggle_favorite, user_id, pokemon_id)
-            await ctx.message.reply(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
+            pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, user_id, pokemon_id, True)
+            if was_fav:
+                await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
+            else:
+                await ctx.message.reply(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
         except ValueError:
-            return
+            await ctx.message.reply("Pokémon não encontrado.")
 
     @commands.command(name="unfavourite", aliases=["unfav", "unfavorite"])
     @checks.require_account()
@@ -252,33 +255,51 @@ class Pokemon(commands.Cog, name="Pokémon"):
         user_id = str(ctx.author.id)
 
         try:
-            pokemon = await asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id)
-            if not pokemon.get("is_favorite"):
-                return await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
-            
-            await asyncio.to_thread(self.tk.pokemon.toggle_favorite, user_id, pokemon_id)
-            await ctx.message.reply(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
+            pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, user_id, pokemon_id, False)
+            if not was_fav:
+                await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
+            else:
+                await ctx.message.reply(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
         except ValueError:
-            return
+            await ctx.message.reply("Pokémon não encontrado.")
+
+    def _toggle_favorite_safe(self, user_id: str, pokemon_id: int, should_be_fav: bool):
+        pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+        was_fav = pokemon.get("is_favorite", False)
+        
+        if should_be_fav and not was_fav:
+            self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+            pokemon["is_favorite"] = True
+        elif not should_be_fav and was_fav:
+            self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+            pokemon["is_favorite"] = False
+        
+        return pokemon, was_fav
 
     @commands.command(name="nickname", aliases=["nick"])
     @checks.require_account()
     async def set_nickname(self, ctx, pokemon_id: int, *, nickname: Optional[str] = None):
-        user_id = str(ctx.author.id)
         if nickname:
             nickname = nickname.strip()
             if len(nickname) > 20:
                 return await ctx.message.reply("O nickname deve ter no máximo 20 caracteres!")
+        
+        user_id = str(ctx.author.id)
+        
         try:
-            await asyncio.to_thread(self.tk.pokemon.set_nickname, user_id, pokemon_id, nickname)
-            pokemon = await asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id)
+            pokemon = await asyncio.to_thread(self._set_nickname_and_get, user_id, pokemon_id, nickname)
             
             if nickname:
                 await ctx.message.reply(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
             else:
                 await ctx.message.reply(f"Nickname do {format_pokemon_display(pokemon, bold_name=True)} removido!")
         except ValueError:
-            return
+            await ctx.message.reply("Pokémon não encontrado.")
+
+    def _set_nickname_and_get(self, user_id: str, pokemon_id: int, nickname: Optional[str]):
+        self.tk.pokemon.set_nickname(user_id, pokemon_id, nickname)
+        pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+        return pokemon
 
     @commands.cooldown(3, 5, commands.BucketType.user)
     @commands.command(name="info", aliases=["i", "inf"])
@@ -299,7 +320,6 @@ class Pokemon(commands.Cog, name="Pokémon"):
                 
                 current_pokemon = party[0] if party else all_pokemons[0]
                 pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == current_pokemon['id']), 0)
-                total_count = len(all_pokemons)
             else:
                 try:
                     current_pokemon, all_pokemons = await asyncio.gather(
@@ -307,20 +327,21 @@ class Pokemon(commands.Cog, name="Pokémon"):
                         asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
                     )
                     pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == pokemon_id), 0)
-                    total_count = len(all_pokemons)
                 except ValueError:
                     await ctx.message.reply("Voce nao possui um Pokemon com esse ID.")
                     return
 
             sprite_url = self.tk.api.get_pokemon_sprite(current_pokemon)[0]
-            background = preloaded_info_backgrounds[current_pokemon["background"]]
+            background = preloaded_info_backgrounds.get(current_pokemon["background"])
+            
+            if not background:
+                await ctx.message.reply("Background não encontrado.")
+                return
             
             composed_image = await compose_pokemon_async(sprite_url, background)
-            static_files = self._get_static_files()
+            files = self._get_static_files() + [discord.File(composed_image, "pokemon.png")]
             
-            files = static_files + [discord.File(composed_image, "pokemon.png")]
-            view = PokemonInfoLayout(current_pokemon, pokemon_index, total_count, self.tk)
-            
+            view = PokemonInfoLayout(current_pokemon, pokemon_index, len(all_pokemons), self.tk)
             await ctx.message.reply(view=view, files=files)
 
 async def setup(bot: commands.Bot):
