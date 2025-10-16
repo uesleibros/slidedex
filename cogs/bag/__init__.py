@@ -1,5 +1,6 @@
 import discord
 import io
+import asyncio
 from typing import List, Dict, Final
 from sdk.toolkit import Toolkit
 from discord.ext import commands
@@ -21,36 +22,41 @@ class Bag(commands.Cog, name="Mochila"):
         self.bot = bot
         self.tk: Toolkit = Toolkit()
         self._icon_cache: Dict[str, bytes] = {}
+        self._file_buffers: Dict[str, io.BytesIO] = {}
         self._preload_icons()
 
     def _preload_icons(self) -> None:
         for category, path in self.CATEGORY_ICONS.items():
             try:
                 with open(path, 'rb') as f:
-                    self._icon_cache[category] = f.read()
+                    data = f.read()
+                    self._icon_cache[category] = data
+                    self._file_buffers[category] = io.BytesIO(data)
             except FileNotFoundError:
                 pass
 
     def _get_category_files(self) -> List[discord.File]:
-        return [
-            discord.File(io.BytesIO(data), f"{category}.png")
-            for category, data in self._icon_cache.items()
-        ]
+        files = []
+        for category, buffer in self._file_buffers.items():
+            buffer.seek(0)
+            files.append(discord.File(buffer, f"{category}.png"))
+        return files
 
     @flags.group(name="bag", invoke_without_command=True)
     @checks.require_account()
     async def bag_root(self, ctx: commands.Context) -> None:
-        user_id: str = str(ctx.author.id)
-        bag_items: List = self.tk.bag.get_all(user_id)
-
-        if not bag_items:
-            await ctx.message.reply("Sua mochila está vazia.")
-            return
-        
-        view: discord.ui.LayoutView = BagItemsLayout(bag_items)
-        files: List[discord.File] = self._get_category_files()
-        
-        await ctx.message.reply(view=view, files=files)
+        async with ctx.typing():
+            user_id: str = str(ctx.author.id)
+            bag_items = await asyncio.to_thread(self.tk.bag.get_all, user_id)
+            
+            if not bag_items:
+                await ctx.message.reply("Sua mochila está vazia.")
+                return
+            
+            view = BagItemsLayout(bag_items)
+            files = self._get_category_files()
+            
+            await ctx.message.reply(view=view, files=files)
 
     @bag_root.command(name="add")
     @checks.require_account()
@@ -58,9 +64,10 @@ class Bag(commands.Cog, name="Mochila"):
         user_id: str = str(ctx.author.id)
 
         try:
-            result = self.tk.item_service.give(user_id, item_id, quantity)
+            result = await asyncio.to_thread(self.tk.item_service.give, user_id, item_id, quantity)
+            emoji = ITEM_EMOJIS.get(result['id'], '❔')
             await ctx.message.reply(
-                f"Adicionado {ITEM_EMOJIS.get(result['id'])} **{result['name']}** {result['added']}x a sua mochila, contendo **{result['quantity']}x** no total."
+                f"Adicionado {emoji} **{result['name']}** {result['added']}x a sua mochila, contendo **{result['quantity']}x** no total."
             )
         except ValueError as e:
             await ctx.message.reply(str(e))
@@ -71,10 +78,13 @@ class Bag(commands.Cog, name="Mochila"):
         user_id: str = str(ctx.author.id)
 
         try:
-            result_quantity = self.tk.bag.remove(user_id, item_id, quantity)
-            item_name = self.tk.item_service.get_name(item_id)
+            result_quantity, item_name = await asyncio.gather(
+                asyncio.to_thread(self.tk.bag.remove, user_id, item_id, quantity),
+                asyncio.to_thread(self.tk.item_service.get_name, item_id)
+            )
+            emoji = ITEM_EMOJIS.get(item_id, '❔')
             await ctx.message.reply(
-                f"Removido {quantity}x {ITEM_EMOJIS.get(item_id)} **{item_name}** da sua mochila, restando **{result_quantity}x** no total."
+                f"Removido {quantity}x {emoji} **{item_name}** da sua mochila, restando **{result_quantity}x** no total."
             )
         except ValueError as e:
             await ctx.message.reply(str(e))
