@@ -5,7 +5,6 @@ from typing import List, Optional, Dict, Final
 from discord.ext import commands
 from helpers.flags import flags
 from cogs.pokemon.filters import apply_filters, apply_sort_limit
-from cogs.pokemon.analysis import analyze_pokemons
 from cogs.pokemon.views import PokemonListLayout, PokemonInfoLayout
 from sdk.toolkit import Toolkit
 from utilities.formatting import format_pokemon_display
@@ -25,22 +24,23 @@ class Pokemon(commands.Cog, name="Pokémon"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.tk = Toolkit()
-        self._icon_cache: Dict[str, bytes] = {}
+        self._icon_buffers: Dict[str, io.BytesIO] = {}
         self._preload_icons()
 
     def _preload_icons(self) -> None:
         for icon_name, path in self.STATIC_ICONS.items():
             try:
                 with open(path, 'rb') as f:
-                    self._icon_cache[icon_name] = f.read()
+                    self._icon_buffers[icon_name] = io.BytesIO(f.read())
             except FileNotFoundError:
                 pass
 
     def _get_static_files(self) -> List[discord.File]:
-        return [
-            discord.File(io.BytesIO(data), f"{name}.png")
-            for name, data in self._icon_cache.items()
-        ]
+        files = []
+        for name, buffer in self._icon_buffers.items():
+            buffer.seek(0)
+            files.append(discord.File(buffer, f"{name}.png"))
+        return files
 
     @flags.add_flag("--page", nargs="?", type=int, default=0)
     @flags.add_flag("--user", type=discord.Member, default=None)
@@ -214,11 +214,11 @@ class Pokemon(commands.Cog, name="Pokémon"):
         user_id = str(ctx.author.id)
 
         if flags.get("party") and not flags.get("box"):
-            pokemons = self.tk.pokemon.get_party(user_id)
+            pokemons = await asyncio.to_thread(self.tk.pokemon.get_party, user_id)
         elif flags.get("box") and not flags.get("party"):
-            pokemons = self.tk.pokemon.get_box(user_id)
+            pokemons = await asyncio.to_thread(self.tk.pokemon.get_box, user_id)
         else:
-            pokemons = self.tk.pokemon.get_all_by_owner(user_id)
+            pokemons = await asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
 
         pokemons = apply_filters(pokemons, flags)
         pokemons = apply_sort_limit(pokemons, flags)
@@ -227,9 +227,8 @@ class Pokemon(commands.Cog, name="Pokémon"):
             await ctx.message.reply("Nenhum Pokémon encontrado.")
             return
 
-        page_size: int = flags.get("page_size") if flags.get("page_size") and flags.get("page_size", 20) > 0 else 20
-
-        view: discord.ui.LayoutView = PokemonListLayout(pokemons, flags.get("page", 0), page_size)
+        page_size = max(1, flags.get("page_size", 20))
+        view = PokemonListLayout(pokemons, flags.get("page", 0), page_size)
         await ctx.message.reply(view=view)
 
     @commands.command(name="favorite", aliases=["fav"])
@@ -238,11 +237,11 @@ class Pokemon(commands.Cog, name="Pokémon"):
         user_id = str(ctx.author.id)
         
         try:
-            pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+            pokemon = await asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id)
             if pokemon.get("is_favorite"):
                 return await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
             
-            self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+            await asyncio.to_thread(self.tk.pokemon.toggle_favorite, user_id, pokemon_id)
             await ctx.message.reply(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
         except ValueError:
             return
@@ -253,11 +252,11 @@ class Pokemon(commands.Cog, name="Pokémon"):
         user_id = str(ctx.author.id)
 
         try:
-            pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+            pokemon = await asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id)
             if not pokemon.get("is_favorite"):
                 return await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
             
-            self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+            await asyncio.to_thread(self.tk.pokemon.toggle_favorite, user_id, pokemon_id)
             await ctx.message.reply(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
         except ValueError:
             return
@@ -268,13 +267,12 @@ class Pokemon(commands.Cog, name="Pokémon"):
         user_id = str(ctx.author.id)
         if nickname:
             nickname = nickname.strip()
-        
-        if nickname and len(nickname) > 20:
-            return await ctx.message.reply("O nickname deve ter no máximo 20 caracteres!")
+            if len(nickname) > 20:
+                return await ctx.message.reply("O nickname deve ter no máximo 20 caracteres!")
         
         try:
-            self.tk.pokemon.set_nickname(user_id, pokemon_id, nickname)
-            pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+            await asyncio.to_thread(self.tk.pokemon.set_nickname, user_id, pokemon_id, nickname)
+            pokemon = await asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id)
             
             if nickname:
                 await ctx.message.reply(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
@@ -287,45 +285,44 @@ class Pokemon(commands.Cog, name="Pokémon"):
     @commands.command(name="info", aliases=["i", "inf"])
     @checks.require_account()
     async def info_command(self, ctx: commands.Context, pokemon_id: Optional[int] = None) -> None:
-        user_id = str(ctx.author.id)
+        async with ctx.typing():
+            user_id = str(ctx.author.id)
 
-        if pokemon_id is None:
-            party = self.tk.pokemon.get_party(user_id)
-            if not party:
-                all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
+            if pokemon_id is None:
+                party, all_pokemons = await asyncio.gather(
+                    asyncio.to_thread(self.tk.pokemon.get_party, user_id),
+                    asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
+                )
+                
                 if not all_pokemons:
                     await ctx.message.reply("Voce nao possui nenhum Pokemon.")
                     return
-                current_pokemon = all_pokemons[0]
-                pokemon_index = 0
-                total_count = len(all_pokemons)
-            else:
-                all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
-                current_pokemon = party[0]
+                
+                current_pokemon = party[0] if party else all_pokemons[0]
                 pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == current_pokemon['id']), 0)
                 total_count = len(all_pokemons)
-        else:
-            try:
-                current_pokemon = self.tk.pokemon.get(user_id, pokemon_id)
-                all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
-                pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == pokemon_id), 0)
-                total_count = len(all_pokemons)
-            except ValueError:
-                await ctx.message.reply("Voce nao possui um Pokemon com esse ID.")
-                return
+            else:
+                try:
+                    current_pokemon, all_pokemons = await asyncio.gather(
+                        asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id),
+                        asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
+                    )
+                    pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == pokemon_id), 0)
+                    total_count = len(all_pokemons)
+                except ValueError:
+                    await ctx.message.reply("Voce nao possui um Pokemon com esse ID.")
+                    return
 
-        sprite_url = self.tk.api.get_pokemon_sprite(current_pokemon)[0]
-        background = preloaded_info_backgrounds[current_pokemon["background"]]
-        
-        composed_image, static_files = await asyncio.gather(
-            compose_pokemon_async(sprite_url, background),
-            asyncio.to_thread(self._get_static_files)
-        )
-        
-        files = static_files + [discord.File(composed_image, "pokemon.png")]
-        view = PokemonInfoLayout(current_pokemon, pokemon_index, total_count, self.tk)
-        
-        await ctx.message.reply(view=view, files=files)
+            sprite_url = self.tk.api.get_pokemon_sprite(current_pokemon)[0]
+            background = preloaded_info_backgrounds[current_pokemon["background"]]
+            
+            composed_image = await compose_pokemon_async(sprite_url, background)
+            static_files = self._get_static_files()
+            
+            files = static_files + [discord.File(composed_image, "pokemon.png")]
+            view = PokemonInfoLayout(current_pokemon, pokemon_index, total_count, self.tk)
+            
+            await ctx.message.reply(view=view, files=files)
 
 
 async def setup(bot: commands.Bot):
