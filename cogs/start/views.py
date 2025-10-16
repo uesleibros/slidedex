@@ -1,4 +1,5 @@
 import discord
+import asyncio
 from sdk.toolkit import Toolkit
 from sdk.calculations import PokemonDataGenerator
 from sdk.factories.pokemon_factory import PokemonFactory
@@ -78,23 +79,23 @@ class StarterButton(discord.ui.Button):
 	async def callback(self, interaction: discord.Interaction) -> None:
 		await interaction.response.defer()
 
-		if self.service.user_has_account(self.user_id):
+		if await asyncio.to_thread(self.service.user_has_account(self.user_id)):
 			await interaction.followup.send(
 				"Você já tem uma conta! Não pode escolher outro inicial.",
 				ephemeral=True
 			)
 			return
 
-		user = self.service.create_account(self.user_id, Gender.MALE)
+		user = await asyncio.to_thread(self.service.create_account(self.user_id, Gender.MALE))
 		trainer_gender = Gender.normalize(user.get("gender", Gender.MALE))
 
-		pokemon = self.service.create_starter_pokemon(
+		pokemon = await asyncio.to_thread(self.service.create_starter_pokemon(
 			self.user_id,
 			self.species_id,
 			trainer_gender
-		)
+		))
 
-		summary = self.service.get_starter_summary(pokemon)
+		summary = await asyncio.to_thread(self.service.get_starter_summary(pokemon))
 		await interaction.followup.edit_message(
 			message_id=interaction.message.id,
 			content=summary,
