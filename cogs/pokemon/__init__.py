@@ -305,44 +305,43 @@ class Pokemon(commands.Cog, name="Pokémon"):
     @commands.command(name="info", aliases=["i", "inf"])
     @checks.require_account()
     async def info_command(self, ctx: commands.Context, pokemon_id: Optional[int] = None) -> None:
-        async with ctx.typing():
-            user_id = str(ctx.author.id)
+        user_id = str(ctx.author.id)
 
-            if pokemon_id is None:
-                party, all_pokemons = await asyncio.gather(
-                    asyncio.to_thread(self.tk.pokemon.get_party, user_id),
-                    asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
-                )
-                
-                if not all_pokemons:
-                    await ctx.message.reply("Voce nao possui nenhum Pokemon.")
-                    return
-                
-                current_pokemon = party[0] if party else all_pokemons[0]
-                pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == current_pokemon['id']), 0)
-            else:
-                try:
-                    current_pokemon, all_pokemons = await asyncio.gather(
-                        asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id),
-                        asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
-                    )
-                    pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == pokemon_id), 0)
-                except ValueError:
-                    await ctx.message.reply("Voce nao possui um Pokemon com esse ID.")
-                    return
-
-            sprite_url = self.tk.api.get_pokemon_sprite(current_pokemon)[0]
-            background = preloaded_info_backgrounds.get(current_pokemon["background"])
+        if pokemon_id is None:
+            party, all_pokemons = await asyncio.gather(
+                asyncio.to_thread(self.tk.pokemon.get_party, user_id),
+                asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
+            )
             
-            if not background:
-                await ctx.message.reply("Background não encontrado.")
+            if not all_pokemons:
+                await ctx.message.reply("Voce nao possui nenhum Pokemon.")
                 return
             
-            composed_image = await compose_pokemon_async(sprite_url, background)
-            files = self._get_static_files() + [discord.File(composed_image, "pokemon.png")]
-            
-            view = PokemonInfoLayout(current_pokemon, pokemon_index, len(all_pokemons), self.tk)
-            await ctx.message.reply(view=view, files=files)
+            current_pokemon = party[0] if party else all_pokemons[0]
+            pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == current_pokemon['id']), 0)
+        else:
+            try:
+                current_pokemon, all_pokemons = await asyncio.gather(
+                    asyncio.to_thread(self.tk.pokemon.get, user_id, pokemon_id),
+                    asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
+                )
+                pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == pokemon_id), 0)
+            except ValueError:
+                await ctx.message.reply("Voce nao possui um Pokemon com esse ID.")
+                return
+
+        sprite_url = self.tk.api.get_pokemon_sprite(current_pokemon)[0]
+        background = preloaded_info_backgrounds.get(current_pokemon["background"])
+        
+        if not background:
+            await ctx.message.reply("Background não encontrado.")
+            return
+        
+        composed_image = await compose_pokemon_async(sprite_url, background)
+        files = self._get_static_files() + [discord.File(composed_image, "pokemon.png")]
+        
+        view = PokemonInfoLayout(current_pokemon, pokemon_index, len(all_pokemons), self.tk)
+        await ctx.message.reply(view=view, files=files)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Pokemon(bot))
