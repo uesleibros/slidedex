@@ -45,18 +45,17 @@ class Bag(commands.Cog, name="Mochila"):
     @flags.group(name="bag", invoke_without_command=True)
     @checks.require_account()
     async def bag_root(self, ctx: commands.Context) -> None:
-        async with ctx.typing():
-            user_id: str = str(ctx.author.id)
-            bag_items = await asyncio.to_thread(self.tk.bag.get_all, user_id)
-            
-            if not bag_items:
-                await ctx.message.reply("Sua mochila está vazia.")
-                return
-            
-            view = BagItemsLayout(bag_items)
-            files = self._get_category_files()
-            
-            await ctx.message.reply(view=view, files=files)
+        user_id: str = str(ctx.author.id)
+        bag_items = await asyncio.to_thread(self.tk.bag.get_all, user_id)
+        
+        if not bag_items:
+            await ctx.message.reply("Sua mochila está vazia.")
+            return
+        
+        view = BagItemsLayout(bag_items)
+        files = self._get_category_files()
+        
+        await ctx.message.reply(view=view, files=files)
 
     @bag_root.command(name="add")
     @checks.require_account()
