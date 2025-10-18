@@ -126,7 +126,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         container.add_item(discord.ui.TextDisplay(
             f"### Level {pokemon['level']} {format_pokemon_display(pokemon, show_fav=True, show_poke=False)}\n"
             f"ℹ️ **ID do Pokemon:** {pokemon['id']}\n"
-            f"ℹ️ **ID da Espécie:** {pokemon['species_id']}\n"
+            f"├ **ID da Espécie:** {pokemon['species_id']}\n"
         ))
 
         container.add_item(discord.ui.Separator())
@@ -224,6 +224,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
 
 
 
