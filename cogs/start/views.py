@@ -93,27 +93,23 @@ class AccountCreatedLayout(discord.ui.LayoutView):
         container.add_item(discord.ui.TextDisplay(f"Bem-vindo(a), **{username}**!"))
         container.add_item(discord.ui.Separator())
         
-        info_section = discord.ui.Section()
-        info_section.add_item(discord.ui.TextDisplay("-# **Suas Informações**"))
-        info_section.add_item(discord.ui.TextDisplay(
+        container.add_item(discord.ui.TextDisplay("-# **Suas Informações**"))
+        container.add_item(discord.ui.TextDisplay(
             f"**Gênero:** {Gender.get_label(gender)}\n"
             f"**Fuso Horário:** {timezone}\n"
             f"**Hora Atual:** {current_time}"
         ))
-        container.add_item(info_section)
         
         container.add_item(discord.ui.Separator())
         
-        next_steps_section = discord.ui.Section()
-        next_steps_section.add_item(discord.ui.TextDisplay("-# **Próximos Passos**"))
-        next_steps_section.add_item(discord.ui.TextDisplay(
+        container.add_item(discord.ui.TextDisplay("-# **Próximos Passos**"))
+        container.add_item(discord.ui.TextDisplay(
             "Use `.help` para ver os comandos disponíveis!\n"
             "Use `.profile` para ver seu perfil!"
         ))
-        container.add_item(next_steps_section)
         
         container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay("-# Boa sorte na sua jornada Pokémon! 🌟"))
+        container.add_item(discord.ui.TextDisplay("-# Boa sorte na sua jornada Pokémon!"))
         
         self.add_item(container)
 
@@ -257,3 +253,4 @@ class AccountCreationView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return False
         return True
+
