@@ -23,7 +23,6 @@ class Pokemon(commands.Cog, name="Pokémon"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.tk = Toolkit()
-        self._composed_cache: Dict[str, bytes] = {}
 
     def _get_static_files(self) -> List[discord.File]:
         return [discord.File(path, f"{name}.png") for name, path in self.STATIC_ICONS.items()]
@@ -325,15 +324,8 @@ class Pokemon(commands.Cog, name="Pokémon"):
             await ctx.send("Background não encontrado.")
             return
         
-        cache_key = f"{sprite_url}:{current_pokemon['background']}"
-        
-        if cache_key in self._composed_cache:
-            composed_bytes = self._composed_cache[cache_key]
-        else:
-            composed_bytes = await compose_pokemon_async(sprite_url, background)
-            if len(self._composed_cache) < 50:
-                self._composed_cache[cache_key] = composed_bytes
-        
+        composed_bytes = await compose_pokemon_async(sprite_url, background)
+
         files = self._get_static_files() + [discord.File(composed_bytes, "pokemon.png")]
         view = PokemonInfoLayout(current_pokemon, pokemon_index, len(all_pokemons), self.tk)
         
