@@ -8,10 +8,6 @@ from datetime import datetime
 from sdk.toolkit import Toolkit
 
 class PokemonListLayout(discord.ui.LayoutView):
-    __slots__ = ('pokemons', 'per_page', 'current_page', 'total_pages', '_displays', 
-                 '_prev_btn', '_next_btn', '_action_row', '_header', '_sep', '_empty', 
-                 '_footer_fmt', '_total_len', '_max_page')
-    
     def __init__(self, pokemons: List, current_page: int = 0, per_page: int = 20):
         super().__init__()
         self.pokemons = pokemons
@@ -83,15 +79,6 @@ class PokemonListLayout(discord.ui.LayoutView):
             await interaction.response.edit_message(view=self)
 
 class PokemonInfoLayout(discord.ui.LayoutView):
-    __slots__ = ('current_pokemon', 'current_index', 'total_pages', 'tk', 'show_iv',
-                 '_stats', '_iv_total', '_ev_total', '_iv_percent', '_ev_percent',
-                 '_exp_next', '_exp_needed', '_exp_progress', '_future_moves',
-                 '_toggle_btn', '_separator', '_stat_keys', '_stat_labels',
-                 '_base_stats', '_ivs', '_evs', '_level', '_current_hp',
-                 '_pokemon_id', '_species_id', '_types_str', '_nature_info',
-                 '_happiness_status', '_growth_type', '_ability', '_region',
-                 '_held_item', '_caught_with', '_caught_at', '_moves_data')
-    
     def __init__(self, current_pokemon: Dict, current_index: int, total_pages: int, tk: Toolkit):
         super().__init__()
         self.current_pokemon = current_pokemon
