@@ -29,7 +29,7 @@ class Gender:
     @classmethod
     def get_label(cls, value: str) -> str:
         return cls.LABELS.get(value, value)
-
+    
 class TimezoneHelper:
     COMMON_BR_TIMEZONES: Final[tuple[tuple[str, str], ...]] = (
         ("America/Noronha", "🇧🇷 Fernando de Noronha (UTC-2)"),
@@ -105,11 +105,11 @@ class AccountCreatedLayout(discord.ui.LayoutView):
         
         container = discord.ui.Container()
         
-        container.add_item(discord.ui.TextDisplay("# ✨ Conta Criada com Sucesso!"))
-        container.add_item(discord.ui.TextDisplay(f"Bem-vindo(a) ao mundo Pokémon, **{username}**!"))
+        container.add_item(discord.ui.TextDisplay("### Conta Criada com Sucesso!"))
+        container.add_item(discord.ui.TextDisplay(f"Bem-vindo(a), **{username}**!"))
         container.add_item(discord.ui.Separator())
         
-        container.add_item(discord.ui.TextDisplay("-# **📋 Informações da Conta**"))
+        container.add_item(discord.ui.TextDisplay("-# **Suas Informações**"))
         container.add_item(discord.ui.TextDisplay(
             f"**Gênero:** {Gender.get_label(gender)}\n"
             f"**Fuso Horário:** {timezone_label}\n"
@@ -118,15 +118,14 @@ class AccountCreatedLayout(discord.ui.LayoutView):
         
         container.add_item(discord.ui.Separator())
         
-        container.add_item(discord.ui.TextDisplay("-# **🎯 Próximos Passos**"))
+        container.add_item(discord.ui.TextDisplay("-# **Próximos Passos**"))
         container.add_item(discord.ui.TextDisplay(
-            "🔹 Use `.help` para ver todos os comandos\n"
-            "🔹 Use `.profile` para ver seu perfil\n"
-            "🔹 Comece sua aventura capturando Pokémon!"
+            "Use `.help` para ver os comandos disponíveis!\n"
+            "Use `.profile` para ver seu perfil!"
         ))
         
         container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay("-# Boa sorte na sua jornada, treinador! 🌟"))
+        container.add_item(discord.ui.TextDisplay("-# Boa sorte na sua jornada Pokémon!"))
         
         self.add_item(container)
 
@@ -136,13 +135,12 @@ class GenderSelect(discord.ui.Select):
             discord.SelectOption(
                 label=label[2:],
                 value=value,
-                emoji=label[0]
             )
             for value, label in Gender.LABELS.items()
         ]
         
         super().__init__(
-            placeholder="👤 Escolha seu gênero...",
+            placeholder="Selecione o seu gênero como treinador...",
             options=options,
             custom_id="gender_select"
         )
@@ -157,13 +155,8 @@ class GenderSelect(discord.ui.Select):
                 item.disabled = False
         
         await interaction.response.edit_message(
-            content=(
-                "# 🎮 Criação de Conta\n\n"
-                f"✅ **Gênero:** {Gender.get_label(self.values[0])}\n\n"
-                "-# **Passo 2 de 3**\n"
-                "**Escolha a região do seu fuso horário:**\n"
-                "-# Isso ajudará com eventos e horários no jogo"
-            ),
+            content=f"✅ Gênero selecionado: **{Gender.get_label(self.values[0])}**\n\n"
+                    f"Agora escolha a região do fuso horário:",
             view=self.view
         )
 
@@ -175,13 +168,13 @@ class TimezoneSelect(discord.ui.Select):
             discord.SelectOption(
                 label=label,
                 value=tz,
-                description=f"⏰ {TimezoneHelper.get_current_time(tz)}"
+                description=f"Agora: {TimezoneHelper.get_current_time(tz)}"
             )
             for tz, label in timezones[:25]
         ]
         
         super().__init__(
-            placeholder="🌍 Selecione seu fuso horário...",
+            placeholder="Selecione seu fuso horário...",
             options=options,
             custom_id="timezone_select",
             disabled=True
@@ -215,11 +208,15 @@ class TimezoneSelect(discord.ui.Select):
 
         for item in self.view.children:
             item.disabled = True
-        
+
         self.view.stop()
 
         await interaction.followup.edit_message(
             message_id=interaction.message.id,
+            view=self.view
+        )
+
+        await interaction.followup.send(
             view=layout
         )
 
@@ -227,21 +224,19 @@ class TimezoneTypeSelect(discord.ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(
-                label="Brasil",
+                label="🇧🇷 Brasil",
                 value="br",
-                description="Fusos horários do Brasil",
-                emoji="🇧🇷"
+                description="Fusos horários do Brasil"
             ),
             discord.SelectOption(
-                label="Internacional",
+                label="🌎 Outros",
                 value="other",
-                description="Fusos horários de outros países",
-                emoji="🌎"
+                description="Fusos horários internacionais"
             )
         ]
         
         super().__init__(
-            placeholder="🗺️ Escolha a região...",
+            placeholder="Escolha a região do fuso horário...",
             options=options,
             custom_id="timezone_type_select",
             disabled=True
@@ -259,12 +254,9 @@ class TimezoneTypeSelect(discord.ui.Select):
         
         await interaction.response.edit_message(
             content=(
-                "# 🎮 Criação de Conta\n\n"
-                f"✅ **Gênero:** {Gender.get_label(self.view.selected_gender)}\n"
-                f"✅ **Região:** {'🇧🇷 Brasil' if self.values[0] == 'br' else '🌎 Internacional'}\n\n"
-                "-# **Passo 3 de 3**\n"
-                "**Selecione seu fuso horário:**\n"
-                "-# O horário atual de cada timezone é mostrado"
+                f"✅ Gênero selecionado: **{Gender.get_label(self.view.selected_gender)}**\n"
+                f"✅ Região selecionada: **{'🇧🇷 Brasil' if self.values[0] == 'br' else '🌎 Internacional'}**\n\n"
+                f"Agora selecione seu fuso horário:"
             ),
             view=self.view
         )
