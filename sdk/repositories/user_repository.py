@@ -8,7 +8,13 @@ class UserRepository:
 	def __init__(self, db: Database):
 		self.db = db
 	
-	def create(self, user_id: str, gender: str, location: Optional[str] = "pallet-town-area") -> dict:
+	def create(
+		self,
+		user_id: str,
+		gender: str,
+		timezone: str = "America/Sao_Paulo",
+		location: Optional[str] = "pallet-town-area"
+	) -> dict:
 		users = self.db.get("users")
 		
 		if user_id in users:
@@ -23,6 +29,7 @@ class UserRepository:
 			"last_pokemon_id": 0,
 			"badges": [],
 			"rng_seed": seed,
+			"timezone": timezone,
 			"location": location,
 			"created_at": datetime.utcnow().isoformat()
 		}
@@ -80,5 +87,8 @@ class UserRepository:
 			badges.remove(badge)
 			self.db.save()
 		
-
 		return badges.copy()
+
+    def get_timezone(self, user_id: str) -> str:
+        users = self.db.get("users")
+        return users[user_id].get("timezone", "America/Sao_Paulo")
