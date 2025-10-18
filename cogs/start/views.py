@@ -1,145 +1,240 @@
 import discord
 import asyncio
-from sdk.toolkit import Toolkit
-from sdk.calculations import PokemonDataGenerator
-from sdk.factories.pokemon_factory import PokemonFactory
-from utilities.formatting import format_pokemon_display
-from typing import Final
-
-STARTERS: Final[tuple[tuple[str, int], ...]] = (
-    ("bulbasaur", 1),
-    ("charmander", 4),
-    ("squirtle", 7),
-    ("pikachu", 25),
-    ("eevee", 133)
-)
-
-STARTER_LEVEL: Final[int] = 5
-STARTER_TIMEOUT: Final[int] = 60
+import pytz
+from typing import Final, Optional
+from datetime import datetime
 
 class Gender:
     MALE = "Male"
     FEMALE = "Female"
-    GENDERLESS = "Genderless"
+    
+    LABELS: Final[dict[str, str]] = {
+        MALE: "♂️ Masculino",
+        FEMALE: "♀️ Feminino"
+    }
     
     _GENDER_MAP: Final[dict[str, str]] = {
         "male": MALE,
         "m": MALE,
+        "masculino": MALE,
         "female": FEMALE,
         "f": FEMALE,
+        "feminino": FEMALE,
     }
     
     @classmethod
     def normalize(cls, gender: str) -> str:
-        return cls._GENDER_MAP.get((gender or "").strip().lower(), cls.GENDERLESS)
-
-class StarterService:
-    __slots__ = ('tk',)
+        return cls._GENDER_MAP.get((gender or "").strip().lower(), cls.MALE)
     
-    _instance = None
+    @classmethod
+    def get_label(cls, value: str) -> str:
+        return cls.LABELS.get(value, value)
     
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.tk = Toolkit()
-        return cls._instance
-
-    def create_account(self, user_id: str, gender: str = Gender.MALE) -> dict:
-        return self.tk.add_user(user_id, gender)
-
-    def user_has_account(self, user_id: str) -> bool:
-        return self.tk.get_user(user_id) is not None
-
-    def create_starter_pokemon(self, user_id: str, species_id: int, trainer_gender: str) -> dict:
-        return self.tk.create_pokemon(
-            owner_id=user_id,
-            species_id=species_id,
-            level=STARTER_LEVEL,
-            gender=trainer_gender,
-            is_shiny=False,
-            on_party=True,
-            caught_with="poke-ball"
-        )
-
-    @staticmethod
-    def get_starter_summary(pokemon: dict) -> str:
-        summary = PokemonDataGenerator.generate_summary(pokemon)
+class TimezoneHelper:
+    COMMON_BR_TIMEZONES: Final[tuple[tuple[str, str], ...]] = (
+        ("America/Sao_Paulo", "🇧🇷 Brasília (UTC-3)"),
+        ("America/Manaus", "🇧🇷 Manaus (UTC-4)"),
+        ("America/Fortaleza", "🇧🇷 Fortaleza (UTC-3)"),
+        ("America/Recife", "🇧🇷 Recife (UTC-3)"),
+        ("America/Belem", "🇧🇷 Belém (UTC-3)"),
+        ("America/Cuiaba", "🇧🇷 Cuiabá (UTC-4)"),
+        ("America/Porto_Velho", "🇧🇷 Porto Velho (UTC-4)"),
+        ("America/Boa_Vista", "🇧🇷 Boa Vista (UTC-4)"),
+        ("America/Rio_Branco", "🇧🇷 Rio Branco (UTC-5)"),
+        ("America/Noronha", "🇧🇷 Fernando de Noronha (UTC-2)"),
+    )
+    
+    OTHER_TIMEZONES: Final[tuple[tuple[str, str], ...]] = (
+        ("America/New_York", "🇺🇸 Nova York (UTC-5)"),
+        ("America/Los_Angeles", "🇺🇸 Los Angeles (UTC-8)"),
+        ("America/Chicago", "🇺🇸 Chicago (UTC-6)"),
+        ("Europe/Lisbon", "🇵🇹 Lisboa (UTC+0)"),
+        ("Europe/London", "🇬🇧 Londres (UTC+0)"),
+        ("Europe/Paris", "🇫🇷 Paris (UTC+1)"),
+        ("Europe/Berlin", "🇩🇪 Berlim (UTC+1)"),
+        ("Asia/Tokyo", "🇯🇵 Tóquio (UTC+9)"),
+        ("Australia/Sydney", "🇦🇺 Sydney (UTC+10)"),
+    )
+    
+    @classmethod
+    def get_current_time(cls, tz: str) -> str:
+        try:
+            timezone = pytz.timezone(tz)
+            now = datetime.now(timezone)
+            return now.strftime("%H:%M")
+        except:
+            return "00:00"
         
-        return (
-            f"Você escolheu **{format_pokemon_display(pokemon)}** como seu inicial!\n\n"
-            f"**Informações:**\n"
-            f"├ Natureza: **{pokemon['nature']}**\n"
-            f"├ Habilidade: **{pokemon['ability'].replace('-', ' ').title()}**\n"
-            f"├ HP: **{summary['max_hp']}**\n"
-            f"└ IVs: **{summary['iv_percent']:.1f}%** ({summary['iv_total']}/186)\n\n"
-            f"-# Use .help para ver os comandos disponíveis • Boa sorte na sua jornada!"
-        )
+class AccountCreationModal(discord.ui.Modal):
+    def __init__(self, selected_gender: str, selected_timezone: str):
+        super().__init__(title="Criação de Conta")
 
-class StarterButton(discord.ui.Button):
-    __slots__ = ('species_id', 'user_id', '_service')
-    
-    _shared_service = StarterService()
-    
-    def __init__(self, name: str, species_id: int, user_id: str):
-        super().__init__(
-            label=name.capitalize(),
-            style=discord.ButtonStyle.primary,
-            custom_id=f"starter_{species_id}"
-        )
-        self.species_id = species_id
-        self.user_id = user_id
-        self._service = self._shared_service
+        self.selected_gender = selected_gender
+        self.selected_timezone = selected_timezone
 
-    async def callback(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer()
-        
-        svc = self._service
-        user_id = self.user_id
-        
-        if await asyncio.to_thread(svc.user_has_account, user_id):
-            await interaction.followup.send(
-                "Você já tem uma conta! Não pode escolher outro inicial.",
-                ephemeral=True
+        async def on_submit(self, interaction: discord.Interaction):
+            await interaction.response.defer()
+            user_id = str(interaction.user.id)
+
+            from sdk.database import Database
+            from sdk.repositories.user_repository import UserRepository
+
+            db = Database()
+            user_repo = UserRepository(db)
+
+            await asyncio.to_thread(
+                user_repo.create,
+                user_id=user_id,
+                gender=self.selected_gender,
+                timezone=self.selected_timezone
             )
-            return
 
-        user, pokemon = await asyncio.to_thread(
-            self._create_account_and_pokemon,
-            svc,
-            user_id,
-            self.species_id
-        )
+            embed = discord.Embed(
+                title="Conta Criada com Sucesso!",
+                description=f"Bem-vindo(a), **{interaction.user.display_name}**!",
+                color=discord.Color.green()
+            )
 
-        summary = svc.get_starter_summary(pokemon)
+            current_time = TimezoneHelper.get_current_time(self.selected_timezone)
+
+            embed.add_field(
+                name="Suas Informações",
+                value=(
+                    f"**Nome:** {interaction.user.display_name}\n"
+                    f"**Gênero:** {Gender.get_label(self.selected_gender)}\n"
+                    f"**Fuso Horário:** {self.selected_timezone}\n"
+                    f"**Hora Atual:** {current_time}"
+                ),
+                inline=False
+            )
+
+            embed.set_footer(text="Boa sorte na sua jornada Pokémon!")
+
+            await interaction.followup.edit_message(
+                content=None,
+                message_id=interaction.message.id,
+                embed=embed,
+                view=None
+            )
+
+class GenderSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(
+                label=label,
+                value=value,
+                emoji=label[0]
+            )
+            for value, label in Gender.LABELS.items()
+        ]
         
-        await interaction.followup.edit_message(
-            message_id=interaction.message.id,
-            content=summary,
-            view=None
+        super().__init__(
+            placeholder="Selecione o gênero do seu treinador...",
+            options=options,
+            custom_id="gender_select"
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        self.view.selected_gender = self.values[0]
+        
+        for item in self.view.children:
+            if isinstance(item, GenderSelect):
+                item.disabled = True
+            elif isinstance(item, TimezoneTypeSelect):
+                item.disabled = False
+        
+        await interaction.response.edit_message(
+            content=f"✅ Gênero selecionado: **{Gender.get_label(self.values[0])}**\n\n"
+                    f"Agora escolha a região do fuso horário:",
+            view=self.view
         )
 
-        self.view.stop()
+class TimezoneSelect(discord.ui.Select):
+    def __init__(self, timezone_type: str = "br"):
+        timezones = TimezoneHelper.COMMON_BR_TIMEZONES if timezone_type == "br" else TimezoneHelper.OTHER_TIMEZONES
+        
+        options = [
+            discord.SelectOption(
+                label=label,
+                value=tz,
+                description=f"Agora: {TimezoneHelper.get_current_time(tz)}"
+            )
+            for tz, label in timezones[:25]
+        ]
+        
+        super().__init__(
+            placeholder="Selecione seu fuso horário...",
+            options=options,
+            custom_id="timezone_select",
+            disabled=True
+        )
     
-    @staticmethod
-    def _create_account_and_pokemon(svc: StarterService, user_id: str, species_id: int) -> tuple[dict, dict]:
-        user = svc.create_account(user_id, Gender.MALE)
-        trainer_gender = Gender.normalize(user.get("gender", Gender.MALE))
-        pokemon = svc.create_starter_pokemon(user_id, species_id, trainer_gender)
-        return user, pokemon
+    async def callback(self, interaction: discord.Interaction):
+        self.view.selected_timezone = self.values[0]
+        
+        modal = AccountCreationModal(
+            self.view.selected_gender,
+            self.view.selected_timezone
+        )
+        
+        await interaction.response.send_modal(modal)
 
-class StarterView(discord.ui.View):
-    __slots__ = ('user_id',)
+class TimezoneTypeSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(
+                label="🇧🇷 Brasil",
+                value="br",
+                description="Fusos horários do Brasil"
+            ),
+            discord.SelectOption(
+                label="🌎 Outros",
+                value="other",
+                description="Fusos horários internacionais"
+            )
+        ]
+        
+        super().__init__(
+            placeholder="Escolha a região do fuso horário...",
+            options=options,
+            custom_id="timezone_type_select",
+            disabled=True
+        )
     
+    async def callback(self, interaction: discord.Interaction):
+        for item in self.view.children:
+            if isinstance(item, TimezoneSelect):
+                self.view.remove_item(item)
+        
+        new_select = TimezoneSelect(self.values[0])
+        new_select.disabled = False
+        self.view.add_item(new_select)
+        self.disabled = True
+        
+        await interaction.response.edit_message(
+            content=(
+                f"✅ Gênero selecionado: **{Gender.get_label(self.view.selected_gender)}**\n"
+                f"✅ Região selecionada: **{'🇧🇷 Brasil' if self.values[0] == 'br' else '🌎 Internacional'}**\n\n"
+                f"Agora selecione seu fuso horário:"
+            ),
+            view=self.view
+        )
+
+class AccountCreationView(discord.ui.View):
     def __init__(self, user_id: str):
-        super().__init__(timeout=STARTER_TIMEOUT)
+        super().__init__(timeout=300)
         self.user_id = user_id
+        self.selected_gender: Optional[str] = None
+        self.selected_timezone: Optional[str] = None
         
-        for name, species_id in STARTERS:
-            self.add_item(StarterButton(name, species_id, user_id))
-
-    async def on_timeout(self) -> None:
+        self.add_item(GenderSelect())
+        self.add_item(TimezoneTypeSelect())
+    
+    async def on_timeout(self):
         for item in self.children:
             item.disabled = True
-
+    
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return str(interaction.user.id) == self.user_id
+        if str(interaction.user.id) != self.user_id:
+            return False
+        return True
