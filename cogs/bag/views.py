@@ -30,10 +30,11 @@ class BagItemsLayout(discord.ui.LayoutView):
         machines_map = {}
         
         if any(item['category'] == 'tms_hms' for item in self.items):
-            machines_map = {
-                machine['item']['name']: machine['move']['name']
-                for machine in self.tk.api.get_all_machines()
-            }
+            for item in self.items:
+                if item['category'] == 'tms_hms':
+                    machine_data = self.tk.api.get_machine(item['id'])
+                    if machine_data:
+                        machines_map[item['id']] = machine_data['move']['name']
         
         return [
             (
