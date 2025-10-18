@@ -82,46 +82,46 @@ class BagItemsLayout(discord.ui.LayoutView):
             for cat, (thumb, items) in groups.items()
         )
 
-	def _build(self) -> None:
-	    self.clear_items()
-	    
-	    idx = self.current_page * self.per_page
-	    end = min(idx + self.per_page, self._total_len)
-	    
-	    c = discord.ui.Container()
-	    c.add_item(self._header)
-	    c.add_item(self._separator)
-	    
-	    if self._formatted_items:
-	        Section = discord.ui.Section
-	        Thumbnail = discord.ui.Thumbnail
-	        TextDisplay = discord.ui.TextDisplay
-	        separator = self._separator
-	        category_names = CATEGORY_NAMES
-	        
-	        for category, thumbnail, items_list in self._category_groups:
-	            page_items = tuple(item for cat, _, item in self._formatted_items[idx:end] if cat == category)
-	            
-	            if page_items:
-	                sec = Section(accessory=Thumbnail(thumbnail))
-	                sec.add_item(TextDisplay(f"**{category_names.get(category, category.title())}**"))
-	                sec.add_item(TextDisplay(chr(10).join(page_items)))
-	                c.add_item(sec)
-	                c.add_item(separator)
-	    else:
-	        c.add_item(self._empty_msg)
-	        c.add_item(self._separator)
-	    
-	    pagination = self._pagination_fmt.format(idx + 1, end, self._total_len) if self._total_len else "-# Nenhum item"
-	    c.add_item(discord.ui.TextDisplay(pagination))
-	    
-	    self.add_item(c)
-	    
-	    self._prev_btn.disabled = not self.current_page
-	    self._next_btn.disabled = self.current_page >= self._max_page
-	    
-	    self.add_item(self._action_row)
-    
+    def _build(self) -> None:
+        self.clear_items()
+        
+        idx = self.current_page * self.per_page
+        end = min(idx + self.per_page, self._total_len)
+        
+        c = discord.ui.Container()
+        c.add_item(self._header)
+        c.add_item(self._separator)
+        
+        if self._formatted_items:
+            Section = discord.ui.Section
+            Thumbnail = discord.ui.Thumbnail
+            TextDisplay = discord.ui.TextDisplay
+            separator = self._separator
+            category_names = CATEGORY_NAMES
+            
+            for category, thumbnail, items_list in self._category_groups:
+                page_items = tuple(item for cat, _, item in self._formatted_items[idx:end] if cat == category)
+                
+                if page_items:
+                    sec = Section(accessory=Thumbnail(thumbnail))
+                    sec.add_item(TextDisplay(f"**{category_names.get(category, category.title())}**"))
+                    sec.add_item(TextDisplay(chr(10).join(page_items)))
+                    c.add_item(sec)
+                    c.add_item(separator)
+        else:
+            c.add_item(self._empty_msg)
+            c.add_item(self._separator)
+        
+        pagination = self._pagination_fmt.format(idx + 1, end, self._total_len) if self._total_len else "-# Nenhum item"
+        c.add_item(discord.ui.TextDisplay(pagination))
+        
+        self.add_item(c)
+        
+        self._prev_btn.disabled = not self.current_page
+        self._next_btn.disabled = self.current_page >= self._max_page
+        
+        self.add_item(self._action_row)
+
     async def _prev(self, interaction: discord.Interaction) -> None:
         if self.current_page:
             self.current_page -= 1
@@ -133,5 +133,3 @@ class BagItemsLayout(discord.ui.LayoutView):
             self.current_page += 1
             self._build()
             await interaction.response.edit_message(view=self)
-
-
