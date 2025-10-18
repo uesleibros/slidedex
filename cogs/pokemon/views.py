@@ -74,15 +74,11 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.total_pages = total_pages
         self.tk = tk
         self.show_iv = True
-        self.show_future_moves = False
         
         self._cache_pokemon_data()
         
         self._toggle_stats_btn = discord.ui.Button(style=discord.ButtonStyle.secondary, custom_id="toggle_stats")
         self._toggle_stats_btn.callback = self.toggle_stats
-        
-        self._toggle_moves_btn = discord.ui.Button(style=discord.ButtonStyle.secondary, custom_id="toggle_moves")
-        self._toggle_moves_btn.callback = self.toggle_future_moves
         
         self.build_page()
 
@@ -192,21 +188,12 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 
         container.add_item(discord.ui.Separator())
 
-        if self.show_future_moves:
-            moves_lines = [f"**Lv. {lvl}:** {name.replace('-', ' ').title()}" for lvl, name in self._future_moves[:8]]
-            moves_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://future_moves.png"))
-            self._toggle_moves_btn.label = "Mostrar Movimentos Atuais"
-        else:
-            moves_lines = [f"**{move['id'].replace('-', ' ').title()}** ({move['pp']}/{move['pp_max']} PP)" for move in pokemon.get("moves", [])]
-            moves_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://special_move.png"))
-            self._toggle_moves_btn.label = "Mostrar Próximos Movimentos"
+        moves_lines = [f"**{move['id'].replace('-', ' ').title()}** ({move['pp']}/{move['pp_max']} PP)" for move in pokemon.get("moves", [])]
+        moves_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://special_move.png"))
+        self._toggle_moves_btn.label = "Mostrar Próximos Movimentos"
 
         moves_section.add_item(discord.ui.TextDisplay(f"-# **Seus Movimentos**\n{'\n'.join(moves_lines)}"))
         container.add_item(moves_section)
-        
-        moves_action_row = discord.ui.ActionRow()
-        moves_action_row.add_item(self._toggle_moves_btn)
-        #container.add_item(moves_action_row)
         
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem("attachment://pokemon.png")))
@@ -224,11 +211,3 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
-
-
-
-
-
-
-
-
