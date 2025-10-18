@@ -32,28 +32,44 @@ class Gender:
     
 class TimezoneHelper:
     COMMON_BR_TIMEZONES: Final[tuple[tuple[str, str], ...]] = (
-        ("America/Sao_Paulo", "🇧🇷 Brasília (UTC-3)"),
-        ("America/Manaus", "🇧🇷 Manaus (UTC-4)"),
-        ("America/Fortaleza", "🇧🇷 Fortaleza (UTC-3)"),
-        ("America/Recife", "🇧🇷 Recife (UTC-3)"),
-        ("America/Belem", "🇧🇷 Belém (UTC-3)"),
-        ("America/Cuiaba", "🇧🇷 Cuiabá (UTC-4)"),
-        ("America/Porto_Velho", "🇧🇷 Porto Velho (UTC-4)"),
-        ("America/Boa_Vista", "🇧🇷 Boa Vista (UTC-4)"),
-        ("America/Rio_Branco", "🇧🇷 Rio Branco (UTC-5)"),
         ("America/Noronha", "🇧🇷 Fernando de Noronha (UTC-2)"),
+        ("America/Sao_Paulo", "🇧🇷 São Paulo • Brasília (UTC-3)"),
+        ("America/Fortaleza", "🇧🇷 Ceará • Nordeste (UTC-3)"),
+        ("America/Recife", "🇧🇷 Pernambuco (UTC-3)"),
+        ("America/Belem", "🇧🇷 Pará (UTC-3)"),
+        ("America/Manaus", "🇧🇷 Amazonas (UTC-4)"),
+        ("America/Cuiaba", "🇧🇷 Mato Grosso (UTC-4)"),
+        ("America/Porto_Velho", "🇧🇷 Rondônia (UTC-4)"),
+        ("America/Boa_Vista", "🇧🇷 Roraima (UTC-4)"),
+        ("America/Rio_Branco", "🇧🇷 Acre (UTC-5)"),
     )
     
     OTHER_TIMEZONES: Final[tuple[tuple[str, str], ...]] = (
+        ("Europe/Lisbon", "🇵🇹 Portugal (UTC+0)"),
+        ("Atlantic/Azores", "🇵🇹 Açores (UTC-1)"),
+        ("Africa/Luanda", "🇦🇴 Angola (UTC+1)"),
+        ("Africa/Maputo", "🇲🇿 Moçambique (UTC+2)"),
+        ("Atlantic/Cape_Verde", "🇨🇻 Cabo Verde (UTC-1)"),
         ("America/New_York", "🇺🇸 Nova York (UTC-5)"),
         ("America/Los_Angeles", "🇺🇸 Los Angeles (UTC-8)"),
         ("America/Chicago", "🇺🇸 Chicago (UTC-6)"),
-        ("Europe/Lisbon", "🇵🇹 Lisboa (UTC+0)"),
-        ("Europe/London", "🇬🇧 Londres (UTC+0)"),
-        ("Europe/Paris", "🇫🇷 Paris (UTC+1)"),
-        ("Europe/Berlin", "🇩🇪 Berlim (UTC+1)"),
-        ("Asia/Tokyo", "🇯🇵 Tóquio (UTC+9)"),
-        ("Australia/Sydney", "🇦🇺 Sydney (UTC+10)"),
+        ("America/Denver", "🇺🇸 Denver (UTC-7)"),
+        ("America/Argentina/Buenos_Aires", "🇦🇷 Argentina (UTC-3)"),
+        ("America/Santiago", "🇨🇱 Chile (UTC-3)"),
+        ("America/Bogota", "🇨🇴 Colômbia (UTC-5)"),
+        ("America/Lima", "🇵🇪 Peru (UTC-5)"),
+        ("America/Mexico_City", "🇲🇽 México (UTC-6)"),
+        ("Europe/London", "🇬🇧 Reino Unido (UTC+0)"),
+        ("Europe/Paris", "🇫🇷 França (UTC+1)"),
+        ("Europe/Berlin", "🇩🇪 Alemanha (UTC+1)"),
+        ("Europe/Madrid", "🇪🇸 Espanha (UTC+1)"),
+        ("Europe/Rome", "🇮🇹 Itália (UTC+1)"),
+        ("Europe/Moscow", "🇷🇺 Rússia (UTC+3)"),
+        ("Asia/Tokyo", "🇯🇵 Japão (UTC+9)"),
+        ("Asia/Shanghai", "🇨🇳 China (UTC+8)"),
+        ("Asia/Seoul", "🇰🇷 Coreia do Sul (UTC+9)"),
+        ("Asia/Dubai", "🇦🇪 Dubai (UTC+4)"),
+        ("Australia/Sydney", "🇦🇺 Austrália (UTC+10)"),
     )
     
     @classmethod
@@ -166,8 +182,7 @@ class TimezoneSelect(discord.ui.Select):
         embed.set_footer(text="Boa sorte na sua jornada Pokémon!")
 
         await interaction.followup.send(
-            embed=embed,
-            view=None
+            embed=embed
         )
 
 class TimezoneTypeSelect(discord.ui.Select):
