@@ -6,3 +6,4 @@ pytz
 frozendict
 orjson
 python-dotenv
+numpy
