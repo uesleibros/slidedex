@@ -140,7 +140,7 @@ class GenderSelect(discord.ui.Select):
         ]
         
         super().__init__(
-            placeholder="Selecione o gênero do seu treinador...",
+            placeholder="Selecione o seu gênero como treinador...",
             options=options,
             custom_id="gender_select"
         )
@@ -206,6 +206,16 @@ class TimezoneSelect(discord.ui.Select):
             timezone=selected_timezone
         )
 
+        for item in self.view.children:
+            item.disabled = True
+
+        self.view.stop()
+
+        await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            view=self
+        )
+
         await interaction.followup.send(
             view=layout
         )
@@ -269,4 +279,3 @@ class AccountCreationView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return False
         return True
-
