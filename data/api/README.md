@@ -21,18 +21,13 @@ Os arquivos foram extraídos e filtrados para incluir **apenas informações rel
 - Cada arquivo é uma **lista de objetos JSON** (`[ {...}, {...}, ... ]`) para permitir leitura com baixo uso de memória (via [`orjson`](https://pypi.org/project/orjson/)).
 - Apenas as **versões de jogos da Geração III** são consideradas (Ruby/Sapphire, FireRed/LeafGreen, Emerald).
 
-Este método processa o JSON sem carregá-lo totalmente na RAM, ideal para ambientes com memória limitada (ex: 350MB).
-
 ## Versão e Atualização
 
 - Versão dos dados: 1.0.1
 
-- Base: PokéAPI — dump completo processado em modo assíncrono com curl_cffi e asyncio.
+- Base: PokéAPI
 
 ## Licença
 
 Os dados originais pertencem à PokéAPI.
 Os arquivos neste diretório são redistribuídos apenas para uso interno e seguem as diretrizes de atribuição e uso não comercial.
-
-> 🔧 Nota: Todos os JSONs foram compactados e normalizados para máxima performance de leitura dentro do servidor.
-Caso precise regenerar os arquivos ou incluir futuras gerações, utilize os scripts do módulo PokeAPIService.
