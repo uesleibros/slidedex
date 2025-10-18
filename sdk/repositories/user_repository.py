@@ -89,6 +89,6 @@ class UserRepository:
 		
 		return badges.copy()
 
-    def get_timezone(self, user_id: str) -> str:
-        users = self.db.get("users")
-        return users[user_id].get("timezone", "America/Sao_Paulo")
+	def get_timezone(self, user_id: str) -> str:
+		users = self.db.get("users")
+		return users[user_id].get("timezone", "America/Sao_Paulo")
