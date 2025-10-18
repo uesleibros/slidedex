@@ -4,104 +4,139 @@ from sdk.toolkit import Toolkit
 import discord
 
 class BagItemsLayout(discord.ui.LayoutView):
+    __slots__ = ('tk', 'items', 'per_page', 'current_page', 'total_pages',
+                 '_formatted_items', '_category_groups', '_prev_btn', '_next_btn',
+                 '_action_row', '_header', '_separator', '_empty_msg', '_max_page',
+                 '_total_len', '_pagination_fmt')
+    
     MAX_ITEMS_PER_SECTION: Final[int] = 10
     DEFAULT_PER_PAGE: Final[int] = 20
     
     def __init__(self, items: List[Dict], tk: Toolkit, current_page: int = 0, per_page: int = DEFAULT_PER_PAGE) -> None:
         super().__init__()
         self.tk = tk
-        self.items = sorted(items, key=lambda x: (x["category"], x["name"]))
+        self.items = items
         self.per_page = per_page
         self.current_page = current_page
-        self.total_pages = max(1, (len(items) - 1) // per_page + 1) if items else 1
+        self._total_len = len(items)
+        self.total_pages = max(1, (self._total_len - 1) // per_page + 1) if self._total_len else 1
+        self._max_page = self.total_pages - 1
         
-        self._page_cache: Dict[int, List] = {}
+        self._header = discord.ui.TextDisplay("### Sua Mochila")
+        self._separator = discord.ui.Separator()
+        self._empty_msg = discord.ui.TextDisplay("Sua mochila está vazia.")
+        self._pagination_fmt = "-# Mostrando {}–{} de {}"
+        
         self._formatted_items = self._precompute_all()
+        self._category_groups = self._build_category_groups()
         
-        self._prev_button = discord.ui.Button(emoji="◀️", style=discord.ButtonStyle.secondary, custom_id="prev_page")
-        self._prev_button.callback = self.previous_page
+        self._prev_btn = discord.ui.Button(emoji="◀️", style=discord.ButtonStyle.secondary, custom_id="prev_page")
+        self._prev_btn.callback = self._prev
+        self._next_btn = discord.ui.Button(emoji="▶️", style=discord.ButtonStyle.secondary, custom_id="next_page")
+        self._next_btn.callback = self._next
         
-        self._next_button = discord.ui.Button(emoji="▶️", style=discord.ButtonStyle.secondary, custom_id="next_page")
-        self._next_button.callback = self.next_page
+        row = self._action_row = discord.ui.ActionRow()
+        row.add_item(self._prev_btn)
+        row.add_item(self._next_btn)
         
-        self.build_page()
+        self._build()
 
-    def _precompute_all(self) -> List[Tuple[str, str]]:
+    def _precompute_all(self) -> Tuple[Tuple[str, str, str], ...]:
+        items = sorted(self.items, key=lambda x: (x["category"], x["name"]))
+        
+        tms_hms_items = tuple(item['id'] for item in items if item['category'] == 'tms_hms')
+        
         machines_map = {}
+        if tms_hms_items:
+            api = self.tk.api
+            for item_id in tms_hms_items:
+                machine_data = api.get_machine(item_id)
+                if machine_data:
+                    machines_map[item_id] = machine_data['move']['name']
         
-        if any(item['category'] == 'tms_hms' for item in self.items):
-            for item in self.items:
-                if item['category'] == 'tms_hms':
-                    machine_data = self.tk.api.get_machine(item['id'])
-                    if machine_data:
-                        machines_map[item['id']] = machine_data['move']['name']
+        emojis = ITEM_EMOJIS
+        result = []
         
-        return [
-            (
-                item['category'],
-                f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'], '❔')} **{item['name']}**{f' ({machines_map.get(item["id"], "???")})' if item['category'] == 'tms_hms' else ''} ×{item['quantity']}"
-            )
-            for item in self.items
-        ]
-
-    def _build_page_components(self, start_idx: int, end_idx: int) -> List:
-        if self.current_page in self._page_cache:
-            return self._page_cache[self.current_page]
-        
-        components = []
-        page_items = self._formatted_items[start_idx:end_idx]
-        
-        container = discord.ui.Container()
-        container.add_item(discord.ui.TextDisplay("### Sua Mochila"))
-        container.add_item(discord.ui.Separator())
-        
-        if page_items:
-            category_groups = {}
-            for category, formatted in page_items:
-                category_groups.setdefault(category, []).append(formatted)
+        for item in items:
+            category = item['category']
+            item_id = item['id']
             
-            for category, items_list in category_groups.items():
-                section = discord.ui.Section(accessory=discord.ui.Thumbnail(f"attachment://{category}.png"))
-                section.add_item(discord.ui.TextDisplay(f"**{CATEGORY_NAMES.get(category, category.title())}**"))
-                section.add_item(discord.ui.TextDisplay("\n".join(items_list)))
-                container.add_item(section)
-                container.add_item(discord.ui.Separator())
-        else:
-            container.add_item(discord.ui.TextDisplay("Sua mochila está vazia."))
-            container.add_item(discord.ui.Separator())
+            formatted = f"`{item_id}`　{emojis.get(item_id, '❔')} **{item['name']}**"
+            
+            if category == 'tms_hms' and item_id in machines_map:
+                formatted += f" ({machines_map[item_id]})"
+            
+            formatted += f" ×{item['quantity']}"
+            
+            result.append((category, f"attachment://{category}.png", formatted))
         
-        pagination = f"-# Mostrando {start_idx + 1}–{end_idx} de {len(self.items)}" if self.items else "-# Nenhum item"
-        container.add_item(discord.ui.TextDisplay(pagination))
-        
-        components.append(container)
-        self._page_cache[self.current_page] = components
-        return components
+        return tuple(result)
 
-    def build_page(self) -> None:
+    def _build_category_groups(self) -> Tuple[Tuple[str, str, Tuple[str, ...]], ...]:
+        if not self._formatted_items:
+            return ()
+        
+        groups = {}
+        for category, thumbnail, formatted in self._formatted_items:
+            if category not in groups:
+                groups[category] = (thumbnail, [])
+            groups[category][1].append(formatted)
+        
+        return tuple(
+            (cat, thumb, tuple(items))
+            for cat, (thumb, items) in groups.items()
+        )
+
+    def _build(self) -> None:
         self.clear_items()
         
-        start_idx = self.current_page * self.per_page
-        end_idx = min(start_idx + self.per_page, len(self.items))
+        idx = self.current_page * self.per_page
+        end = min(idx + self.per_page, self._total_len)
         
-        for component in self._build_page_components(start_idx, end_idx):
-            self.add_item(component)
+        c = discord.ui.Container()
+        c.add_item(self._header)
+        c.add_item(self._separator)
         
-        self._prev_button.disabled = self.current_page == 0
-        self._next_button.disabled = self.current_page >= self.total_pages - 1
+        if self._formatted_items:
+            page_items_set = set(self._formatted_items[idx:end])
+            
+            Section = discord.ui.Section
+            Thumbnail = discord.ui.Thumbnail
+            TextDisplay = discord.ui.TextDisplay
+            separator = self._separator
+            category_names = CATEGORY_NAMES
+            
+            for category, thumbnail, items_list in self._category_groups:
+                page_items = tuple(item for _, _, item in self._formatted_items[idx:end] if self._formatted_items[self._formatted_items.index((category, thumbnail, item))][0] == category)
+                
+                if page_items:
+                    sec = Section(accessory=Thumbnail(thumbnail))
+                    sec.add_item(TextDisplay(f"**{category_names.get(category, category.title())}**"))
+                    sec.add_item(TextDisplay(chr(10).join(page_items)))
+                    c.add_item(sec)
+                    c.add_item(separator)
+        else:
+            c.add_item(self._empty_msg)
+            c.add_item(self._separator)
         
-        action_row = discord.ui.ActionRow()
-        action_row.add_item(self._prev_button)
-        action_row.add_item(self._next_button)
-        self.add_item(action_row)
+        pagination = self._pagination_fmt.format(idx + 1, end, self._total_len) if self._total_len else "-# Nenhum item"
+        c.add_item(discord.ui.TextDisplay(pagination))
+        
+        self.add_item(c)
+        
+        self._prev_btn.disabled = not self.current_page
+        self._next_btn.disabled = self.current_page >= self._max_page
+        
+        self.add_item(self._action_row)
 
-    async def previous_page(self, interaction: discord.Interaction) -> None:
-        if self.current_page > 0:
+    async def _prev(self, interaction: discord.Interaction) -> None:
+        if self.current_page:
             self.current_page -= 1
-            self.build_page()
+            self._build()
             await interaction.response.edit_message(view=self)
 
-    async def next_page(self, interaction: discord.Interaction) -> None:
-        if self.current_page < self.total_pages - 1:
+    async def _next(self, interaction: discord.Interaction) -> None:
+        if self.current_page < self._max_page:
             self.current_page += 1
-            self.build_page()
+            self._build()
             await interaction.response.edit_message(view=self)
