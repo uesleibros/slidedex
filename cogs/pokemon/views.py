@@ -205,7 +205,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         
         moves_action_row = discord.ui.ActionRow()
         moves_action_row.add_item(self._toggle_moves_btn)
-        container.add_item(moves_action_row)
+        #container.add_item(moves_action_row)
         
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem("attachment://pokemon.png")))
@@ -223,3 +223,4 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
