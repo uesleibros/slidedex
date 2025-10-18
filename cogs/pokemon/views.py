@@ -57,7 +57,7 @@ class PokemonListLayout(discord.ui.LayoutView):
             c.add_item(self._empty)
         
         c.add_item(self._sep)
-        pagination = self._pagination_fmt.format(idx + 1, end, self._total_len) if self._total_len else "-# Nenhum pokémon"
+        pagination = self._footer_fmt.format(idx + 1, end, self._total_len) if self._total_len else "-# Nenhum pokémon"
         c.add_item(discord.ui.TextDisplay(pagination))
         
         self.add_item(c)
@@ -243,4 +243,5 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_iv = not self.show_iv
         self._build()
         await interaction.response.edit_message(view=self)
+
 
