@@ -205,7 +205,7 @@ class TimezoneTypeSelect(discord.ui.Select):
         await interaction.response.edit_message(
             content=(
                 f"✅ Gênero selecionado: **{Gender.get_label(self.view.selected_gender)}**\n"
-                f"✅ Região selecionada: **{'🇧🇷 Brasil' if self.values[0] == 'br' else '🌎 Internacional'}**\n\n"
+                f"✅ Região selecionada: **{'Brasil' if self.values[0] == 'br' else 'Internacional'}**\n\n"
                 f"Agora selecione seu fuso horário:"
             ),
             view=self.view
