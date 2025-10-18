@@ -205,20 +205,16 @@ class Pokemon(commands.Cog, name="Pokémon"):
         else:
             pokemons = await asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
 
-        if not pokemons:
-            await ctx.message.reply("Nenhum Pokémon encontrado.")
-            return
-
         pokemons = await asyncio.to_thread(apply_filters, pokemons, flags)
         pokemons = await asyncio.to_thread(apply_sort_limit, pokemons, flags)
 
         if not pokemons:
-            await ctx.message.reply("Nenhum Pokémon encontrado após filtros.")
+            await ctx.reply("Nenhum Pokémon encontrado.")
             return
 
         page_size = max(1, flags.get("page_size", 20))
         view = PokemonListLayout(pokemons, flags.get("page", 0), page_size)
-        await ctx.message.reply(view=view)
+        await ctx.reply(view=view)
 
     @commands.command(name="favorite", aliases=["fav"])
     @checks.require_account()
@@ -228,11 +224,11 @@ class Pokemon(commands.Cog, name="Pokémon"):
         try:
             pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, user_id, pokemon_id, True)
             if was_fav:
-                await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
+                await ctx.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
             else:
-                await ctx.message.reply(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
+                await ctx.reply(f"❤️ {format_pokemon_display(pokemon, bold_name=True)} foi adicionado aos favoritos!")
         except ValueError:
-            await ctx.message.reply("Pokémon não encontrado.")
+            await ctx.reply("Pokémon não encontrado.")
 
     @commands.command(name="unfavourite", aliases=["unfav", "unfavorite"])
     @checks.require_account()
@@ -242,11 +238,11 @@ class Pokemon(commands.Cog, name="Pokémon"):
         try:
             pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, user_id, pokemon_id, False)
             if not was_fav:
-                await ctx.message.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
+                await ctx.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
             else:
-                await ctx.message.reply(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
+                await ctx.reply(f"💔 {format_pokemon_display(pokemon, bold_name=True)} foi removido dos favoritos!")
         except ValueError:
-            await ctx.message.reply("Pokémon não encontrado.")
+            await ctx.reply("Pokémon não encontrado.")
 
     def _toggle_favorite_safe(self, user_id: str, pokemon_id: int, should_be_fav: bool):
         pokemon = self.tk.pokemon.get(user_id, pokemon_id)
@@ -267,7 +263,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
         if nickname:
             nickname = nickname.strip()
             if len(nickname) > 20:
-                return await ctx.message.reply("O nickname deve ter no máximo 20 caracteres!")
+                return await ctx.reply("O nickname deve ter no máximo 20 caracteres!")
         
         user_id = str(ctx.author.id)
         
@@ -275,11 +271,11 @@ class Pokemon(commands.Cog, name="Pokémon"):
             pokemon = await asyncio.to_thread(self._set_nickname_and_get, user_id, pokemon_id, nickname)
             
             if nickname:
-                await ctx.message.reply(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
+                await ctx.reply(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
             else:
-                await ctx.message.reply(f"Nickname do {format_pokemon_display(pokemon, bold_name=True)} removido!")
+                await ctx.reply(f"Nickname do {format_pokemon_display(pokemon, bold_name=True)} removido!")
         except ValueError:
-            await ctx.message.reply("Pokémon não encontrado.")
+            await ctx.reply("Pokémon não encontrado.")
 
     def _set_nickname_and_get(self, user_id: str, pokemon_id: int, nickname: Optional[str]):
         self.tk.pokemon.set_nickname(user_id, pokemon_id, nickname)
@@ -300,7 +296,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
             if not party:
                 all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
                 if not all_pokemons:
-                    await ctx.send("Você não possui nenhum Pokémon.")
+                    await ctx.reply("Você não possuí nenhum Pokémon.")
                     return
                 current_pokemon = all_pokemons[0]
                 pokemon_index = 0
@@ -314,14 +310,14 @@ class Pokemon(commands.Cog, name="Pokémon"):
                 all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
                 pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == pokemon_id), 0)
             except ValueError:
-                await ctx.send("Você não possui um Pokémon com esse ID.")
+                await ctx.reply("Você não possuí um Pokémon com esse ID.")
                 return
 
         sprite_url = self.tk.api.get_pokemon_sprite(current_pokemon)[0]
         background = preloaded_info_backgrounds.get(current_pokemon["background"])
         
         if not background:
-            await ctx.send("Background não encontrado.")
+            await ctx.reply("Background não encontrado.")
             return
         
         composed_bytes = await compose_pokemon_async(sprite_url, background)
@@ -329,7 +325,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
         files = self._get_static_files() + [discord.File(composed_bytes, "pokemon.png")]
         view = PokemonInfoLayout(current_pokemon, pokemon_index, len(all_pokemons), self.tk)
         
-        await ctx.send(view=view, files=files)
+        await ctx.reply(view=view, files=files)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Pokemon(bot))
