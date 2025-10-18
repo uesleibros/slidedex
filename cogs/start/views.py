@@ -213,7 +213,7 @@ class TimezoneSelect(discord.ui.Select):
 
         await interaction.followup.edit_message(
             message_id=interaction.message.id,
-            view=self
+            view=self.view
         )
 
         await interaction.followup.send(
@@ -279,3 +279,4 @@ class AccountCreationView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return False
         return True
+
