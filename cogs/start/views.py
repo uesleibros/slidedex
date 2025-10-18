@@ -9,8 +9,8 @@ class Gender:
     FEMALE = "Female"
     
     LABELS: Final[dict[str, str]] = {
-        MALE: "♂️ Masculino",
-        FEMALE: "♀️ Feminino"
+        MALE: "Masculino",
+        FEMALE: "Feminino"
     }
     
     _GENDER_MAP: Final[dict[str, str]] = {
@@ -70,8 +70,7 @@ class GenderSelect(discord.ui.Select):
         options = [
             discord.SelectOption(
                 label=label,
-                value=value,
-                emoji=label[0]
+                value=value
             )
             for value, label in Gender.LABELS.items()
         ]
@@ -138,7 +137,7 @@ class TimezoneSelect(discord.ui.Select):
         )
 
         embed = discord.Embed(
-            title="✅ Conta Criada com Sucesso!",
+            title="Conta Criada com Sucesso!",
             description=f"Bem-vindo(a), **{interaction.user.display_name}**!",
             color=discord.Color.green()
         )
@@ -146,7 +145,7 @@ class TimezoneSelect(discord.ui.Select):
         current_time = TimezoneHelper.get_current_time(selected_timezone)
 
         embed.add_field(
-            name="📋 Suas Informações",
+            name="Suas Informações",
             value=(
                 f"**Gênero:** {Gender.get_label(selected_gender)}\n"
                 f"**Fuso Horário:** {selected_timezone}\n"
@@ -156,18 +155,17 @@ class TimezoneSelect(discord.ui.Select):
         )
 
         embed.add_field(
-            name="🎮 Próximos Passos",
+            name="Próximos Passos",
             value=(
                 "Use `.help` para ver os comandos disponíveis!\n"
-                "Use `.spawn` para encontrar seu primeiro Pokémon!\n"
                 "Use `.profile` para ver seu perfil!"
             ),
             inline=False
         )
 
-        embed.set_footer(text="Boa sorte na sua jornada Pokémon! 🌟")
+        embed.set_footer(text="Boa sorte na sua jornada Pokémon!")
 
-        await interaction.followup.edit_message(
+        await interaction.followup.send(
             message_id=interaction.message.id,
             embed=embed,
             view=None
@@ -230,9 +228,6 @@ class AccountCreationView(discord.ui.View):
     
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if str(interaction.user.id) != self.user_id:
-            await interaction.response.send_message(
-                "❌ Esta seleção não é para você!",
-                ephemeral=True
-            )
             return False
         return True
+
