@@ -198,7 +198,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem("attachment://pokemon.png")))
         container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay(f"-# Capturado em: {datetime.fromisoformat(pokemon['created_at']).strftime('%d/%m/%Y às %H:%M')}"))
+        container.add_item(discord.ui.TextDisplay(f"-# Capturado em: {datetime.fromisoformat(pokemon['caught_at']).strftime('%d/%m/%Y às %H:%M')}"))
 
         self.add_item(container)
 
@@ -211,5 +211,6 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
 
 
