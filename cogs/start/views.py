@@ -64,58 +64,76 @@ class TimezoneHelper:
             return now.strftime("%H:%M")
         except:
             return "00:00"
-        
-class AccountCreationModal(discord.ui.Modal):
-    def __init__(self, selected_gender: str, selected_timezone: str):
-        super().__init__(title="Criação de Conta")
 
+class AccountCreationModal(discord.ui.Modal, title="Criação de Conta"):
+    trainer_name = discord.ui.TextInput(
+        label="Nome do Treinador",
+        placeholder="Digite seu nome de treinador...",
+        required=True,
+        min_length=3,
+        max_length=20,
+        style=discord.TextStyle.short
+    )
+    
+    def __init__(self, selected_gender: str, selected_timezone: str):
+        super().__init__()
         self.selected_gender = selected_gender
         self.selected_timezone = selected_timezone
 
-        async def on_submit(self, interaction: discord.Interaction):
-            await interaction.response.defer()
-            user_id = str(interaction.user.id)
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        user_id = str(interaction.user.id)
 
-            from sdk.database import Database
-            from sdk.repositories.user_repository import UserRepository
+        from sdk.database import Database
+        from sdk.repositories.user_repository import UserRepository
 
-            db = Database()
-            user_repo = UserRepository(db)
+        db = Database()
+        user_repo = UserRepository(db)
 
-            await asyncio.to_thread(
-                user_repo.create,
-                user_id=user_id,
-                gender=self.selected_gender,
-                timezone=self.selected_timezone
-            )
+        await asyncio.to_thread(
+            user_repo.create,
+            user_id=user_id,
+            gender=self.selected_gender,
+            trainer_name=self.trainer_name.value.strip(),
+            timezone=self.selected_timezone
+        )
 
-            embed = discord.Embed(
-                title="Conta Criada com Sucesso!",
-                description=f"Bem-vindo(a), **{interaction.user.display_name}**!",
-                color=discord.Color.green()
-            )
+        embed = discord.Embed(
+            title="✅ Conta Criada com Sucesso!",
+            description=f"Bem-vindo(a), **{self.trainer_name.value}**!",
+            color=discord.Color.green()
+        )
 
-            current_time = TimezoneHelper.get_current_time(self.selected_timezone)
+        current_time = TimezoneHelper.get_current_time(self.selected_timezone)
 
-            embed.add_field(
-                name="Suas Informações",
-                value=(
-                    f"**Nome:** {interaction.user.display_name}\n"
-                    f"**Gênero:** {Gender.get_label(self.selected_gender)}\n"
-                    f"**Fuso Horário:** {self.selected_timezone}\n"
-                    f"**Hora Atual:** {current_time}"
-                ),
-                inline=False
-            )
+        embed.add_field(
+            name="📋 Suas Informações",
+            value=(
+                f"**Nome:** {self.trainer_name.value}\n"
+                f"**Gênero:** {Gender.get_label(self.selected_gender)}\n"
+                f"**Fuso Horário:** {self.selected_timezone}\n"
+                f"**Hora Atual:** {current_time}"
+            ),
+            inline=False
+        )
 
-            embed.set_footer(text="Boa sorte na sua jornada Pokémon!")
+        embed.add_field(
+            name="🎮 Próximos Passos",
+            value=(
+                "Use `.help` para ver os comandos disponíveis!\n"
+                "Use `.spawn` para encontrar seu primeiro Pokémon!\n"
+                "Use `.profile` para ver seu perfil!"
+            ),
+            inline=False
+        )
 
-            await interaction.followup.edit_message(
-                content=None,
-                message_id=interaction.message.id,
-                embed=embed,
-                view=None
-            )
+        embed.set_footer(text="Boa sorte na sua jornada Pokémon! 🌟")
+
+        await interaction.followup.edit_message(
+            message_id=interaction.message.id,
+            embed=embed,
+            view=None
+        )
 
 class GenderSelect(discord.ui.Select):
     def __init__(self):
