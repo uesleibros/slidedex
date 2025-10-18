@@ -26,22 +26,22 @@ class BagItemsLayout(discord.ui.LayoutView):
         
         self.build_page()
 
-	def _precompute_all(self) -> List[Tuple[str, str]]:
-	    machines_map = {}
-	    
-	    if any(item['category'] == 'tms_hms' for item in self.items):
-	        machines_map = {
-	            machine['item']['name']: machine['move']['name']
-	            for machine in self.tk.api.get_all_machines()
-	        }
-	    
-	    return [
-	        (
-	            item['category'],
-	            f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'], '❔')} **{item['name']}**{f' ({machines_map.get(item["id"], "???")})' if item['category'] == 'tms_hms' else ''}　×{item['quantity']}"
-	        )
-	        for item in self.items
-	    ]
+    def _precompute_all(self) -> List[Tuple[str, str]]:
+        machines_map = {}
+        
+        if any(item['category'] == 'tms_hms' for item in self.items):
+            machines_map = {
+                machine['item']['name']: machine['move']['name']
+                for machine in self.tk.api.get_all_machines()
+            }
+        
+        return [
+            (
+                item['category'],
+                f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'], '❔')} **{item['name']}**{f' ({machines_map.get(item["id"], "???")})' if item['category'] == 'tms_hms' else ''}　×{item['quantity']}"
+            )
+            for item in self.items
+        ]
 
     def _build_page_components(self, start_idx: int, end_idx: int) -> List:
         if self.current_page in self._page_cache:
@@ -104,7 +104,3 @@ class BagItemsLayout(discord.ui.LayoutView):
             self.current_page += 1
             self.build_page()
             await interaction.response.edit_message(view=self)
-
-
-
-
