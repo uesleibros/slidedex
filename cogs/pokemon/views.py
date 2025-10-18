@@ -38,8 +38,11 @@ class PokemonListLayout(discord.ui.LayoutView):
         container.add_item(discord.ui.TextDisplay("### Seus Pokémon"))
         container.add_item(discord.ui.Separator())
 
-        for display in self._precomputed_displays[start_idx:end_idx]:
-            container.add_item(discord.ui.TextDisplay(display))
+        if self._precomputed_displays:
+            for display in self._precomputed_displays[start_idx:end_idx]:
+                container.add_item(discord.ui.TextDisplay(display))
+        else:
+            container.add_item(discord.ui.TextDisplay("Sem Pokémon disponíveis."))
 
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.TextDisplay(f"-# Mostrando {start_idx+1}–{end_idx} de {len(self.pokemons)}"))
@@ -65,7 +68,6 @@ class PokemonListLayout(discord.ui.LayoutView):
             self.current_page += 1
             self.build_page()
             await interaction.response.edit_message(view=self)
-
 
 class PokemonInfoLayout(discord.ui.LayoutView):
     def __init__(self, current_pokemon: Dict, current_index: int, total_pages: int, tk: Toolkit):
@@ -211,6 +213,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
 
 
 
