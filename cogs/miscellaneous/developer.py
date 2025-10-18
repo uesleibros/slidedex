@@ -61,10 +61,7 @@ class Dev(commands.Cog):
                     relevant_tb = frame
                     break
             
-            if relevant_tb:
-                error_msg = f"{type(e).__name__}: {e}\nLinha {relevant_tb.lineno}: {relevant_tb.line}"
-            else:
-                error_msg = f"{type(e).__name__}: {e}"
+            error_msg = f"{type(e).__name__}: {e}"
             
             elapsed = (time.perf_counter() - start) * 1000
             await ctx.send(f"```py\n{error_msg}\n# {elapsed:.2f} ms\n```", allowed_mentions=discord.AllowedMentions.none())
@@ -123,4 +120,5 @@ class Dev(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Dev(bot))
+
 
