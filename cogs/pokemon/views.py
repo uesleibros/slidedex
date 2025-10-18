@@ -4,6 +4,7 @@ from sdk.constants import STAT_KEYS, STAT_LABELS
 from sdk.items.constants import ITEM_EMOJIS
 from utilities.formatting import format_pokemon_display, format_happiness_status, format_nature_info, format_item_display
 from typing import Dict, List, Tuple
+from datetime import datetime
 from sdk.toolkit import Toolkit
 
 class PokemonListLayout(discord.ui.LayoutView):
@@ -197,7 +198,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem("attachment://pokemon.png")))
         container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay(f"-# Pokémon {self.current_index + 1} de {self.total_pages}"))
+        container.add_item(discord.ui.TextDisplay(f"-# Capturado em: {datetime.fromisoformat(pokemon['created_at']).strftime('%d/%m/%Y às %H:%M')}"))
 
         self.add_item(container)
 
@@ -210,4 +211,5 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
 
