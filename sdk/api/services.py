@@ -14,6 +14,7 @@ class DataPaths:
     SPECIES: Path = BASE / "pokemon-species.json"
     MOVES: Path = BASE / "moves.json"
     ITEMS: Path = BASE / "items.json"
+    LOCATION_AREA: Path = BASE / "location-area.json"
     EVOLUTION_CHAIN: Path = BASE / "evolution-chain.json"
     SPRITES: Path = BASE / "sprites"
 
@@ -102,6 +103,19 @@ class APIService:
     
     def get_pokemon(self, identifier: Identifier) -> Optional[dict]:
         id_index, name_index = self._parse_and_index(str(DataPaths.POKEMON))
+        
+        if isinstance(identifier, int):
+            return id_index.get(identifier)
+        
+        if isinstance(identifier, str):
+            if identifier.isdigit():
+                return id_index.get(int(identifier))
+            return name_index.get(identifier.lower())
+        
+        return None
+
+    def get_location_area(self, identifier: Identifier) -> Optional[dict]:
+        id_index, name_index = self._parse_and_index(str(DataPaths.LOCATION_AREA))
         
         if isinstance(identifier, int):
             return id_index.get(identifier)
@@ -223,4 +237,5 @@ class APIService:
     @staticmethod
     def _extract_id_from_url(url: str) -> int:
         return int(url.rstrip('/').split('/')[-1])
+
 
