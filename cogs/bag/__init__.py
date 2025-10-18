@@ -37,14 +37,10 @@ class Bag(commands.Cog, name="Mochila"):
         user_id: str = str(ctx.author.id)
         bag_items = self.tk.bag.get_all(user_id)
         
-        if not bag_items:
-            await ctx.send("Sua mochila está vazia.")
-            return
-        
         files = self._get_needed_files(bag_items)
         view = BagItemsLayout(bag_items, tk=self.tk)
         
-        await ctx.send(view=view, files=files)
+        await ctx.reply(view=view, files=files)
 
     @bag_root.command(name="add")
     @checks.require_account()
@@ -54,11 +50,11 @@ class Bag(commands.Cog, name="Mochila"):
         try:
             result = self.tk.item_service.give(user_id, item_id, quantity)
             emoji = ITEM_EMOJIS.get(result['id'], '❔')
-            await ctx.send(
+            await ctx.reply(
                 f"Adicionado {emoji} **{result['name']}** {result['added']}x a sua mochila, contendo **{result['quantity']}x** no total."
             )
         except ValueError as e:
-            await ctx.send(str(e))
+            await ctx.reply(str(e))
     
     @bag_root.command(name="remove")
     @checks.require_account()
@@ -69,11 +65,11 @@ class Bag(commands.Cog, name="Mochila"):
             result_quantity = self.tk.bag.remove(user_id, item_id, quantity)
             item_name = self.tk.item_service.get_name(item_id)
             emoji = ITEM_EMOJIS.get(item_id, '❔')
-            await ctx.send(
+            await ctx.reply(
                 f"Removido {quantity}x {emoji} **{item_name}** da sua mochila, restando **{result_quantity}x** no total."
             )
         except ValueError as e:
-            await ctx.send(str(e))
+            await ctx.reply(str(e))
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Bag(bot))
