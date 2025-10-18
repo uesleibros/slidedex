@@ -190,7 +190,6 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 
         moves_lines = [f"**{move['id'].replace('-', ' ').title()}** ({move['pp']}/{move['pp_max']} PP)" for move in pokemon.get("moves", [])]
         moves_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://special_move.png"))
-        self._toggle_moves_btn.label = "Mostrar Próximos Movimentos"
 
         moves_section.add_item(discord.ui.TextDisplay(f"-# **Seus Movimentos**\n{'\n'.join(moves_lines)}"))
         container.add_item(moves_section)
@@ -211,3 +210,4 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
