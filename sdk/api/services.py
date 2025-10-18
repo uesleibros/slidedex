@@ -14,6 +14,7 @@ class DataPaths:
     SPECIES: Path = BASE / "pokemon-species.json"
     MOVES: Path = BASE / "moves.json"
     ITEMS: Path = BASE / "items.json"
+    MACHINES: Path = BASE / "machines.json"
     LOCATION_AREA: Path = BASE / "location-area.json"
     EVOLUTION_CHAIN: Path = BASE / "evolution-chain.json"
     SPRITES: Path = BASE / "sprites"
@@ -152,6 +153,19 @@ class APIService:
             return name_index.get(identifier.lower())
         
         return None
+
+    def get_machine(self, identifier: Identifier) -> Optional[dict]:
+        id_index, name_index = self._parse_and_index(str(DataPaths.MACHINES))
+        
+        if isinstance(identifier, int):
+            return id_index.get(identifier)
+        
+        if isinstance(identifier, str):
+            if identifier.isdigit():
+                return id_index.get(int(identifier))
+            return name_index.get(identifier.lower())
+        
+        return None
     
     @lru_cache(maxsize=256)
     def get_species(self, species_id: int) -> Optional[dict]:
@@ -237,5 +251,6 @@ class APIService:
     @staticmethod
     def _extract_id_from_url(url: str) -> int:
         return int(url.rstrip('/').split('/')[-1])
+
 
 
