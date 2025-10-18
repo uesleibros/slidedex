@@ -9,8 +9,8 @@ class Gender:
     FEMALE = "Female"
     
     LABELS: Final[dict[str, str]] = {
-        MALE: "Masculino",
-        FEMALE: "Feminino"
+        MALE: "♂️ Masculino",
+        FEMALE: "♀️ Feminino"
     }
     
     _GENDER_MAP: Final[dict[str, str]] = {
