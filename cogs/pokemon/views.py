@@ -133,6 +133,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         
         stats_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://stats.png"))
         stats_section.add_item(discord.ui.TextDisplay(
+            "-# **Especificações**\n"
             f"<:CometShard:1424200074463805551> **Experiência:** {pokemon.get('exp', 0)}/{self._exp_next_level} | Próximo: {self._exp_needed} XP ({self._exp_progress}%)\n"
             f":leaves: **Natureza:** {format_nature_info(pokemon['nature'])}\n"
             f"<:speechbubble_heart:1424195141199204467> **Amizade:** {format_happiness_status(pokemon['happiness'])}\n"
@@ -181,8 +182,8 @@ class PokemonInfoLayout(discord.ui.LayoutView):
             
             stats_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://ev.png"))
             self._toggle_stats_btn.label = "Mostrar IVs"
-        
-        stats_section.add_item(discord.ui.TextDisplay('\n'.join(stats_lines)))
+
+        stats_section.add_item(discord.ui.TextDisplay(f"-# **Estatísticas**\n{'\n'.join(stats_lines)}")
         container.add_item(stats_section)
 
         stats_action_row = discord.ui.ActionRow()
@@ -200,7 +201,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
             moves_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://special_move.png"))
             self._toggle_moves_btn.label = "Mostrar Próximos Movimentos"
 
-        moves_section.add_item(discord.ui.TextDisplay('\n'.join(moves_lines)))
+        moves_section.add_item(discord.ui.TextDisplay(f"-# **Seus Movimentos**\n{'\n'.join(moves_lines)}")
         container.add_item(moves_section)
         
         moves_action_row = discord.ui.ActionRow()
@@ -223,4 +224,5 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
 
