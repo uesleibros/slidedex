@@ -9,8 +9,8 @@ class Gender:
     FEMALE = "Female"
     
     LABELS: Final[dict[str, str]] = {
-        MALE: "Masculino",
-        FEMALE: "Feminino"
+        MALE: "♂️ Masculino",
+        FEMALE: "♀️ Feminino"
     }
     
     _GENDER_MAP: Final[dict[str, str]] = {
@@ -81,12 +81,48 @@ class TimezoneHelper:
         except:
             return "00:00"
 
+class AccountCreatedLayout(discord.ui.LayoutView):
+    def __init__(self, username: str, gender: str, timezone: str):
+        super().__init__()
+        
+        current_time = TimezoneHelper.get_current_time(timezone)
+        
+        container = discord.ui.Container()
+        
+        container.add_item(discord.ui.TextDisplay("### Conta Criada com Sucesso!"))
+        container.add_item(discord.ui.TextDisplay(f"Bem-vindo(a), **{username}**!"))
+        container.add_item(discord.ui.Separator())
+        
+        info_section = discord.ui.Section()
+        info_section.add_item(discord.ui.TextDisplay("-# **Suas Informações**"))
+        info_section.add_item(discord.ui.TextDisplay(
+            f"**Gênero:** {Gender.get_label(gender)}\n"
+            f"**Fuso Horário:** {timezone}\n"
+            f"**Hora Atual:** {current_time}"
+        ))
+        container.add_item(info_section)
+        
+        container.add_item(discord.ui.Separator())
+        
+        next_steps_section = discord.ui.Section()
+        next_steps_section.add_item(discord.ui.TextDisplay("-# **Próximos Passos**"))
+        next_steps_section.add_item(discord.ui.TextDisplay(
+            "Use `.help` para ver os comandos disponíveis!\n"
+            "Use `.profile` para ver seu perfil!"
+        ))
+        container.add_item(next_steps_section)
+        
+        container.add_item(discord.ui.Separator())
+        container.add_item(discord.ui.TextDisplay("-# Boa sorte na sua jornada Pokémon! 🌟"))
+        
+        self.add_item(container)
+
 class GenderSelect(discord.ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(
-                label=label,
-                value=value
+                label=label[2:],
+                value=value,
             )
             for value, label in Gender.LABELS.items()
         ]
@@ -152,37 +188,14 @@ class TimezoneSelect(discord.ui.Select):
             timezone=selected_timezone
         )
 
-        embed = discord.Embed(
-            title="Conta Criada com Sucesso!",
-            description=f"Bem-vindo(a), **{interaction.user.display_name}**!",
-            color=discord.Color.green()
+        layout = AccountCreatedLayout(
+            username=interaction.user.display_name,
+            gender=selected_gender,
+            timezone=selected_timezone
         )
-
-        current_time = TimezoneHelper.get_current_time(selected_timezone)
-
-        embed.add_field(
-            name="Suas Informações",
-            value=(
-                f"**Gênero:** {Gender.get_label(selected_gender)}\n"
-                f"**Fuso Horário:** {selected_timezone}\n"
-                f"**Hora Atual:** {current_time}"
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="Próximos Passos",
-            value=(
-                "Use `.help` para ver os comandos disponíveis!\n"
-                "Use `.profile` para ver seu perfil!"
-            ),
-            inline=False
-        )
-
-        embed.set_footer(text="Boa sorte na sua jornada Pokémon!")
 
         await interaction.followup.send(
-            embed=embed
+            view=layout
         )
 
 class TimezoneTypeSelect(discord.ui.Select):
@@ -220,7 +233,7 @@ class TimezoneTypeSelect(discord.ui.Select):
         await interaction.response.edit_message(
             content=(
                 f"✅ Gênero selecionado: **{Gender.get_label(self.view.selected_gender)}**\n"
-                f"✅ Região selecionada: **{'Brasil' if self.values[0] == 'br' else 'Internacional'}**\n\n"
+                f"✅ Região selecionada: **{'🇧🇷 Brasil' if self.values[0] == 'br' else '🌎 Internacional'}**\n\n"
                 f"Agora selecione seu fuso horário:"
             ),
             view=self.view
