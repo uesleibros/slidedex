@@ -208,10 +208,6 @@ class Pokemon(commands.Cog, name="Pokémon"):
         pokemons = await asyncio.to_thread(apply_filters, pokemons, flags)
         pokemons = await asyncio.to_thread(apply_sort_limit, pokemons, flags)
 
-        if not pokemons:
-            await ctx.reply("Nenhum Pokémon encontrado.")
-            return
-
         page_size = max(1, flags.get("page_size", 20))
         view = PokemonListLayout(pokemons, flags.get("page", 0), page_size)
         await ctx.reply(view=view)
@@ -329,3 +325,4 @@ class Pokemon(commands.Cog, name="Pokémon"):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Pokemon(bot))
+
