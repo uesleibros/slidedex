@@ -4,11 +4,6 @@ from sdk.toolkit import Toolkit
 import discord
 
 class BagItemsLayout(discord.ui.LayoutView):
-    __slots__ = ('tk', 'items', 'per_page', 'current_page', 'total_pages',
-                 '_formatted_items', '_category_groups', '_prev_btn', '_next_btn',
-                 '_action_row', '_header', '_separator', '_empty_msg', '_max_page',
-                 '_total_len', '_pagination_fmt')
-    
     MAX_ITEMS_PER_SECTION: Final[int] = 10
     DEFAULT_PER_PAGE: Final[int] = 20
     
@@ -140,3 +135,4 @@ class BagItemsLayout(discord.ui.LayoutView):
             self.current_page += 1
             self._build()
             await interaction.response.edit_message(view=self)
+
