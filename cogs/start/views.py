@@ -72,6 +72,16 @@ class TimezoneHelper:
         ("Australia/Sydney", "🇦🇺 Austrália (UTC+10)"),
     )
     
+    _ALL_TIMEZONES: Final[dict[str, str]] = None
+    
+    @classmethod
+    def _init_timezone_map(cls):
+        if cls._ALL_TIMEZONES is None:
+            all_tz = {}
+            for tz_id, label in cls.COMMON_BR_TIMEZONES + cls.OTHER_TIMEZONES:
+                all_tz[tz_id] = label
+            object.__setattr__(cls, '_ALL_TIMEZONES', all_tz)
+    
     @classmethod
     def get_current_time(cls, tz: str) -> str:
         try:
@@ -80,12 +90,18 @@ class TimezoneHelper:
             return now.strftime("%H:%M")
         except:
             return "00:00"
+    
+    @classmethod
+    def get_label(cls, tz: str) -> str:
+        cls._init_timezone_map()
+        return cls._ALL_TIMEZONES.get(tz, tz)
 
 class AccountCreatedLayout(discord.ui.LayoutView):
     def __init__(self, username: str, gender: str, timezone: str):
         super().__init__()
         
         current_time = TimezoneHelper.get_current_time(timezone)
+        timezone_label = TimezoneHelper.get_label(timezone)
         
         container = discord.ui.Container()
         
@@ -96,7 +112,7 @@ class AccountCreatedLayout(discord.ui.LayoutView):
         container.add_item(discord.ui.TextDisplay("-# **Suas Informações**"))
         container.add_item(discord.ui.TextDisplay(
             f"**Gênero:** {Gender.get_label(gender)}\n"
-            f"**Fuso Horário:** {timezone}\n"
+            f"**Fuso Horário:** {timezone_label}\n"
             f"**Hora Atual:** {current_time}"
         ))
         
@@ -253,4 +269,3 @@ class AccountCreationView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return False
         return True
-
