@@ -39,7 +39,7 @@ class BagItemsLayout(discord.ui.LayoutView):
         return [
             (
                 item['category'],
-                f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'], '❔')} **{item['name']}**{f' ({machines_map.get(item["id"], "???")})' if item['category'] == 'tms_hms' else ''}　×{item['quantity']}"
+                f"`{item['id']}`　{ITEM_EMOJIS.get(item['id'], '❔')} **{item['name']}**{f' ({machines_map.get(item["id"], "???")})' if item['category'] == 'tms_hms' else ''} ×{item['quantity']}"
             )
             for item in self.items
         ]
