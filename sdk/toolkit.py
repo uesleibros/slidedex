@@ -39,12 +39,6 @@ class Toolkit:
 		self.item_service = ItemService(self.bag, self.api)
 		
 		object.__setattr__(self, '_initialized', True)
-	
-	def add_user(self, user_id: str, gender: str) -> dict:
-		return self.users.create(user_id, gender)
-	
-	def get_user(self, user_id: str) -> dict:
-		return self.users.get(user_id)
 
 	def create_pokemon(
 		self,
@@ -77,12 +71,6 @@ class Toolkit:
 		)
 		
 		return self.pokemon.create(owner_id, pokemon_data)
-	
-	def add_pokemon(self, owner_id: str, **kwargs) -> dict:
-		return self.pokemon.create(owner_id, kwargs)
-	
-	def get_pokemon(self, owner_id: str, pokemon_id: int) -> dict:
-		return self.pokemon.get(owner_id, pokemon_id)
 
 	def get_exp_for_level(self, growth_type: str, level: int) -> int:
 		return ExperienceCalculator.calculate(growth_type, level)
