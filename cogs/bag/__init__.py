@@ -48,10 +48,6 @@ class Bag(commands.Cog, name="Mochila"):
         user_id: str = str(ctx.author.id)
         bag_items = await asyncio.to_thread(self.tk.bag.get_all, user_id)
         
-        if not bag_items:
-            await ctx.message.reply("Sua mochila está vazia.")
-            return
-        
         view = BagItemsLayout(bag_items)
         files = self._get_category_files()
         
@@ -90,3 +86,4 @@ class Bag(commands.Cog, name="Mochila"):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Bag(bot))
+
