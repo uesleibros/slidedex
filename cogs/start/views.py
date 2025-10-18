@@ -72,15 +72,15 @@ class TimezoneHelper:
         ("Australia/Sydney", "🇦🇺 Austrália (UTC+10)"),
     )
     
-    _ALL_TIMEZONES: Final[dict[str, str]] = None
+    _timezone_map = None
     
     @classmethod
-    def _init_timezone_map(cls):
-        if cls._ALL_TIMEZONES is None:
-            all_tz = {}
+    def _get_timezone_map(cls) -> dict[str, str]:
+        if cls._timezone_map is None:
+            cls._timezone_map = {}
             for tz_id, label in cls.COMMON_BR_TIMEZONES + cls.OTHER_TIMEZONES:
-                all_tz[tz_id] = label
-            object.__setattr__(cls, '_ALL_TIMEZONES', all_tz)
+                cls._timezone_map[tz_id] = label
+        return cls._timezone_map
     
     @classmethod
     def get_current_time(cls, tz: str) -> str:
@@ -93,8 +93,8 @@ class TimezoneHelper:
     
     @classmethod
     def get_label(cls, tz: str) -> str:
-        cls._init_timezone_map()
-        return cls._ALL_TIMEZONES.get(tz, tz)
+        tz_map = cls._get_timezone_map()
+        return tz_map.get(tz, tz)
 
 class AccountCreatedLayout(discord.ui.LayoutView):
     def __init__(self, username: str, gender: str, timezone: str):
@@ -269,3 +269,4 @@ class AccountCreationView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return False
         return True
+
