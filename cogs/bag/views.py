@@ -1,13 +1,15 @@
 from typing import List, Dict, Final, Tuple
 from sdk.items.constants import ITEM_EMOJIS, CATEGORY_NAMES
+from sdk.toolkit import Toolkit
 import discord
 
 class BagItemsLayout(discord.ui.LayoutView):
     MAX_ITEMS_PER_SECTION: Final[int] = 10
     DEFAULT_PER_PAGE: Final[int] = 20
     
-    def __init__(self, items: List[Dict], current_page: int = 0, per_page: int = DEFAULT_PER_PAGE) -> None:
+    def __init__(self, items: List[Dict], current_page: int = 0, per_page: int = DEFAULT_PER_PAGE, tk: Toolkit) -> None:
         super().__init__()
+        self.tk = tk
         self.items = sorted(items, key=lambda x: (x["category"], x["name"]))
         self.per_page = per_page
         self.current_page = current_page
@@ -94,4 +96,5 @@ class BagItemsLayout(discord.ui.LayoutView):
             self.current_page += 1
             self.build_page()
             await interaction.response.edit_message(view=self)
+
 
