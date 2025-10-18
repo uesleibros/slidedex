@@ -183,7 +183,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
             stats_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://ev.png"))
             self._toggle_stats_btn.label = "Mostrar IVs"
 
-        stats_section.add_item(discord.ui.TextDisplay(f"-# **Estatísticas**\n{'\n'.join(stats_lines)}")
+        stats_section.add_item(discord.ui.TextDisplay(f"-# **Estatísticas**\n{'\n'.join(stats_lines)}"))
         container.add_item(stats_section)
 
         stats_action_row = discord.ui.ActionRow()
@@ -201,7 +201,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
             moves_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://special_move.png"))
             self._toggle_moves_btn.label = "Mostrar Próximos Movimentos"
 
-        moves_section.add_item(discord.ui.TextDisplay(f"-# **Seus Movimentos**\n{'\n'.join(moves_lines)}")
+        moves_section.add_item(discord.ui.TextDisplay(f"-# **Seus Movimentos**\n{'\n'.join(moves_lines)}"))
         container.add_item(moves_section)
         
         moves_action_row = discord.ui.ActionRow()
@@ -224,5 +224,6 @@ class PokemonInfoLayout(discord.ui.LayoutView):
         self.show_future_moves = not self.show_future_moves
         self.build_page()
         await interaction.response.edit_message(view=self)
+
 
 
