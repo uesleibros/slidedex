@@ -48,7 +48,7 @@ class Bag(commands.Cog, name="Mochila"):
         user_id: str = str(ctx.author.id)
         bag_items = await asyncio.to_thread(self.tk.bag.get_all, user_id)
         
-        view = BagItemsLayout(bag_items)
+        view = BagItemsLayout(bag_items, tk=self.tk)
         files = self._get_category_files()
         
         await ctx.message.reply(view=view, files=files)
@@ -86,4 +86,5 @@ class Bag(commands.Cog, name="Mochila"):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Bag(bot))
+
 
