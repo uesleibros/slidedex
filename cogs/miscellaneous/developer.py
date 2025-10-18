@@ -62,7 +62,7 @@ class Dev(commands.Cog):
                     break
             
             if relevant_tb:
-                error_msg = f"{type(e).__name__}: {e}\n  Linha {relevant_tb.lineno}: {relevant_tb.line}"
+                error_msg = f"{type(e).__name__}: {e}\nLinha {relevant_tb.lineno}: {relevant_tb.line}"
             else:
                 error_msg = f"{type(e).__name__}: {e}"
             
@@ -123,3 +123,4 @@ class Dev(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Dev(bot))
+
