@@ -166,7 +166,6 @@ class TimezoneSelect(discord.ui.Select):
         embed.set_footer(text="Boa sorte na sua jornada Pokémon!")
 
         await interaction.followup.send(
-            message_id=interaction.message.id,
             embed=embed,
             view=None
         )
@@ -230,4 +229,3 @@ class AccountCreationView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return False
         return True
-
