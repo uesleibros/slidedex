@@ -56,7 +56,8 @@ class BagItemsLayout(discord.ui.LayoutView):
                 container.add_item(section)
                 container.add_item(discord.ui.Separator())
         else:
-            container.add_item(discord.ui.TextDisplay("*Sua mochila está vazia.*"))
+            container.add_item(discord.ui.TextDisplay("Sua mochila está vazia."))
+            container.add_item(discord.ui.Separator())
         
         pagination = f"-# Mostrando {start_idx + 1}–{end_idx} de {len(self.items)}" if self.items else "-# Nenhum item"
         container.add_item(discord.ui.TextDisplay(pagination))
@@ -93,3 +94,4 @@ class BagItemsLayout(discord.ui.LayoutView):
             self.current_page += 1
             self.build_page()
             await interaction.response.edit_message(view=self)
+
