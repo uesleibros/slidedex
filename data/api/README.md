@@ -12,6 +12,7 @@ Os arquivos foram extraídos e filtrados para incluir **apenas informações rel
 | `evolution-chains.json` | Estrutura completa de evolução, mapeando todas as linhas evolutivas da Gen III. |
 | `moves.json` | Lista de golpes disponíveis até a Geração III, incluindo poder, precisão, tipo e método de aprendizado. |
 | `items.json` | Itens relevantes da Gen III, com foco em Poké Balls, berries e itens de batalha. |
+| `location-area.json` | Lista das Áreas  da Gen III, contendo os Pokémon que pode aparecer, método de encontro, e chance de aparecer. |
 
 ## Padrões Técnicos
 
@@ -24,7 +25,7 @@ Este método processa o JSON sem carregá-lo totalmente na RAM, ideal para ambie
 
 ## Versão e Atualização
 
-- Versão dos dados: 1.0.0
+- Versão dos dados: 1.0.1
 
 - Base: PokéAPI — dump completo processado em modo assíncrono com curl_cffi e asyncio.
 
