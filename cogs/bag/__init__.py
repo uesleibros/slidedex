@@ -28,7 +28,7 @@ class Bag(commands.Cog, name="Mochila"):
             if cat in self.CATEGORY_ICONS
         ]
 
-    @commands.group(name="bag", invoke_without_command=True)
+    @commands.group(name="bag", aliases=["mochila"], invoke_without_command=True)
     @checks.require_account()
     async def bag_root(self, ctx: commands.Context) -> None:
         await ctx.defer()
@@ -41,7 +41,7 @@ class Bag(commands.Cog, name="Mochila"):
         
         await ctx.reply(view=view, files=files)
 
-    @bag_root.command(name="add")
+    @bag_root.command(name="add", aliases=["adicionar"])
     @checks.require_account()
     async def bag_add_command(self, ctx: commands.Context, item_id: str, quantity: int = 1) -> None:
         user_id: str = str(ctx.author.id)
@@ -55,7 +55,7 @@ class Bag(commands.Cog, name="Mochila"):
         except ValueError as e:
             await ctx.reply(str(e))
     
-    @bag_root.command(name="remove")
+    @bag_root.command(name="remove", aliases=["remover"])
     @checks.require_account()
     async def bag_remove_command(self, ctx: commands.Context, item_id: str, quantity: int = 1) -> None:
         user_id: str = str(ctx.author.id)

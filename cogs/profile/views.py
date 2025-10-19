@@ -1,6 +1,7 @@
 import discord
 from helpers.timezone import TimezoneHelper
 from helpers.gender import Gender
+from helpers.location import get_location_name
 
 class ProfileLayoutView(discord.ui.LayoutView):
 	def __init__(self, user: dict, pokemon_count: int) -> None:
@@ -30,19 +31,25 @@ class ProfileLayoutView(discord.ui.LayoutView):
 		
 		add(txt("### Seu Perfil"))
 		add(sep())
-		add(txt(
+
+		info_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://trainer.png"))
+
+		info_section.add_item(txt(
 			"-# **Informações Pessoais**\n"
 			f"**Gênero:** {Gender.get_label(u['gender'])}\n"
-			f"**Fuso Horário:** {TimezoneHelper.get_label(tz)}\n"
+			f"**Fuso Horário:** {TimezoneHelper.get_current_time(tz)} {TimezoneHelper.get_label(tz)}\n"
 			f"**Seed:** `{u['rng_seed']}`"
 		))
+		add(info_section)
 		add(sep())
 		
 		loc_section = discord.ui.Section(accessory=discord.ui.Thumbnail("attachment://location.png"))
+		previous_location = u.get("visited_location")
+
 		loc_section.add_item(txt(
 			"-# **Localização**\n"
-			f"**Local Atual:** {u['location']}\n"
-			f"**Local Anterior:** {u['previous_location'] or 'Nenhum'}\n"
+			f"**Local Atual:** {get_location_name(u['location'])}\n"
+			f"**Local Anterior:** {get_location_name(previous_location) if previous_location else 'Nenhum'}\n"
 			f"**Locais Visitados:** {len(u['visited_locations'])}\n"
 			f"**Última Movimentação:** {TimezoneHelper.format_datetime(u['last_move_at'], tz)}"
 		))
@@ -70,7 +77,7 @@ class ProfileLayoutView(discord.ui.LayoutView):
 		add(sep())
 		add(discord.ui.MediaGallery(discord.MediaGalleryItem("attachment://profile.png")))
 		add(sep())
-		add(txt(f"-# Conta criada {TimezoneHelper.format_datetime(u['created_at'], tz)}"))
+		add(txt(f"-# Conta Criada: {TimezoneHelper.format_datetime(u['created_at'], tz)}"))
 		
 
 		self.add_item(c)

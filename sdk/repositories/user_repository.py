@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from sdk.database import Database
 from sdk.prng import PRNG
+from helpers.gender import Gender
 import time
 
 class UserRepository:
@@ -34,6 +35,7 @@ class UserRepository:
 			"location": location,
 			"previous_location": None,
 			"visited_locations": [location],
+			"completed_events": [],
 			"steps": 0,
 			"repel_steps": 0,
 			"pokedex_caught": [],
@@ -70,6 +72,13 @@ class UserRepository:
 		users[user_id]["money"] = max(0, int(amount))
 		self.db.save()
 		return users[user_id]["money"]
+
+	def set_gender(self, user_id: str, gender: str) -> str:
+		users =self.db.get("users")
+		gender_normalized: str = Gender.normalize(gender)
+		users[user_id]["gender"] = gender_normalized
+		self.db.save()
+		return gender_normalized
 	
 	def add_money(self, user_id: str, amount: int) -> int:
 		users = self.db.get("users")
@@ -94,12 +103,14 @@ class UserRepository:
 		user["previous_location"] = user["location"]
 		user["location"] = new_location
 		user["last_move_at"] = datetime.now(ZoneInfo("UTC")).isoformat()
-		user["steps"] += 1
 		
 		if new_location not in user.get("visited_locations", []):
 			user.setdefault("visited_locations", []).append(new_location)
 		
 		self.db.save()
+		
+		self.add_steps(user_id, 1)
+		
 		return user.copy()
 
 	def add_steps(self, user_id: str, steps: int = 1) -> int:
@@ -150,3 +161,24 @@ class UserRepository:
 	def get_visited_locations(self, user_id: str) -> list[str]:
 		users = self.db.get("users")
 		return users[user_id].get("visited_locations", []).copy()
+
+	def has_completed_event(self, user_id: str, event_id: str) -> bool:
+		users = self.db.get("users")
+		completed = users[user_id].get("completed_events", [])
+		return event_id in completed
+
+	def complete_event(self, user_id: str, event_id: str) -> None:
+		users = self.db.get("users")
+		completed = users[user_id].setdefault("completed_events", [])
+		if event_id not in completed:
+			completed.append(event_id)
+			self.db.save()
+
+	def get_completed_events(self, user_id: str) -> list[str]:
+		users = self.db.get("users")
+		return users[user_id].get("completed_events", []).copy()
+
+	def get_available_events_at(self, user_id: str, location_id: str) -> list[str]:
+		from helpers.location import get_available_events
+		completed = self.get_completed_events(user_id)
+		return get_available_events(location_id, completed)

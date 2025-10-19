@@ -8,7 +8,7 @@ class Start(commands.Cog, name="Começar"):
 		self.bot = bot
 
 	@commands.cooldown(1, 10, commands.BucketType.user)
-	@commands.command(name="start")
+	@commands.command(name="start", aliases=["iniciar"])
 	@checks.require_no_account()
 	async def start_command(self, ctx: commands.Context):
 		user_id: str = str(ctx.author.id)

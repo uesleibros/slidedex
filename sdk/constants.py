@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Final, Optional, TypedDict
 from dataclasses import dataclass
-from frozendict import frozendict
+
+CURRENT_REGION: Final[str] = "kanto"
 
 @dataclass(frozen=True)
 class HappinessGain:

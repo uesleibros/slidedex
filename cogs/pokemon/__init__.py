@@ -212,7 +212,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
         view = PokemonListLayout(pokemons, flags.get("page", 0), page_size)
         await ctx.reply(view=view)
 
-    @commands.command(name="favorite", aliases=["fav"])
+    @commands.command(name="favorite", aliases=["fav", "favoritar"])
     @checks.require_account()
     async def favorite_pokemon(self, ctx, pokemon_id: int):
         uid = str(ctx.author.id)
@@ -226,7 +226,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
         except ValueError:
             await ctx.reply("Pokémon não encontrado.")
 
-    @commands.command(name="unfavourite", aliases=["unfav", "unfavorite"])
+    @commands.command(name="unfavourite", aliases=["unfav", "desfavoritar"])
     @checks.require_account()
     async def unfavourite_pokemon(self, ctx, pokemon_id: int):
         uid = str(ctx.author.id)
@@ -253,7 +253,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
         
         return pokemon, was_fav
 
-    @commands.command(name="nickname", aliases=["nick"])
+    @commands.command(name="nickname", aliases=["nick", "apelido", "apelidar"])
     @checks.require_account()
     async def set_nickname(self, ctx, pokemon_id: int, *, nickname: Optional[str] = None):
         if nickname:
@@ -279,7 +279,7 @@ class Pokemon(commands.Cog, name="Pokémon"):
         return pokemon
 
     @commands.cooldown(3, 5, commands.BucketType.user)
-    @commands.command(name="info", aliases=["i", "inf"])
+    @commands.command(name="info", aliases=["i"])
     @checks.require_account()
     async def info_command(self, ctx: commands.Context, pokemon_id: Optional[int] = None) -> None:
         await ctx.defer()
