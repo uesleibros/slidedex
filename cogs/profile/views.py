@@ -70,6 +70,7 @@ class ProfileLayoutView(discord.ui.LayoutView):
 		add(sep())
 		add(discord.ui.MediaGallery(discord.MediaGalleryItem("attachment://profile.png")))
 		add(sep())
-		add(txt(f"-# Conta criada em {TimezoneHelper.format_datetime(u['created_at'], tz)}"))
+		add(txt(f"-# Conta criada {TimezoneHelper.format_datetime(u['created_at'], tz)}"))
 		
+
 		self.add_item(c)
