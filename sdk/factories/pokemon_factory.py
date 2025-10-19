@@ -20,7 +20,6 @@ class PokemonFactory:
         held_item: Optional[str] = None,
         nickname: Optional[str] = None,
         moves: Optional[list[dict]] = None,
-        on_party: bool = False,
         caught_with: str = "poke-ball"
     ) -> dict:
         poke = self.api.get_pokemon(species_id)
@@ -62,6 +61,5 @@ class PokemonFactory:
             "base_stats": base_stats,
             "current_hp": data["current_hp"],
             "moves": moves,
-            "on_party": on_party,
             "caught_with": caught_with
         }

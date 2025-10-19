@@ -2,8 +2,8 @@ discord.py
 Pillow
 psutil
 git+https://github.com/oliver-ni/Flag-Parsing.git
-pytz
 frozendict
 orjson
 python-dotenv
 numpy
+tzdata

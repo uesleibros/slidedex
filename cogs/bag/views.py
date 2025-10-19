@@ -99,7 +99,7 @@ class BagItemsLayout(discord.ui.LayoutView):
             separator = self._separator
             category_names = CATEGORY_NAMES
             
-            for category, thumbnail, items_list in self._category_groups:
+            for category, thumbnail, _ in self._category_groups:
                 page_items = tuple(item for cat, _, item in self._formatted_items[idx:end] if cat == category)
                 
                 if page_items:

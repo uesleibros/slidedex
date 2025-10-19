@@ -69,6 +69,8 @@ class Toolkit:
 			is_shiny=is_shiny,
 			**kwargs
 		)
+
+		self.users.add_pokedex_caught(owner_id, species_id)
 		
 		return self.pokemon.create(owner_id, pokemon_data)
 

@@ -1,8 +1,9 @@
 from typing import Optional
 from datetime import datetime
-import time
+from zoneinfo import ZoneInfo
 from sdk.database import Database
 from sdk.prng import PRNG
+import time
 
 class UserRepository:
 	def __init__(self, db: Database):
@@ -31,7 +32,14 @@ class UserRepository:
 			"rng_seed": seed,
 			"timezone": timezone,
 			"location": location,
-			"created_at": datetime.utcnow().isoformat()
+			"previous_location": None,
+			"visited_locations": [location],
+			"steps": 0,
+			"repel_steps": 0,
+			"pokedex_caught": [],
+			"pokedex_seen": [],
+			"last_move_at": datetime.now(ZoneInfo("UTC")).isoformat(),
+			"created_at": datetime.now(ZoneInfo("UTC")).isoformat()
 		}
 		
 		users[user_id] = user
@@ -78,6 +86,52 @@ class UserRepository:
 			self.db.save()
 		
 		return badges.copy()
+
+	def move_to(self, user_id: str, new_location: str) -> dict:
+		users = self.db.get("users")
+		user = users[user_id]
+		
+		user["previous_location"] = user["location"]
+		user["location"] = new_location
+		user["last_move_at"] = datetime.now(ZoneInfo("UTC")).isoformat()
+		user["steps"] += 1
+		
+		if new_location not in user.get("visited_locations", []):
+			user.setdefault("visited_locations", []).append(new_location)
+		
+		self.db.save()
+		return user.copy()
+
+	def add_steps(self, user_id: str, steps: int = 1) -> int:
+		users = self.db.get("users")
+		users[user_id]["steps"] = users[user_id].get("steps", 0) + steps
+		
+		if users[user_id].get("repel_steps", 0) > 0:
+			users[user_id]["repel_steps"] = max(0, users[user_id]["repel_steps"] - steps)
+		
+		self.db.save()
+		return users[user_id]["steps"]
+
+	def add_pokedex_seen(self, user_id: str, pokemon_id: int) -> list[int]:
+		users = self.db.get("users")
+		seen = users[user_id].setdefault("pokedex_seen", [])
+		
+		if pokemon_id not in seen:
+			seen.append(pokemon_id)
+			self.db.save()
+		
+		return seen.copy()
+
+	def add_pokedex_caught(self, user_id: str, pokemon_id: int) -> list[int]:
+		users = self.db.get("users")
+		caught = users[user_id].setdefault("pokedex_caught", [])
+		
+		if pokemon_id not in caught:
+			caught.append(pokemon_id)
+			self.add_pokedex_seen(user_id, pokemon_id)
+			self.db.save()
+		
+		return caught.copy()
 	
 	def remove_badge(self, user_id: str, badge: str) -> list[str]:
 		users = self.db.get("users")
@@ -92,3 +146,7 @@ class UserRepository:
 	def get_timezone(self, user_id: str) -> str:
 		users = self.db.get("users")
 		return users[user_id].get("timezone", "America/Sao_Paulo")
+
+	def get_visited_locations(self, user_id: str) -> list[str]:
+		users = self.db.get("users")
+		return users[user_id].get("visited_locations", []).copy()

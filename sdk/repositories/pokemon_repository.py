@@ -1,5 +1,6 @@
 from typing import Optional
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from sdk.database import Database
 from sdk.constants import PARTY_LIMIT, MOVES_LIMIT, STAT_KEYS
 
@@ -36,9 +37,9 @@ class PokemonRepository:
         pokemon = {
             "id": pokemon_id,
             "owner_id": owner_id,
-            "caught_at": datetime.utcnow().isoformat(),
+            "caught_at": datetime.now(ZoneInfo('UTC')).isoformat(),
             "current_hp": None,
-            "on_party": False,
+            "on_party": self.can_add_to_party(owner_id),
             "is_favorite": False,
             "evolution_blocked": False,
             "background": "lab",
@@ -93,6 +94,14 @@ class PokemonRepository:
     def count_party(self, owner_id: str) -> int:
         pokemon_list = self.db.get("pokemon")
         return sum(1 for p in pokemon_list if p["owner_id"] == owner_id and p.get("on_party", False))
+
+    def count_box(self, owner_id: str) -> int:
+        pokemon_list = self.db.get("pokemon")
+        return sum(1 for p in pokemon_list if p["owner_id"] == owner_id and not p.get("on_party", False))
+
+    def count_all(self, owner_id: str) -> int:
+        pokemon_list = self.db.get("pokemon")
+        return sum(1 for p in pokemon_list if p["owner_id"] == owner_id)
     
     def can_add_to_party(self, owner_id: str) -> bool:
         return self.count_party(owner_id) < PARTY_LIMIT

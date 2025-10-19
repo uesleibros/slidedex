@@ -196,14 +196,14 @@ class Pokemon(commands.Cog, name="Pokémon"):
     )
     @checks.require_account()
     async def pokemon_command(self, ctx: commands.Context, **flags):
-        user_id = str(ctx.author.id)
+        uid = str(ctx.author.id)
 
         if flags.get("party") and not flags.get("box"):
-            pokemons = await asyncio.to_thread(self.tk.pokemon.get_party, user_id)
+            pokemons = await asyncio.to_thread(self.tk.pokemon.get_party, uid)
         elif flags.get("box") and not flags.get("party"):
-            pokemons = await asyncio.to_thread(self.tk.pokemon.get_box, user_id)
+            pokemons = await asyncio.to_thread(self.tk.pokemon.get_box, uid)
         else:
-            pokemons = await asyncio.to_thread(self.tk.pokemon.get_all_by_owner, user_id)
+            pokemons = await asyncio.to_thread(self.tk.pokemon.get_all_by_owner, uid)
 
         pokemons = await asyncio.to_thread(apply_filters, pokemons, flags)
         pokemons = await asyncio.to_thread(apply_sort_limit, pokemons, flags)
@@ -215,10 +215,10 @@ class Pokemon(commands.Cog, name="Pokémon"):
     @commands.command(name="favorite", aliases=["fav"])
     @checks.require_account()
     async def favorite_pokemon(self, ctx, pokemon_id: int):
-        user_id = str(ctx.author.id)
+        uid = str(ctx.author.id)
         
         try:
-            pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, user_id, pokemon_id, True)
+            pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, uid, pokemon_id, True)
             if was_fav:
                 await ctx.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já está nos favoritos!")
             else:
@@ -229,10 +229,10 @@ class Pokemon(commands.Cog, name="Pokémon"):
     @commands.command(name="unfavourite", aliases=["unfav", "unfavorite"])
     @checks.require_account()
     async def unfavourite_pokemon(self, ctx, pokemon_id: int):
-        user_id = str(ctx.author.id)
+        uid = str(ctx.author.id)
 
         try:
-            pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, user_id, pokemon_id, False)
+            pokemon, was_fav = await asyncio.to_thread(self._toggle_favorite_safe, uid, pokemon_id, False)
             if not was_fav:
                 await ctx.reply(f"{format_pokemon_display(pokemon, bold_name=True)} já não está nos favoritos!")
             else:
@@ -240,15 +240,15 @@ class Pokemon(commands.Cog, name="Pokémon"):
         except ValueError:
             await ctx.reply("Pokémon não encontrado.")
 
-    def _toggle_favorite_safe(self, user_id: str, pokemon_id: int, should_be_fav: bool):
-        pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+    def _toggle_favorite_safe(self, uid: str, pokemon_id: int, should_be_fav: bool):
+        pokemon = self.tk.pokemon.get(uid, pokemon_id)
         was_fav = pokemon.get("is_favorite", False)
         
         if should_be_fav and not was_fav:
-            self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+            self.tk.pokemon.toggle_favorite(uid, pokemon_id)
             pokemon["is_favorite"] = True
         elif not should_be_fav and was_fav:
-            self.tk.pokemon.toggle_favorite(user_id, pokemon_id)
+            self.tk.pokemon.toggle_favorite(uid, pokemon_id)
             pokemon["is_favorite"] = False
         
         return pokemon, was_fav
@@ -261,10 +261,10 @@ class Pokemon(commands.Cog, name="Pokémon"):
             if len(nickname) > 20:
                 return await ctx.reply("O nickname deve ter no máximo 20 caracteres!")
         
-        user_id = str(ctx.author.id)
+        uid = str(ctx.author.id)
         
         try:
-            pokemon = await asyncio.to_thread(self._set_nickname_and_get, user_id, pokemon_id, nickname)
+            pokemon = await asyncio.to_thread(self._set_nickname_and_get, uid, pokemon_id, nickname)
             
             if nickname:
                 await ctx.reply(f"Nickname definido como **{nickname}** para o {format_pokemon_display(pokemon, bold_name=True, show_nick=False)}!")
@@ -273,9 +273,9 @@ class Pokemon(commands.Cog, name="Pokémon"):
         except ValueError:
             await ctx.reply("Pokémon não encontrado.")
 
-    def _set_nickname_and_get(self, user_id: str, pokemon_id: int, nickname: Optional[str]):
-        self.tk.pokemon.set_nickname(user_id, pokemon_id, nickname)
-        pokemon = self.tk.pokemon.get(user_id, pokemon_id)
+    def _set_nickname_and_get(self, uid: str, pokemon_id: int, nickname: Optional[str]):
+        self.tk.pokemon.set_nickname(uid, pokemon_id, nickname)
+        pokemon = self.tk.pokemon.get(uid, pokemon_id)
         return pokemon
 
     @commands.cooldown(3, 5, commands.BucketType.user)
@@ -284,13 +284,13 @@ class Pokemon(commands.Cog, name="Pokémon"):
     async def info_command(self, ctx: commands.Context, pokemon_id: Optional[int] = None) -> None:
         await ctx.defer()
         
-        user_id = str(ctx.author.id)
+        uid = str(ctx.author.id)
 
         if pokemon_id is None:
-            party = self.tk.pokemon.get_party(user_id)
+            party = self.tk.pokemon.get_party(uid)
             
             if not party:
-                all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
+                all_pokemons = self.tk.pokemon.get_all_by_owner(uid)
                 if not all_pokemons:
                     await ctx.reply("Você não possuí nenhum Pokémon.")
                     return
@@ -298,12 +298,12 @@ class Pokemon(commands.Cog, name="Pokémon"):
                 pokemon_index = 0
             else:
                 current_pokemon = party[0]
-                all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
+                all_pokemons = self.tk.pokemon.get_all_by_owner(uid)
                 pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == current_pokemon['id']), 0)
         else:
             try:
-                current_pokemon = self.tk.pokemon.get(user_id, pokemon_id)
-                all_pokemons = self.tk.pokemon.get_all_by_owner(user_id)
+                current_pokemon = self.tk.pokemon.get(uid, pokemon_id)
+                all_pokemons = self.tk.pokemon.get_all_by_owner(uid)
                 pokemon_index = next((i for i, p in enumerate(all_pokemons) if p['id'] == pokemon_id), 0)
             except ValueError:
                 await ctx.reply("Você não possuí um Pokémon com esse ID.")
@@ -319,7 +319,8 @@ class Pokemon(commands.Cog, name="Pokémon"):
         composed_bytes = await compose_pokemon_async(sprite_url, background)
 
         files = self._get_static_files() + [discord.File(composed_bytes, "pokemon.png")]
-        view = PokemonInfoLayout(current_pokemon, pokemon_index, len(all_pokemons), self.tk)
+        user_timezone: str = self.tk.users.get_timezone(uid)
+        view = PokemonInfoLayout(current_pokemon, pokemon_index, len(all_pokemons), self.tk, user_timezone)
         
         await ctx.reply(view=view, files=files)
 
