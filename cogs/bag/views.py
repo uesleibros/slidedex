@@ -14,6 +14,7 @@ class BagItemsLayout(discord.ui.LayoutView):
         self.per_page = per_page
         self.current_page = current_page
         
+        self._header = discord.ui.TextDisplay("### Sua Mochila")
         self._separator = discord.ui.Separator()
         self._empty_msg = discord.ui.TextDisplay("Sua mochila está vazia.")
         self._pagination_fmt = "-# Mostrando {}–{} de {}"
@@ -99,14 +100,6 @@ class BagItemsLayout(discord.ui.LayoutView):
             return None
         return 'items' if 'items' in self._available_categories else self._available_categories[0]
 
-    def _get_category_thumbnail(self) -> Optional[str]:
-        if not self.selected_category:
-            return None
-        for category, thumbnail, _ in self._category_groups:
-            if category == self.selected_category:
-                return thumbnail
-        return None
-
     def _populate_category_select(self) -> None:
         self._category_select.options.clear()
         
@@ -146,38 +139,36 @@ class BagItemsLayout(discord.ui.LayoutView):
         end = min(idx + self.per_page, total)
         
         c = discord.ui.Container()
-        
-        thumbnail = self._get_category_thumbnail()
-        if thumbnail:
-            header_section = discord.ui.Section(accessory=discord.ui.Thumbnail(thumbnail))
-            header_section.add_item(discord.ui.TextDisplay("### Sua Mochila"))
-            c.add_item(header_section)
-        else:
-            c.add_item(discord.ui.TextDisplay("### Sua Mochila"))
-        
+        c.add_item(self._header)
         c.add_item(self._separator)
         
         if filtered_items:
+            Section = discord.ui.Section
+            Thumbnail = discord.ui.Thumbnail
             TextDisplay = discord.ui.TextDisplay
             separator = self._separator
             category_names = CATEGORY_NAMES
             
             if self.selected_category:
-                for category, _, _ in self._category_groups:
+                for category, thumbnail, _ in self._category_groups:
                     if category == self.selected_category:
                         page_items = tuple(item for cat, _, item in filtered_items[idx:end])
                         
-                        c.add_item(TextDisplay(f"-# **{category_names.get(category, category.title())}**"))
-                        c.add_item(TextDisplay(chr(10).join(page_items)))
+                        sec = Section(accessory=Thumbnail(thumbnail))
+                        sec.add_item(TextDisplay(f"-# **{category_names.get(category, category.title())}**"))
+                        sec.add_item(TextDisplay(chr(10).join(page_items)))
+                        c.add_item(sec)
                         c.add_item(separator)
                         break
             else:
-                for category, _, _ in self._category_groups:
+                for category, thumbnail, _ in self._category_groups:
                     page_items = tuple(item for cat, _, item in filtered_items[idx:end] if cat == category)
                     
                     if page_items:
-                        c.add_item(TextDisplay(f"-# **{category_names.get(category, category.title())}**"))
-                        c.add_item(TextDisplay(chr(10).join(page_items)))
+                        sec = Section(accessory=Thumbnail(thumbnail))
+                        sec.add_item(TextDisplay(f"-# **{category_names.get(category, category.title())}**"))
+                        sec.add_item(TextDisplay(chr(10).join(page_items)))
+                        c.add_item(sec)
                         c.add_item(separator)
         else:
             c.add_item(self._empty_msg)
