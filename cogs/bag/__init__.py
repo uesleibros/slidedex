@@ -3,7 +3,6 @@ import asyncio
 from typing import List, Dict, Final, Set
 from sdk.toolkit import Toolkit
 from discord.ext import commands
-from helpers.flags import flags
 from sdk.items.constants import ITEM_EMOJIS
 from cogs.bag.views import BagItemsLayout
 import helpers.checks as checks
@@ -29,7 +28,7 @@ class Bag(commands.Cog, name="Mochila"):
             if cat in self.CATEGORY_ICONS
         ]
 
-    @flags.group(name="bag", invoke_without_command=True)
+    @commands.group(name="bag", invoke_without_command=True)
     @checks.require_account()
     async def bag_root(self, ctx: commands.Context) -> None:
         await ctx.defer()
