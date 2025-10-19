@@ -93,7 +93,127 @@ class TimezoneHelper:
 			
 			timezone = ZoneInfo(tz)
 			dt_converted = dt.astimezone(timezone)
-			return dt_converted.strftime(fmt)
+			now = datetime.now(timezone)
+			
+			dt_date = dt_converted.date()
+			now_date = now.date()
+			diff_days = (dt_date - now_date).days
+			diff_seconds = (dt_converted - now).total_seconds()
+			
+			date_str = dt_converted.strftime('%d/%m/%Y')
+			time_str = dt_converted.strftime('%H:%M')
+			hour = dt_converted.hour
+			
+			def get_period(h: int) -> str:
+				if 0 <= h < 6:
+					return "madrugada"
+				elif 6 <= h < 12:
+					return "manhã"
+				elif 12 <= h < 18:
+					return "tarde"
+				else:
+					return "noite"
+			
+			period = get_period(hour)
+			
+			if diff_days == 0:
+				if abs(diff_seconds) < 60:
+					return "Agora mesmo"
+				elif abs(diff_seconds) < 3600:
+					minutes = int(abs(diff_seconds) / 60)
+					if diff_seconds < 0:
+						return f"Há {minutes} minuto{'s' if minutes > 1 else ''}"
+					else:
+						return f"Em {minutes} minuto{'s' if minutes > 1 else ''}"
+				elif abs(diff_seconds) < 86400:
+					hours = int(abs(diff_seconds) / 3600)
+					if diff_seconds < 0:
+						return f"Há {hours} hora{'s' if hours > 1 else ''} ({date_str}) às {time_str}"
+					else:
+						return f"Em {hours} hora{'s' if hours > 1 else ''} ({date_str}) às {time_str}"
+				else:
+					return f"Hoje de {period} ({date_str}) às {time_str}"
+			
+			elif diff_days == -1:
+				return f"Ontem de {period} ({date_str}) às {time_str}"
+			elif diff_days == -2:
+				return f"Anteontem de {period} ({date_str}) às {time_str}"
+			elif diff_days == 1:
+				return f"Amanhã de {period} ({date_str}) às {time_str}"
+			elif diff_days == 2:
+				return f"Depois de amanhã de {period} ({date_str}) às {time_str}"
+			
+			elif -7 <= diff_days < -2:
+				weekdays = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo']
+				weekday_name = weekdays[dt_converted.weekday()]
+				return f"{weekday_name.capitalize()} passada ({date_str}) às {time_str}"
+			
+			elif 2 < diff_days <= 7:
+				weekdays = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo']
+				weekday_name = weekdays[dt_converted.weekday()]
+				return f"Próxima {weekday_name} ({date_str}) às {time_str}"
+			
+			elif -14 <= diff_days < -7:
+				return f"Semana retrasada ({date_str}) às {time_str}"
+			elif 7 < diff_days <= 14:
+				return f"Daqui a duas semanas ({date_str}) às {time_str}"
+			
+			elif -30 <= diff_days < -14:
+				weeks = abs(diff_days) // 7
+				return f"Há {weeks} semanas ({date_str}) às {time_str}"
+			elif 14 < diff_days <= 30:
+				weeks = diff_days // 7
+				return f"Daqui a {weeks} semanas ({date_str}) às {time_str}"
+			
+			elif -60 <= diff_days < -30:
+				if dt_converted.month == now.month - 1 or (now.month == 1 and dt_converted.month == 12):
+					return f"Mês passado ({date_str}) às {time_str}"
+				else:
+					months_names = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+					                'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+					month_name = months_names[dt_converted.month - 1]
+					return f"Em {month_name} ({date_str}) às {time_str}"
+			
+			elif 30 < diff_days <= 60:
+				if dt_converted.month == now.month + 1 or (now.month == 12 and dt_converted.month == 1):
+					return f"Próximo mês ({date_str}) às {time_str}"
+				else:
+					months_names = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+					                'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+					month_name = months_names[dt_converted.month - 1]
+					return f"Em {month_name} ({date_str}) às {time_str}"
+			
+			elif -365 <= diff_days < -60:
+				months = abs(diff_days) // 30
+				if months == 1:
+					return f"Há 1 mês ({date_str}) às {time_str}"
+				return f"Há {months} meses ({date_str}) às {time_str}"
+			
+			elif 60 < diff_days <= 365:
+				months = diff_days // 30
+				if months == 1:
+					return f"Daqui a 1 mês ({date_str}) às {time_str}"
+				return f"Daqui a {months} meses ({date_str}) às {time_str}"
+			
+			elif diff_days < -365:
+				years = abs(diff_days) // 365
+				if years == 1:
+					if dt_converted.year == now.year - 1:
+						return f"Ano passado ({date_str}) às {time_str}"
+					return f"Há 1 ano ({date_str}) às {time_str}"
+				return f"Há {years} anos ({date_str}) às {time_str}"
+			
+			elif diff_days > 365:
+				years = diff_days // 365
+				if years == 1:
+					if dt_converted.year == now.year + 1:
+						return f"Próximo ano ({date_str}) às {time_str}"
+					return f"Daqui a 1 ano ({date_str}) às {time_str}"
+				return f"Daqui a {years} anos ({date_str}) às {time_str}"
+			
+			else:
+				return dt_converted.strftime(fmt)
+				
 		except Exception:
 			if isinstance(dt, datetime):
 				return dt.strftime(fmt)
