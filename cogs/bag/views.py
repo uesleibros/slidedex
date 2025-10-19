@@ -13,7 +13,6 @@ class BagItemsLayout(discord.ui.LayoutView):
         self.items = items
         self.per_page = per_page
         self.current_page = current_page
-        self.selected_category: Optional[str] = None
         
         self._header = discord.ui.TextDisplay("### Sua Mochila")
         self._separator = discord.ui.Separator()
@@ -23,6 +22,8 @@ class BagItemsLayout(discord.ui.LayoutView):
         self._formatted_items = self._precompute_all()
         self._category_groups = self._build_category_groups()
         self._available_categories = self._get_available_categories()
+        
+        self.selected_category: Optional[str] = self._get_default_category()
         
         self._category_select = discord.ui.Select(
             placeholder="Selecione uma categoria...",
@@ -94,15 +95,13 @@ class BagItemsLayout(discord.ui.LayoutView):
     def _get_available_categories(self) -> Tuple[str, ...]:
         return tuple(cat for cat, _, _ in self._category_groups)
 
+    def _get_default_category(self) -> Optional[str]:
+        if not self._available_categories:
+            return None
+        return 'items' if 'items' in self._available_categories else self._available_categories[0]
+
     def _populate_category_select(self) -> None:
         self._category_select.options.clear()
-        
-        self._category_select.add_option(
-            label="Todos os itens",
-            value="all",
-            emoji="📦",
-            default=self.selected_category is None
-        )
         
         category_names = CATEGORY_NAMES
         for category in self._available_categories:
@@ -190,7 +189,7 @@ class BagItemsLayout(discord.ui.LayoutView):
 
     async def _on_category_change(self, interaction: discord.Interaction) -> None:
         selected = self._category_select.values[0]
-        self.selected_category = None if selected == "all" else selected
+        self.selected_category = selected
         self.current_page = 0
         self._populate_category_select()
         self._build()
