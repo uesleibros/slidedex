@@ -236,7 +236,7 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		c.add_item(self._separator)
 		c.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem("attachment://pokemon.png")))
 		c.add_item(self._separator)
-		c.add_item(TextDisplay(f"-# Capturado em: {self._caught_at}"))
+		c.add_item(TextDisplay(f"-# Capturado: {self._caught_at}"))
 
 		self.add_item(c)
 
@@ -244,5 +244,3 @@ class PokemonInfoLayout(discord.ui.LayoutView):
 		self.show_iv = not self.show_iv
 		self._build()
 		await interaction.response.edit_message(view=self)
-
-
