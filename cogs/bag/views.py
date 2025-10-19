@@ -155,7 +155,7 @@ class BagItemsLayout(discord.ui.LayoutView):
                         page_items = tuple(item for cat, _, item in filtered_items[idx:end])
                         
                         sec = Section(accessory=Thumbnail(thumbnail))
-                        sec.add_item(TextDisplay(f"**{category_names.get(category, category.title())}**"))
+                        sec.add_item(TextDisplay(f"-# **{category_names.get(category, category.title())}**"))
                         sec.add_item(TextDisplay(chr(10).join(page_items)))
                         c.add_item(sec)
                         c.add_item(separator)
@@ -166,7 +166,7 @@ class BagItemsLayout(discord.ui.LayoutView):
                     
                     if page_items:
                         sec = Section(accessory=Thumbnail(thumbnail))
-                        sec.add_item(TextDisplay(f"**{category_names.get(category, category.title())}**"))
+                        sec.add_item(TextDisplay(f"-# **{category_names.get(category, category.title())}**"))
                         sec.add_item(TextDisplay(chr(10).join(page_items)))
                         c.add_item(sec)
                         c.add_item(separator)
@@ -206,3 +206,4 @@ class BagItemsLayout(discord.ui.LayoutView):
             self.current_page += 1
             self._build()
             await interaction.response.edit_message(view=self)
+
