@@ -39,6 +39,7 @@ class Utility(commands.Cog, name="Utilidade"):
 	async def ping(self, ctx: commands.Context) -> None:
 		metrics = await self._measure_latency(ctx)
 		embed = self._build_embed(metrics)
+
 		await ctx.message.reply(embed=embed)
 	
 	async def _measure_latency(self, ctx: commands.Context) -> PingMetrics:

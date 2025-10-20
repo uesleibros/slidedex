@@ -1,5 +1,6 @@
 from sdk.database import Database
 from sdk.api.services import APIService
+from sdk.repositories.travel_repository import TravelRepository
 from sdk.repositories.user_repository import UserRepository
 from sdk.repositories.pokemon_repository import PokemonRepository
 from sdk.repositories.bag_repository import BagRepository
@@ -10,9 +11,10 @@ from sdk.constants import SHINY_ROLL, STAT_KEYS, NATURES
 from helpers.growth import ExperienceCalculator
 from typing import Optional
 import threading
+from sdk.services.travel_service import TravelService
 
 class Toolkit:
-	__slots__ = ("db", "api", "users", "pokemon", "bag", "happiness", "factory", "item_service", "_initialized")
+	__slots__ = ("db", "api", "users", "pokemon", "travel", "bag", "travel_service", "happiness", "factory", "item_service", "_initialized")
 	_instance = None
 	_instance_lock = threading.Lock()
 	
@@ -32,7 +34,9 @@ class Toolkit:
 		self.db = Database(path)
 		self.api = APIService()
 		self.users = UserRepository(self.db)
+		self.travel = TravelRepository(self.db, self.users)
 		self.pokemon = PokemonRepository(self.db)
+		self.travel_service = TravelService(self.travel)
 		self.bag = BagRepository(self.db)
 		self.happiness = HappinessService()
 		self.factory = PokemonFactory(self.api)

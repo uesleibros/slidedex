@@ -5,9 +5,16 @@ LOCATIONS: Final[Dict[str, Any]] = {
 		"name": "Pallet Town",
 		"type": "town",
 		"connections": {
-			"kanto-route-1-area": { "time": 30 }
+			"kanto-route-1-area": {
+				"time": 30,
+				"method": "walk"
+			}
 		},
-		"wild_encounters": False,
+		"encounters": {
+			"walk": None,
+			"surf": "water",
+			"fish": "water"
+		},
 		"can_fly_to": True,
 		"has_pokemon_center": False,
 		"has_mart": False,
@@ -28,9 +35,20 @@ LOCATIONS: Final[Dict[str, Any]] = {
 		"name": "Rota 1",
 		"type": "route",
 		"connections": {
-			"pallet-town-area": { "time": 30 }
+			"pallet-town-area": {
+				"time": 30,
+				"method": "walk"
+			},
+			"viridian-city-area": {
+				"time": 150,
+				"method": "walk"
+			}
 		},
-		"wild_encounters": True,
+		"encounters": {
+			"walk": "grass",
+			"surf": None,
+			"fish": None
+		},
 		"can_fly_to": True,
 		"has_pokemon_center": False,
 		"has_mart": False,
@@ -42,7 +60,37 @@ LOCATIONS: Final[Dict[str, Any]] = {
 		"gym_info": None,
 		"mart_items": None,
 		"required_hm": None,
-		"required_events": ["starter_choice"],
+		"required_events": [],
+		"required_badge": None,
+		"min_badges": None,
+		"events": []
+	},
+	"viridian-city-area": {
+		"name": "Viridian City",
+		"type": "city",
+		"connections": {
+			"kanto-route-1-area": {
+				"time": 30,
+				"method": "walk"
+			}
+		},
+		"encounters": {
+			"walk": None,
+			"surf": None,
+			"fish": None
+		},
+		"can_fly_to": True,
+		"has_pokemon_center": True,
+		"has_mart": True,
+		"has_gym": True,
+		"has_day_care": False,
+		"has_game_corner": False,
+		"has_safari_zone": False,
+		"has_move_tutor": False,
+		"gym_info": None,
+		"mart_items": None,
+		"required_hm": None,
+		"required_events": [],
 		"required_badge": None,
 		"min_badges": None,
 		"events": []

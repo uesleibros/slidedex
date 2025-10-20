@@ -262,5 +262,7 @@ MAX_LEVEL: Final[int] = 100
 MIN_LEVEL: Final[int] = 1
 SHINY_ROLL: Final[int] = 8192
 
+TRAVEL_STEP_INTERVAL: Final[int] = 5
+
 SOOTHE_BELL_MULTIPLIER: Final[float] = 1.5
 HAPPINESS: Final[HappinessConfig] = HappinessConfig()

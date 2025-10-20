@@ -8,6 +8,39 @@ def get_location_name(location_id: str) -> str:
 	location = LOCATIONS.get(location_id)
 	return location["name"] if location else location_id.replace("-", " ").title()
 
+def get_encounter_methods(location_id: str) -> list[str]:
+	location = LOCATIONS.get(location_id)
+	if not location:
+		return []
+	
+	encounters = location.get("encounters", {})
+	methods = []
+	
+	if encounters.get("walk"):
+		methods.append("Caminhando")
+	if encounters.get("surf"):
+		methods.append("Surfando")
+	if encounters.get("fish"):
+		methods.append("Pescando")
+	
+	return methods
+
+def has_any_encounters(location_id: str) -> bool:
+	location = LOCATIONS.get(location_id)
+	if not location:
+		return False
+	
+	encounters = location.get("encounters", {})
+	return any(encounters.values())
+
+def get_encounter_type(location_id: str, method: str = "walk") -> str | None:
+	location = LOCATIONS.get(location_id)
+	if not location:
+		return None
+	
+	encounters = location.get("encounters", {})
+	return encounters.get(method)
+
 def can_access_location(
 	location_id: str,
 	user_hms: list[str],
@@ -105,12 +138,6 @@ def get_flyable_locations(visited_locations: list[str]) -> list[tuple[str, str]]
 		for loc_id, loc in LOCATIONS.items()
 		if loc.get("can_fly_to") and loc_id in visited_locations
 	]
-
-def has_wild_encounters(location_id: str) -> bool:
-	location = LOCATIONS.get(location_id)
-	if not location:
-		return False
-	return location.get("wild_encounters", False)
 
 def get_location_type(location_id: str) -> str | None:
 	location = LOCATIONS.get(location_id)

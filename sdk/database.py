@@ -38,6 +38,7 @@ class Database:
 		self._data = {
 			"users": {},
 			"pokemon": [],
+			"travels": {},
 			"bags": []
 		}
 		self._save()
